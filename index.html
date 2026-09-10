@@ -609,7 +609,7 @@ function repairMysticExistingTarget(id){
   let d=s.extraDetail.find(x=>x&&x.kind==='Lien mystique');
   if(!d){d={kind:'Lien mystique',target:'Un autre personnage'};s.extraDetail.push(d);}
   d.targetId=target.id; d.targetName=target.name||null;
-  localStorage.setItem(ROSTER_KEY,JSON.stringify(roster));
+  localStorage.setItem(STORAGE_ROSTER,JSON.stringify(roster));
   if(state?.id===id){
     state.relationships=structuredClone(s.relationships);
     state.extraDetail=structuredClone(s.extraDetail);
@@ -1369,7 +1369,7 @@ function importCharactersFromFiles(files){
     const conflicts=valid.filter(c=>roster[c.id]).map(c=>c.id);
     if(conflicts.length && !confirm(`${conflicts.length} personnage${conflicts.length>1?'s':''} existe${conflicts.length>1?'nt':''} déjà avec le même ID.\n\nRemplacer ces fiches par celles du JSON ?`)) return;
     for(const c of valid) roster[c.id]=c;
-    localStorage.setItem(ROSTER_KEY,JSON.stringify(roster));
+    localStorage.setItem(STORAGE_ROSTER,JSON.stringify(roster));
     const nums=Object.keys(roster).map(id=>id.match(new RegExp(`^S${seasonNumber}-(\\d+)$`))).filter(Boolean).map(m=>Number(m[1])).filter(Number.isFinite);
     const minimumNext=nums.length?Math.max(...nums)+1:1;
     const stored=Number(localStorage.getItem(STORAGE_CURRENT))||1;
