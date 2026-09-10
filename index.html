@@ -684,32 +684,43 @@ function characterSeasonFromId(p,fallback=seasonNumber){
 }
 function characterHasPossessesChildExtra(p){
   if(!p) return false;
-  if(p.extra==='Possède un enfant') return true;
-  return Array.isArray(p.logs)&&p.logs.some(x=>x?.cat==='Extra'&&x?.val==='Possède un enfant');
+  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const isPossessChild=v=>norm(v).includes('possede un enfant');
+  if(isPossessChild(p.extra)) return true;
+  if(Array.isArray(p.extras)&&p.extras.some(isPossessChild)) return true;
+  if(Array.isArray(p.logs)&&p.logs.some(x=>isPossessChild(x?.val)||isPossessChild(x?.label)||isPossessChild(x?.result))) return true;
+  try{return isPossessChild(JSON.stringify({extra:p.extra,extras:p.extras,logs:p.logs,extraDetail:p.extraDetail}))}catch(e){return false}
 }
 function repairMissingBirthEvents(roster=loadRoster(),descStore=descendants()){
   let changed=false;
   const repaired=[];
+  const descValues=Object.values(descStore||{}).filter(Boolean);
+  const descIds=new Set(descValues.map(d=>d.id).filter(Boolean));
   for(const p of Object.values(roster||{})){
     if(!p||!characterHasPossessesChildExtra(p)) continue;
     p.extraDetail=Array.isArray(p.extraDetail)?p.extraDetail:[];
-    if(p.extraDetail.some(x=>x?.kind==='Enfant')) continue;
     ensureGenealogyShape(p);
     const birthSeason=characterSeasonFromId(p,seasonNumber);
-    const existingKids=Object.values(descStore||{}).filter(d=>Array.isArray(d?.parentIds)&&d.parentIds.includes(p.id)).map(d=>d.id).filter(Boolean);
-    const ev={
-      kind:'Enfant',
-      status:existingKids.length?`${existingKids.length} naissance${existingKids.length>1?'s':''} résolue${existingKids.length>1?'s':''}`:'Naissance en attente de résolution',
-      birthEventId:`BIRTH-${p.id}`,
-      childIds:[...new Set(existingKids)],
-      otherParentId:null,
-      origin:null,
-      birthSeason,
-      eligibleSeason:birthSeason+1
-    };
-    p.extraDetail.push(ev);
-    if(existingKids.length)p.genealogy.children=[...new Set([...(p.genealogy.children||[]),...existingKids])];
-    roster[p.id]=p;changed=true;repaired.push(p);
+    const existingKids=descValues.filter(d=>Array.isArray(d?.parentIds)&&d.parentIds.includes(p.id)).map(d=>d.id).filter(Boolean);
+    let ev=p.extraDetail.find(x=>x?.kind==='Enfant');
+    if(!ev){
+      ev={kind:'Enfant',otherParentId:null,origin:null};
+      p.extraDetail.push(ev);
+      changed=true;
+    }
+    const validReferenced=birthEventChildIds(ev).filter(id=>descIds.has(id));
+    const realKids=[...new Set([...validReferenced,...existingKids])];
+    const before=JSON.stringify({status:ev.status,birthEventId:ev.birthEventId,childIds:ev.childIds,childId:ev.childId,birthSeason:ev.birthSeason,eligibleSeason:ev.eligibleSeason});
+    ev.birthEventId=ev.birthEventId||`BIRTH-${p.id}`;
+    ev.childIds=realKids;
+    delete ev.childId;
+    ev.birthSeason=Number(ev.birthSeason||birthSeason);
+    ev.eligibleSeason=Number(ev.eligibleSeason||ev.birthSeason+1);
+    ev.status=realKids.length?`${realKids.length} naissance${realKids.length>1?'s':''} résolue${realKids.length>1?'s':''}`:'Naissance en attente de résolution';
+    if(realKids.length)p.genealogy.children=[...new Set([...(p.genealogy.children||[]),...realKids])];
+    const after=JSON.stringify({status:ev.status,birthEventId:ev.birthEventId,childIds:ev.childIds,birthSeason:ev.birthSeason,eligibleSeason:ev.eligibleSeason});
+    if(before!==after) changed=true;
+    roster[p.id]=p;repaired.push(p);
   }
   if(changed){
     saveRoster(roster);
@@ -728,7 +739,6 @@ function pendingBirthEventsForSeason(season=seasonNumber){
   repairMissingBirthEvents(roster,descendants());
   const pending=[];
   for(const p of Object.values(roster)){
-    if(!isCharacterGenerationComplete(p)) continue;
     for(const ev of (p?.extraDetail||[])){
       if(ev?.kind!=='Enfant') continue;
       const birthSeason=Number(ev.birthSeason||characterSeasonFromId(p,season));
@@ -744,7 +754,6 @@ function pendingBirthEventsDue(upToSeason=seasonNumber){
   repairMissingBirthEvents(roster,descendants());
   const pending=[];
   for(const p of Object.values(roster)){
-    if(!isCharacterGenerationComplete(p)) continue;
     for(const ev of (p?.extraDetail||[])){
       if(ev?.kind!=='Enfant'||birthEventChildIds(ev).length) continue;
       ev.birthSeason=Number(ev.birthSeason||characterSeasonFromId(p,upToSeason));
@@ -1209,10 +1218,6 @@ function resolveBirthEvents(){
   const resolvedByBirthSeason={};
   for(const pa of Object.values(roster)){
     ensureGenealogyShape(pa);
-    if(!isCharacterGenerationComplete(pa)){
-      if((pa.extraDetail||[]).some(x=>x?.kind==='Enfant'&&birthEventChildIds(x).length===0)) skippedIncomplete++;
-      continue;
-    }
     for(const ev of (pa.extraDetail||[]).filter(x=>x?.kind==='Enfant'&&birthEventChildIds(x).length===0)){
       ev.birthSeason=Number(ev.birthSeason||characterSeasonFromId(pa,seasonNumber));
       // Ne jamais traiter comme future une naissance provenant d'une saison qui n'a pas encore eu lieu.
