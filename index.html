@@ -192,6 +192,10 @@ canvas{filter:saturate(.72) brightness(.82) contrast(1.12);drop-shadow(0 0 18px 
         <div class="title">📋 Registre complet de la saison</div>
         <div class="muted">Clique sur une fiche pour la charger dans l’onglet Roue.</div>
       </div><div class="pill" id="rosterCount">0 personnage</div></div>
+      <div class="roster-export-bar" style="margin-top:12px">
+        <button type="button" class="smallbtn" id="importCharactersBtn">📥 Importer des JSON</button>
+        <input type="file" id="importCharactersInput" accept=".json,application/json" multiple hidden>
+      </div>
     </div>
     <div id="characterDetail" class="character-detail"></div>
     
@@ -1348,6 +1352,34 @@ function exportAllCharactersJson(){
   },`Roue_de_la_Fortune_Personnages_V18_25.json`);
 }
 
+function importCharactersFromFiles(files){
+  const list=Array.from(files||[]);
+  if(!list.length) return;
+  Promise.all(list.map(file=>file.text().then(text=>({file,data:JSON.parse(text)})))).then(items=>{
+    const incoming=[];
+    for(const {data} of items){
+      if(Array.isArray(data?.characters)) incoming.push(...data.characters);
+      else if(data?.roster && typeof data.roster==='object') incoming.push(...Object.values(data.roster));
+      else if(data?.id && typeof data==='object') incoming.push(data);
+      else throw new Error('Format JSON non reconnu.');
+    }
+    const valid=incoming.filter(c=>c&&typeof c==='object'&&/^S\d+-\d+$/.test(String(c.id||'')));
+    if(!valid.length) throw new Error('Aucun personnage valide trouvé dans le fichier.');
+    const roster=loadRoster();
+    const conflicts=valid.filter(c=>roster[c.id]).map(c=>c.id);
+    if(conflicts.length && !confirm(`${conflicts.length} personnage${conflicts.length>1?'s':''} existe${conflicts.length>1?'nt':''} déjà avec le même ID.\n\nRemplacer ces fiches par celles du JSON ?`)) return;
+    for(const c of valid) roster[c.id]=c;
+    localStorage.setItem(ROSTER_KEY,JSON.stringify(roster));
+    const nums=Object.keys(roster).map(id=>id.match(new RegExp(`^S${seasonNumber}-(\\d+)$`))).filter(Boolean).map(m=>Number(m[1])).filter(Number.isFinite);
+    const minimumNext=nums.length?Math.max(...nums)+1:1;
+    const stored=Number(localStorage.getItem(STORAGE_CURRENT))||1;
+    characterNumber=Math.max(stored,minimumNext);
+    localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
+    renderRoster();
+    alert(`${valid.length} personnage${valid.length>1?'s':''} importé${valid.length>1?'s':''} avec succès.\n\nProchain ID : ${currentCharacterId()}\n\nLes illustrations ne sont pas contenues dans ces JSON.`);
+  }).catch(err=>alert(`Import impossible : ${err.message||err}`));
+}
+
 function exportCharacterJson(id){
   const roster=loadRoster();
   const character=roster[id];
@@ -1815,6 +1847,12 @@ prevCharBtn.onclick=()=>previousCharacter();
 nextCharBtn.onclick=()=>advanceCharacter();
 const resolveChildrenBtn=document.getElementById('resolveChildrenBtn');
 const selectDescBtn=document.getElementById('selectDescBtn');
+const importCharactersBtn=document.getElementById('importCharactersBtn');
+const importCharactersInput=document.getElementById('importCharactersInput');
+if(importCharactersBtn&&importCharactersInput){
+  importCharactersBtn.onclick=()=>{importCharactersInput.value='';importCharactersInput.click()};
+  importCharactersInput.onchange=()=>importCharactersFromFiles(importCharactersInput.files);
+}
 const exportUniverseBtn=document.getElementById('exportUniverseBtn');
 if(resolveChildrenBtn)resolveChildrenBtn.onclick=resolveBirthEvents;
 if(selectDescBtn)selectDescBtn.onclick=selectDescendantsForNextSeason;
