@@ -164,7 +164,7 @@
 /* Tournament tree + genealogy tree V18.28 */
 .tournament-sim-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.tournament-sim-controls select{min-width:190px;width:auto}
 .tournament-tree-wrap{position:relative;overflow:auto;padding:8px 4px 24px}.tournament-rounds{position:relative;display:flex;gap:72px;align-items:flex-start;min-width:max-content;overflow:visible;padding:8px 18px 28px}.tournament-round{width:250px;min-width:250px;position:relative;z-index:2}.tournament-round-body{display:flex;flex-direction:column}.tournament-match-slot{position:relative;display:flex;align-items:center;justify-content:center}.tournament-match{width:100%;margin:0}.tournament-connectors{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:visible}.tournament-connectors path{stroke:#6f5562;stroke-width:2;fill:none;opacity:.85;transition:stroke .25s,filter .25s,opacity .25s}.tournament-connectors path.winner-path{stroke:#ffd84d;stroke-width:3;opacity:1;filter:drop-shadow(0 0 4px #ffd84d);animation:winnerPathPulse 1.15s ease-in-out infinite alternate}@keyframes winnerPathPulse{from{stroke:#c99f19;filter:drop-shadow(0 0 2px #c99f19)}to{stroke:#fff07a;filter:drop-shadow(0 0 8px #ffd84d)}}
-.genealogy-tree-wrap{position:relative;overflow:auto;min-height:260px;padding:16px 10px 24px;border:1px solid #342a31;border-radius:12px;background:linear-gradient(180deg,rgba(8,8,11,.45),rgba(18,14,18,.55))}.genealogy-tree{position:relative;display:flex;gap:86px;align-items:flex-start;min-width:max-content;padding:10px 22px}.genealogy-generation{width:220px;min-width:220px;position:relative;z-index:2}.genealogy-generation h4{text-align:center;color:#d3b16d;margin:0 0 12px}.genealogy-generation-body{display:flex;flex-direction:column;gap:18px}.genealogy-node{padding:10px 11px;border:1px solid #513d49;border-radius:11px;background:linear-gradient(145deg,#1a171d,#100f13);box-shadow:0 7px 20px #0006}.genealogy-node.roster-node{cursor:pointer}.genealogy-node.roster-node:hover{border-color:#8f6b35}.genealogy-node .gn-name{font-weight:800;color:#ead7b0}.genealogy-node .gn-id{font-size:.76rem;color:#9f9590;margin-top:2px}.genealogy-node .gn-meta{font-size:.78rem;color:#bcb0aa;margin-top:5px}.genealogy-node.desc-node{border-left:3px solid #9a343b}.genealogy-node.npc-node{border-left:3px solid #5c4664}.genealogy-node.placeholder-node{opacity:.62;border-style:dashed}.genealogy-connectors{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:visible}.genealogy-connectors path{stroke:#7f625f;stroke-width:2;fill:none;opacity:.78}.genealogy-tree-empty{padding:34px;text-align:center;color:var(--muted)}
+.genealogy-tree-wrap{position:relative;overflow:auto;min-height:260px;padding:16px 10px 24px;border:1px solid #342a31;border-radius:12px;background:linear-gradient(180deg,rgba(8,8,11,.45),rgba(18,14,18,.55))}.genealogy-tree{position:relative;display:flex;gap:86px;align-items:flex-start;min-width:max-content;padding:10px 22px}.genealogy-generation{width:220px;min-width:220px;position:relative;z-index:2}.genealogy-generation h4{text-align:center;color:#d3b16d;margin:0 0 12px}.genealogy-generation-body{display:flex;flex-direction:column;gap:18px}.genealogy-node{padding:10px 11px;border:1px solid #513d49;border-radius:11px;background:linear-gradient(145deg,#1a171d,#100f13);box-shadow:0 7px 20px #0006}.genealogy-node.roster-node{cursor:pointer}.genealogy-node.roster-node:hover{border-color:#8f6b35}.genealogy-node .gn-name{font-weight:800;color:#ead7b0}.genealogy-node .gn-id{font-size:.76rem;color:#9f9590;margin-top:2px}.genealogy-node .gn-meta{font-size:.78rem;color:#bcb0aa;margin-top:5px}.genealogy-node.desc-node{border-left:3px solid #9a343b}.genealogy-node.npc-node{border-left:3px solid #5c4664}.genealogy-node.placeholder-node{opacity:.62;border-style:dashed}.genealogy-connectors{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:visible}.genealogy-connectors path{stroke:#d6b56c;stroke-width:4;fill:none;opacity:1;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 3px rgba(214,181,108,.7))}.genealogy-tree-empty{padding:34px;text-align:center;color:var(--muted)}
 @media(max-width:720px){.tournament-round{width:220px;min-width:220px}.tournament-rounds{gap:58px}.genealogy-generation{width:190px;min-width:190px}.genealogy-tree{gap:64px}}
 
 </style>
@@ -348,7 +348,7 @@ canvas{filter:saturate(.82) brightness(.88) contrast(1.08) drop-shadow(0 0 18px 
 }
 .tournament-round h3,.genealogy-generation h4{color:#d4b36d!important;text-shadow:0 1px #000}
 .tournament-connectors path{stroke:#76534b!important}.tournament-connectors path.winner-path{stroke:#f1d86f!important;filter:drop-shadow(0 0 5px #d7b34c)!important}
-.genealogy-connectors path{stroke:#8a6556!important}
+.genealogy-connectors path{stroke:#d6b56c!important;stroke-width:4!important;opacity:1!important;filter:drop-shadow(0 0 4px rgba(214,181,108,.8))!important}
 .genealogy-node.desc-node{border-left-color:#a33b40!important}.genealogy-node.npc-node{border-left-color:#6b4f73!important}
 .genealogy-node .gn-name{font-family:"Cinzel",serif!important;color:#e5c990!important}
 .cloud-bar{background:rgba(9,7,10,.92)!important;border-color:#4c373b!important}
@@ -1556,11 +1556,31 @@ function exportUniverse(){
 
 function genealogyEntityMap(){
   const roster=loadRoster(), d=descendants(), n=npcs(), map={};
-  Object.values(roster).forEach(x=>{if(!x?.id)return;map[x.id]={...x,_kind:'roster',_parents:[...(x.genealogy?.parents||[])]}});
-  Object.values(n).forEach(x=>{if(!x?.id)return;map[x.id]={...x,_kind:'npc',_parents:[...(x.genealogy?.parents||[])]}});
-  Object.values(d).forEach(x=>{if(!x?.id)return;map[x.id]={...x,_kind:'desc',_parents:[...(x.parentIds||x.genealogy?.parents||[])]}});
-  // Placeholder nodes keep links visible when an old parent ID exists but the full record is absent.
-  Object.values(map).forEach(x=>(x._parents||[]).forEach(pid=>{if(pid&&!map[pid])map[pid]={id:pid,name:'Parent non chargé',_kind:'placeholder',_parents:[],genealogy:{generation:Math.max(1,(x.genealogy?.generation||2)-1)}}}));
+  const cleanParents=(ids,selfId)=>[...new Set((Array.isArray(ids)?ids:[]).filter(id=>id&&id!==selfId))].slice(0,2);
+
+  // Source de vérité de l'arbre : les parents déclarés par l'ENFANT.
+  // On n'utilise volontairement plus genealogy.children pour construire l'arbre :
+  // d'anciens bugs pouvaient y laisser des IDs fantômes et afficher des "parents" sans enfant réel.
+  Object.values(roster).forEach(x=>{
+    if(!x?.id)return;
+    map[x.id]={...x,_kind:'roster',_parents:cleanParents(x.genealogy?.parents,x.id)};
+  });
+  Object.values(n).forEach(x=>{
+    if(!x?.id)return;
+    map[x.id]={...x,_kind:'npc',_parents:cleanParents(x.genealogy?.parents,x.id)};
+  });
+  Object.values(d).forEach(x=>{
+    if(!x?.id)return;
+    const explicit=Array.isArray(x.parentIds)?x.parentIds:x.genealogy?.parents;
+    map[x.id]={...x,_kind:'desc',_parents:cleanParents(explicit,x.id)};
+  });
+
+  // Placeholder uniquement lorsqu'un enfant réel référence un parent dont la fiche manque.
+  const refs=[];
+  Object.values(map).forEach(x=>(x._parents||[]).forEach(pid=>refs.push([pid,x])));
+  refs.forEach(([pid,x])=>{
+    if(pid&&!map[pid])map[pid]={id:pid,name:'Parent non chargé',_kind:'placeholder',_parents:[],genealogy:{generation:Math.max(1,(x.genealogy?.generation||2)-1)}};
+  });
   return map;
 }
 function genealogyGenerationOf(x,map,seen=new Set()){
@@ -1573,7 +1593,14 @@ function genealogyGenerationOf(x,map,seen=new Set()){
 function renderGenealogyTree(){
   const root=document.getElementById('genealogyTree'),wrap=document.getElementById('genealogyTreeWrap');if(!root||!wrap)return;
   const map=genealogyEntityMap(), linked=new Set();
-  Object.values(map).forEach(x=>{if((x._parents||[]).length){linked.add(x.id);x._parents.forEach(p=>linked.add(p))}if((x.genealogy?.children||[]).length){linked.add(x.id);x.genealogy.children.forEach(c=>linked.add(c))}});
+  // N'afficher que les personnes participant à un lien parent -> enfant réellement porté par l'enfant.
+  // Cela exclut les parents "fantômes" laissés dans genealogy.children par d'anciennes sauvegardes.
+  Object.values(map).forEach(child=>{
+    const parents=(child._parents||[]).filter(pid=>pid&&pid!==child.id);
+    if(!parents.length)return;
+    linked.add(child.id);
+    parents.forEach(pid=>linked.add(pid));
+  });
   const nodes=Object.values(map).filter(x=>linked.has(x.id));
   if(!nodes.length){root.innerHTML='<div class="genealogy-tree-empty">Aucun lien familial à afficher pour le moment.</div>';drawGenealogyConnectors();return}
   const groups={};nodes.forEach(x=>{const g=genealogyGenerationOf(x,map);(groups[g]??=[]).push(x)});
@@ -1583,7 +1610,7 @@ function renderGenealogyTree(){
 function drawGenealogyConnectors(){
   const wrap=document.getElementById('genealogyTreeWrap'),svg=document.getElementById('genealogyConnectors');if(!wrap||!svg)return;const map=genealogyEntityMap(),wr=wrap.getBoundingClientRect();
   svg.setAttribute('width',wrap.scrollWidth);svg.setAttribute('height',wrap.scrollHeight);svg.setAttribute('viewBox',`0 0 ${wrap.scrollWidth} ${wrap.scrollHeight}`);svg.innerHTML='';
-  Object.values(map).forEach(ch=>{const child=wrap.querySelector(`[data-genealogy-id="${CSS.escape(ch.id)}"]`);if(!child)return;(ch._parents||[]).forEach(pid=>{const par=wrap.querySelector(`[data-genealogy-id="${CSS.escape(pid)}"]`);if(!par)return;const a=par.getBoundingClientRect(),b=child.getBoundingClientRect(),x1=a.right-wr.left+wrap.scrollLeft,y1=a.top+a.height/2-wr.top+wrap.scrollTop,x2=b.left-wr.left+wrap.scrollLeft,y2=b.top+b.height/2-wr.top+wrap.scrollTop,m=(x1+x2)/2;const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',`M ${x1} ${y1} H ${m} V ${y2} H ${x2}`);if(t.winners?.[`${ri}-${mi}`])path.classList.add('winner-path');svg.appendChild(path)})});
+  Object.values(map).forEach(ch=>{const child=wrap.querySelector(`[data-genealogy-id="${CSS.escape(ch.id)}"]`);if(!child)return;(ch._parents||[]).forEach(pid=>{const par=wrap.querySelector(`[data-genealogy-id="${CSS.escape(pid)}"]`);if(!par)return;const a=par.getBoundingClientRect(),b=child.getBoundingClientRect(),x1=a.right-wr.left+wrap.scrollLeft,y1=a.top+a.height/2-wr.top+wrap.scrollTop,x2=b.left-wr.left+wrap.scrollLeft,y2=b.top+b.height/2-wr.top+wrap.scrollTop,m=(x1+x2)/2;const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',`M ${x1} ${y1} H ${m} V ${y2} H ${x2}`);svg.appendChild(path)})});
 }
 
 function renderGenealogy(){
@@ -2697,7 +2724,7 @@ async function tournamentPortrait(el,id){try{const f=await getIllustration(id);i
 function drawTournamentConnectors(){
   const wrap=document.getElementById('tournamentTreeWrap'),svg=document.getElementById('tournamentConnectors');if(!wrap||!svg)return;const wr=wrap.getBoundingClientRect();svg.setAttribute('width',wrap.scrollWidth);svg.setAttribute('height',wrap.scrollHeight);svg.setAttribute('viewBox',`0 0 ${wrap.scrollWidth} ${wrap.scrollHeight}`);svg.innerHTML='';
   const t=loadTournament();if(!t)return;
-  for(let ri=0;ri<t.rounds.length-1;ri++){const round=t.rounds[ri]||[];for(let mi=0;mi<Math.floor(round.length/2);mi++){const from=wrap.querySelector(`[data-match-key="${ri}-${mi}"]`),to=wrap.querySelector(`[data-match-key="${ri+1}-${Math.floor(mi/2)}"]`);if(!from||!to)continue;const a=from.getBoundingClientRect(),b=to.getBoundingClientRect(),x1=a.right-wr.left+wrap.scrollLeft,y1=a.top+a.height/2-wr.top+wrap.scrollTop,x2=b.left-wr.left+wrap.scrollLeft,y2=b.top+b.height/2-wr.top+wrap.scrollTop,m=(x1+x2)/2;const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',`M ${x1} ${y1} H ${m} V ${y2} H ${x2}`);if(t.winners?.[`${ri}-${mi}`])path.classList.add('winner-path');svg.appendChild(path)}}
+  for(let ri=0;ri<t.rounds.length-1;ri++){const round=t.rounds[ri]||[];for(let mi=0;mi<Math.floor(round.length/2);mi++){const from=wrap.querySelector(`[data-match-key="${ri}-${mi}"]`),to=wrap.querySelector(`[data-match-key="${ri+1}-${Math.floor(mi/2)}"]`);if(!from||!to)continue;const a=from.getBoundingClientRect(),b=to.getBoundingClientRect(),x1=a.right-wr.left+wrap.scrollLeft,y1=a.top+a.height/2-wr.top+wrap.scrollTop,x2=b.left-wr.left+wrap.scrollLeft,y2=b.top+b.height/2-wr.top+wrap.scrollTop,m=(x1+x2)/2;const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',`M ${x1} ${y1} H ${m} V ${y2} H ${x2}`);svg.appendChild(path)}}
 }
 function renderTournament(){
   const root=document.getElementById('tournamentRounds'),status=document.getElementById('tournamentStatus'),lab=document.getElementById('tournamentSeasonLabel');if(!root)return;
