@@ -1,0 +1,1836 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Roue de la Fortune V13</title>
+<style>
+:root{--bg:#0b0e13;--panel:#151a22;--soft:#202735;--line:#30394a;--text:#f6f7fb;--muted:#9da8b9;--gold:#ffd166;--green:#75db91}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 25% 0,#18202d,#0b0e13 45%);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}header{position:sticky;top:0;z-index:10;background:#0d1118ee;backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:14px 18px;display:flex;justify-content:space-between;align-items:center}h1{font-size:19px;margin:0}.muted{color:var(--muted)}.layout{max-width:1450px;margin:auto;padding:14px;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(330px,.8fr);gap:14px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:0 18px 50px #0005}.left{padding:16px}.right{padding:16px;position:sticky;top:78px;height:calc(100vh - 94px);overflow:auto}.top{display:flex;justify-content:space-between;gap:12px;align-items:center}.title{font-weight:850;font-size:19px}.pill{background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:5px 9px;color:var(--muted);font-size:12px}.wheelwrap{min-height:520px;display:grid;place-items:center;position:relative}.pointer{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:17px solid transparent;border-right:17px solid transparent;border-top:32px solid var(--gold);filter:drop-shadow(0 3px 2px #0008);z-index:3}canvas{width:min(73vw,520px);height:min(73vw,520px);max-width:520px;max-height:520px}.result{text-align:center;min-height:48px;font-weight:900;font-size:21px}.result small{display:block;font-size:12px;font-weight:500;color:var(--muted)}.controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}button{cursor:pointer;border:0;border-radius:11px;padding:10px 14px;font-weight:800;background:var(--gold);color:#101319}button.secondary{background:var(--soft);color:var(--text);border:1px solid var(--line)}button:disabled{opacity:.45}.note{margin-top:12px;background:#15261c;border:1px solid #285a38;color:#bce9c7;padding:10px 12px;border-radius:10px}.section{padding:11px 0;border-bottom:1px solid var(--line)}.section:last-child{border:0}.section h3{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}.kv{display:grid;grid-template-columns:130px 1fr;gap:5px 9px}.stats{display:grid;grid-template-columns:1fr 1fr;gap:7px}.stat{background:var(--soft);padding:8px 10px;border-radius:9px;display:flex;justify-content:space-between}.item{padding:5px 0}.tag{font-size:11px;background:#273142;border-radius:6px;padding:2px 6px;margin-right:5px}.log{max-height:260px;overflow:auto;background:#0e1219;border:1px solid var(--line);border-radius:10px;padding:8px}.log div{padding:4px 0;border-bottom:1px dashed #273142}.log div:last-child{border:0}.ok{color:var(--green)}@media(max-width:900px){.layout{grid-template-columns:1fr}.right{position:static;height:auto}.wheelwrap{min-height:420px}canvas{width:min(90vw,460px);height:min(90vw,460px)}}
+
+.tabs{display:flex;gap:8px;padding:0 18px 14px;max-width:1500px;margin:auto}
+.tabbtn{width:auto;padding:10px 18px;background:#1b2330;border:1px solid var(--line)}
+.tabbtn.active{background:var(--accent);color:#07111d;border-color:transparent}
+.tabpage{display:none}.tabpage.active{display:block}
+.roster-page{max-width:1500px;margin:0 auto;padding:0 18px 24px}
+.roster-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(390px,1fr));gap:12px}
+.roster-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;cursor:pointer}
+.roster-card.current{outline:2px solid var(--accent)}
+.roster-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.roster-name{font-size:18px;font-weight:800}.roster-id{font-size:12px}
+.roster-info{display:grid;grid-template-columns:120px 1fr;gap:5px 10px;margin-top:10px;font-size:13px}
+.roster-info b{color:#9fb0c5}.roster-section{margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
+.roster-section strong{display:block;margin-bottom:4px}
+.roster-empty{padding:24px;text-align:center;color:#9fb0c5}
+@media(max-width:600px){.roster-grid{grid-template-columns:1fr}.roster-info{grid-template-columns:100px 1fr}}
+
+.character-detail{display:none;margin-bottom:14px}
+.character-detail.active{display:block}
+.detail-back{width:auto;margin-bottom:10px}
+.detail-sheet{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.detail-title{font-size:24px;font-weight:900;margin-bottom:2px}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:14px}
+.detail-box{background:#111722;border:1px solid var(--line);border-radius:12px;padding:12px}
+.detail-box h4{margin:0 0 8px}
+.detail-row{padding:4px 0;border-bottom:1px dashed #273142}.detail-row:last-child{border:0}
+
+.danger-btn{
+  margin-top:14px;
+  padding:10px 14px;
+  border:1px solid #8d2b2b;
+  border-radius:10px;
+  background:linear-gradient(180deg,#3a1111,#220909);
+  color:#f2d6c9;
+  font-weight:700;
+  cursor:pointer;
+}
+.danger-btn:hover{filter:brightness(1.15);}
+
+
+.illustration-block{margin:14px 0 18px}
+.illustration-frame{width:100%;max-width:520px;margin:0 auto;aspect-ratio:2/3;border:1px solid rgba(212,175,55,.45);border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#171313,#0b0909);box-shadow:0 10px 28px rgba(0,0,0,.35)}
+.character-illustration{width:100%;height:100%;object-fit:cover}
+.illustration-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9a8d80;font-style:italic}
+.illustration-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.illustration-thumb-wrap{width:46px;height:62px;border-radius:7px;overflow:hidden;border:1px solid rgba(212,175,55,.35);background:#111;display:inline-flex;align-items:center;justify-content:center;margin-right:9px;vertical-align:middle}
+.illustration-thumb{width:100%;height:100%;object-fit:cover;display:none}
+.illustration-thumb-placeholder{width:100%;height:100%;display:inline-flex;align-items:center;justify-content:center;color:#9a8d80;font-size:18px}
+
+
+.season-roster-group{margin:0 0 18px}
+.season-roster-title{
+  margin:4px 0 8px;
+  padding:0 4px 6px;
+  border-bottom:1px solid rgba(198,161,91,.22);
+  color:var(--df-gold2,#d3b06a);
+  font-family:Georgia,'Times New Roman',serif;
+  font-weight:800;
+  font-size:18px;
+  letter-spacing:.03em
+}
+.season-roster-list{display:flex;flex-direction:column;gap:7px}
+.compact-roster-row{
+  display:flex;align-items:center;gap:10px;
+  min-height:58px;padding:6px 10px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:var(--panel);
+  cursor:pointer;
+  transition:.15s ease
+}
+.compact-roster-row:hover{
+  border-color:var(--df-gold2,#c6a15b);
+  transform:translateY(-1px);
+  box-shadow:0 7px 18px rgba(0,0,0,.32)
+}
+.compact-roster-row.current{outline:2px solid var(--accent)}
+.compact-roster-main{
+  min-width:0;display:flex;align-items:baseline;gap:8px;
+  white-space:nowrap;overflow:hidden
+}
+.compact-roster-id{
+  flex:0 0 auto;font-weight:800;color:#e0c17f;
+  font-variant-numeric:tabular-nums
+}
+.compact-roster-separator{color:#72685e}
+.compact-roster-name{
+  overflow:hidden;text-overflow:ellipsis;
+  font-weight:700;color:var(--text)
+}
+.compact-roster-row .illustration-thumb-wrap{
+  width:44px;height:44px;border-radius:50%;
+  margin-right:0;flex:0 0 44px;
+}
+.compact-roster-row .illustration-thumb{
+  object-fit:cover;
+  object-position:center 18%;
+}
+.compact-roster-row .illustration-thumb-placeholder{
+  font-size:17px
+}
+
+
+.roster-export-bar{
+  display:flex;
+  justify-content:flex-end;
+  margin:0 0 14px;
+}
+.roster-export-bar .smallbtn{
+  min-height:42px;
+}
+
+.summoner-box{margin-top:10px;border-color:rgba(126,92,170,.45)}
+</style>
+<style id="darkFantasyV181">
+:root{
+  --df-bg:#09090c; --df-panel:#111116; --df-panel2:#18171d;
+  --df-border:#4b3845; --df-gold:#c6a15b; --df-gold2:#8f6b35;
+  --df-blood:#6d1720; --df-blood2:#a02b34; --df-text:#e7dfd2;
+  --df-muted:#9b9292; --df-violet:#49304f;
+}
+html,body{background:
+ radial-gradient(circle at 18% 0%,rgba(109,23,32,.20),transparent 30%),
+ radial-gradient(circle at 88% 14%,rgba(73,48,79,.18),transparent 28%),
+ linear-gradient(180deg,#08080b 0%,#0c0b0f 48%,#07070a 100%) !important;
+ color:var(--df-text)!important}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.18;
+ background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.012) 1px,transparent 1px);
+ background-size:34px 34px}
+.wrap,.app,.container{max-width:1500px}
+h1,h2,h3,.title,.roster-name{font-family:Georgia,"Times New Roman",serif!important;letter-spacing:.035em}
+h1,.title{color:#e9d5ad!important;text-shadow:0 0 22px rgba(160,43,52,.30)}
+.card,.panel,.wheel-card,.result-card,.roster-card,.detail-card{
+ background:linear-gradient(145deg,rgba(25,23,29,.97),rgba(13,13,17,.98))!important;
+ border:1px solid var(--df-border)!important;
+ box-shadow:0 14px 35px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.025)!important}
+.roster-card:hover{border-color:var(--df-gold2)!important;box-shadow:0 12px 30px rgba(0,0,0,.48),0 0 0 1px rgba(198,161,91,.12)!important}
+button,.btn{
+ background:linear-gradient(180deg,#6e2028,#451117)!important;
+ border:1px solid #9b3a40!important;color:#f3e7d6!important;
+ box-shadow:inset 0 1px rgba(255,255,255,.08),0 4px 13px rgba(0,0,0,.28)!important}
+button:hover,.btn:hover{filter:brightness(1.14)}
+button.secondary,.secondary{
+ background:linear-gradient(180deg,#28232d,#17151c)!important;
+ border-color:#625165!important;color:#dfd3c5!important}
+.tab-btn{background:#121116!important;border-color:#3a3039!important;color:#a99da0!important}
+.tab-btn.active{background:linear-gradient(180deg,#3d1720,#211119)!important;color:#efd9b1!important;border-color:#8e593c!important}
+.tag,.pill,.badge{background:#241820!important;border-color:#68404b!important;color:#d7b778!important}
+.note{background:rgba(56,35,43,.55)!important;border:1px solid #5d414c!important;color:#cfc1b4!important}
+.muted{color:var(--df-muted)!important}
+input,select,textarea{background:#0e0d11!important;color:#e6ddd1!important;border-color:#4a3c46!important}
+hr{border-color:#3d3038!important}
+canvas{filter:saturate(.72) brightness(.82) contrast(1.12);drop-shadow(0 0 18px rgba(109,23,32,.2))}
+#genealogyTab .genealogy-shell{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.genealogy-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.genealogy-stats{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr));gap:10px}
+.genealogy-stat{padding:14px;border:1px solid #493944;border-radius:12px;background:linear-gradient(145deg,#17151b,#0e0d11)}
+.genealogy-stat b{display:block;color:#d3b16d;font:700 1.35rem Georgia,serif}
+.genealogy-section{padding:16px;border:1px solid #473640;border-radius:14px;background:rgba(15,14,18,.86)}
+.genealogy-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px}
+.lineage-card{padding:14px;border:1px solid #493844;border-radius:12px;background:linear-gradient(145deg,#1a171d,#100f13)}
+.lineage-card.selected{border-color:#8f6b35;box-shadow:0 0 18px rgba(198,161,91,.12)}
+.lineage-title{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:9px}
+.lineage-title strong{font-family:Georgia,serif;color:#e6d3ad;font-size:1.06rem}
+.lineage-meta{display:grid;grid-template-columns:92px 1fr;gap:5px 8px;font-size:.88rem}
+.lineage-meta b{color:#a98b59}
+.pending-birth{border-left:3px solid #9a343b}
+.npc-card{border-left:3px solid #5c4664}
+@media(max-width:720px){.genealogy-stats{grid-template-columns:repeat(2,1fr)}.genealogy-grid{grid-template-columns:1fr}}
+</style>
+
+</head><body><header><div><h1>🎰 Roue de la Fortune — V18.25</h1><div class="muted">Chaque donnée aléatoire affichée provient de la roue que tu vois tourner.</div></div><div class="pill" id="charId">S1-001</div></header>
+<div class="tabs">
+  <button id="wheelTabBtn" class="tabbtn active">🎰 Roue</button>
+  <button id="listTabBtn" class="tabbtn">📋 Liste des personnages</button>
+<button id="genealogyTabBtn" class="tabbtn">🌳 Descendants & lignées</button>
+</div>
+<div id="wheelTab" class="tabpage active">
+<div class="layout"><section class="panel left"><div class="top"><div class="title" id="taskTitle">Prêt</div><div class="pill" id="count">0 roue</div></div><div class="wheelwrap"><div class="pointer"></div><canvas id="wheel" width="760" height="760"></canvas></div><div class="result" id="result">Clique sur « Commencer »<small>Les sous-roues seront ajoutées automatiquement selon les résultats.</small></div><div class="controls"><button id="spinBtn">Commencer</button><button class="secondary" id="autoBtn">Auto : OFF</button><button class="secondary" id="resetBtn">Réinitialiser</button><button class="secondary" id="exportBtn">Exporter JSON</button><button class="secondary" id="prevCharBtn">← Précédent</button><button class="secondary" id="nextCharBtn">Suivant →</button></div><div class="note">✓ V18.25 : système complet de descendants, PNJ parents, génétique raciale, mutations héréditaires et sélection des 16 descendants.</div></section>
+<aside class="panel right"><div class="section"><h3>Identité</h3><div class="kv" id="identity"></div></div><div class="section"><h3>Stats</h3><div class="stats" id="stats"></div></div><div class="section"><h3>Pouvoirs & capacités</h3><div id="powers">—</div></div><div class="section"><h3>Armes</h3><div id="weapons">—</div></div><div class="section"><h3>Faiblesse</h3><div id="weakness">—</div></div><div class="section"><h3>Extra / bénédictions / malédictions</h3><div id="extra">—</div></div><div class="section"><h3>Apparence</h3><div id="appearance">—</div></div><div class="section"><h3>Historique exact</h3><div class="log" id="log"></div></div>
+
+</aside></div>
+
+</div>
+<div id="listTab" class="tabpage">
+  <div class="roster-page">
+    <div class="panel" style="margin-bottom:12px">
+      <div class="top"><div>
+        <div class="title">📋 Registre complet de la saison</div>
+        <div class="muted">Clique sur une fiche pour la charger dans l’onglet Roue.</div>
+      </div><div class="pill" id="rosterCount">0 personnage</div></div>
+    </div>
+    <div id="characterDetail" class="character-detail"></div>
+    
+    <div id="rosterList" class="roster-grid"><div class="roster-empty">Aucun personnage sauvegardé.</div></div>
+  </div>
+</div>
+
+
+
+<section id="genealogyTab" class="tabpage">
+  <div class="genealogy-shell">
+    <div>
+      <h2>🌳 Descendants & lignées</h2>
+      <div class="muted">Registre des naissances, branches familiales, PNJ parents et héritiers des saisons futures.</div>
+    </div>
+    <div class="genealogy-toolbar">
+      <button class="secondary" id="resolveChildrenBtn">👶 Résoudre les naissances</button>
+      <button class="secondary" id="selectDescBtn">🎟️ Sélectionner les descendants S+1</button>
+      <button class="secondary" id="exportUniverseBtn">💾 Exporter l’univers</button>
+    </div>
+    <div id="genealogyStats" class="genealogy-stats"></div>
+    <div id="descendantSummary" class="note">Aucun descendant enregistré.</div>
+    <div class="genealogy-section">
+      <h3>🕯️ Naissances en attente</h3>
+      <div id="pendingBirths" class="genealogy-grid"></div>
+    </div>
+    <div class="genealogy-section">
+      <h3>🩸 Descendants</h3>
+      <div id="descendantList" class="genealogy-grid"></div>
+    </div>
+    <div class="genealogy-section">
+      <h3>🧑 PNJ liés aux lignées</h3>
+      <div id="npcLineageList" class="genealogy-grid"></div>
+    </div>
+  </div>
+</section>
+<script>
+const spinBtn=document.getElementById('spinBtn');
+const autoBtn=document.getElementById('autoBtn');
+const resetBtn=document.getElementById('resetBtn');
+const exportBtn=document.getElementById('exportBtn');
+const prevCharBtn=document.getElementById('prevCharBtn');
+const nextCharBtn=document.getElementById('nextCharBtn');
+const taskTitle=document.getElementById('taskTitle');
+const count=document.getElementById('count');
+const result=document.getElementById('result');
+const charId=document.getElementById('charId');
+const identity=document.getElementById('identity');
+const stats=document.getElementById('stats');
+const weakness=document.getElementById('weakness');
+const extra=document.getElementById('extra');
+const appearance=document.getElementById('appearance');
+const rosterList=document.getElementById('rosterList');
+const rosterCount=document.getElementById('rosterCount');
+const characterDetail=document.getElementById('characterDetail');
+const wheelTabBtn=document.getElementById('wheelTabBtn');
+const listTabBtn=document.getElementById('listTabBtn');
+const genealogyTabBtn=document.getElementById('genealogyTabBtn');
+const genealogyTab=document.getElementById('genealogyTab');
+const wheelTab=document.getElementById('wheelTab');
+const listTab=document.getElementById('listTab');
+
+const W=(label,weight=1)=>({label,weight}); const EQ=a=>a.map(x=>W(x));
+
+// V8.1 — pondérations explicites utilisées par les roues dynamiques.
+function raceOptions(excluded=[]){
+  const rareWeights={
+    'Divinité / Demi-dieu':1,
+    'Titan':1,
+    'Dragon humanoïde':2,
+    'Ange':3,
+    'Démon':3
+  };
+  const ordinary=races.filter(r=>!(r in rareWeights));
+  const ordinaryWeight=90/ordinary.length;
+  return races.filter(r=>!excluded.includes(r)).map(r=>W(r, rareWeights[r] ?? ordinaryWeight));
+}
+
+function weaponOptions(forceRanged=false){
+  // « Aucune arme » occupe exactement 25 % de la roue.
+  const pool=(forceRanged?ranged:weapons).filter(w=>w!=='Aucune arme');
+  const each=75/pool.length;
+  return [W('Aucune arme',25), ...pool.map(w=>W(w,each))];
+}
+
+// Artiste martial : 50 % mains nues, sinon uniquement armes martiales/non modernes.
+const martialWeapons=['Épée','Épée à deux mains','Katana','Dagues doubles','Hache','Hache à deux mains','Marteau de guerre','Rope Dart / Corde-dard','Lance','Hallebarde','Faux','Bâton','Nunchaku','Chaîne / Kusarigama','Fouet','Gantelets de combat','Bouclier offensif','Arc','Arbalète','Arme improvisée','Arme unique'];
+function martialWeaponOptions(){const each=75/martialWeapons.length;return [W('Aucune arme',25),...martialWeapons.map(w=>W(w,each))]}
+const chiRanks=['Disciple','Débutant','Avancé','Maître','Expert','Grand Maître','Martial King','Transcendant','Demi-dieu','Martial God'];
+const centered=[W('1 — Catastrophique',2),W('2 — Très faible',4),W('3 — Faible',8),W('4 — Médiocre',14),W('5 — Moyen',22),W('6 — Bon',22),W('7 — Excellent',14),W('8 — Exceptionnel',8),W('9 — Légendaire',4),W('10 — Monstrueux',2)];
+const intensity=[W('1 — Infime',2),W('2 — Faible',4),W('3 — Mineure',8),W('4 — Modérée',14),W('5 — Significative',22),W('6 — Puissante',22),W('7 — Supérieure',14),W('8 — Légendaire',8),W('9 — Divine',4),W('10 — Miraculeuse',2)];
+const races=['Humain','Elfe','Nain','Orc','Gobelin','Fée','Géant','Vampire','Loup-garou','Démon','Ange','Esprit','Dragon humanoïde','Golem / Artificiel','Extraterrestre','Divinité / Demi-dieu','Titan','Squelette','Homme-bête','Hybride','Cyborg'];
+const animals=['Lion','Tigre','Loup','Renard','Ours','Sanglier','Taureau','Cheval','Cerf','Chèvre','Gorille','Singe','Éléphant','Rhinocéros','Crocodile','Serpent','Lézard','Tortue','Aigle','Hibou','Chauve-souris','Requin','Baleine','Poulpe','Scorpion','Araignée','Scarabée','Fourmi','Guépard','Papillon','Animal fantastique'];
+const archs=['Guerrier','Berserker','Gardien','Assassin','Artiste martial','Tireur','Mage','Sorcier','Érudit','Ingénieur','Stratège','Soutien','Chasseur','Éclaireur','Commandant','Trickster','Slayer','Invocateur','Prodige','Inclassable'];
+const jobs=['Soldat','Mercenaire','Garde','Chasseur de primes','Assassin','Espion','Policier / Enquêteur','Forgeron','Ingénieur / Mécanicien','Scientifique','Médecin / Guérisseur','Alchimiste','Marchand','Voleur','Explorateur','Chasseur','Marin / Pirate','Pilote','Mineur','Agriculteur','Métier légendaire','Artiste','Cuisinier','Prêtre / Religieux','Enseignant / Érudit','Noble / Diplomate','Dirigeant','Criminel','Sans métier','Métier improbable'];
+const histories=['Enfance paisible','Orphelin','Exilé','Esclave évadé','Ancien criminel','Vétéran de guerre','Unique survivant','Trahi','Amnésique','Héritier déchu','Élu par une prophétie','Maudit','Béni','Expérience scientifique','Rescapé d’un autre monde','Formé depuis l’enfance','Autodidacte','Disciple d’un maître','Ancien champion','Chasseur de monstres','Revenu d’entre les morts','Pacte mystérieux','Possédé','Artefact découvert','Pouvoir éveillé tardivement','Voyageur temporel','Créé artificiellement','Destin brisé','Histoire légendaire','Histoire improbable'];
+const extras=['Familier','Monture','Compagnon artificiel','Armure spéciale','Artefact','Consommable rare','Technique secrète','Sens extraordinaire','Régénération','Vol','Camouflage','Deuxième pouvoir','Deuxième arme','Transformation','Résurrection unique','Éveil','Familier légendaire','Objet maudit','Objet béni','Mémoire parfaite','Chance surnaturelle','Aura dominante','Mutation','Lien mystique','Double','Possède un enfant','Bénédiction','Extra improbable','Extra légendaire','Rien'];
+
+const legendaryJobs=['Forgeron des dieux','Chasseur de Léviathans','Cartographe des dimensions','Médecin des immortels','Architecte de forteresses vivantes','Alchimiste royal des âges','Maître-espion des mille visages','Navigateur du vide','Gardien du dernier sanctuaire','Ingénieur des reliques','Dompteur de catastrophes','Archiviste des mondes perdus','Juge des monstres','Cuisinier des souverains','Passeur des morts','Maître des arènes','Explorateur de l’impossible','Diplomate des anciens royaumes','Artisan des âmes','Métier légendaire unique'];
+const legendaryJobAbilities=['Forge temporairement une propriété surnaturelle dans un objet','Identifie instinctivement le point faible d’une créature colossale','Trouve un passage là où aucun chemin ne devrait exister','Stabilise une blessure normalement incurable','Transforme rapidement le terrain en position défensive','Prépare une substance aux effets extraordinaires','Usurpe parfaitement une identité après observation','S’oriente même dans un espace déformé','Crée une zone de protection autour d’un lieu choisi','Répare ou détourne des technologies inconnues','Apaise ou dirige brièvement une créature déchaînée','Accède à des connaissances oubliées liées à une situation','Impose un sceau temporaire à une cible monstrueuse','Prépare un mets donnant un sursaut temporaire','Perçoit les présences entre vie et mort','Lit instantanément la dynamique d’une arène','Détecte les anomalies et passages cachés','Force une trêve surnaturelle très brève','Interagit directement avec les traces laissées dans une âme','Capacité professionnelle unique'];
+const uniqueLegendaryJobAbilities=['Peut achever une œuvre impossible une fois par combat','Transforme un outil banal en chef-d’œuvre temporaire','Lit la fonction d’un objet qu’aucun être ne comprend','Crée un raccourci éphémère entre deux points visibles','Donne momentanément une fonction nouvelle à un objet','Scelle une promesse sous forme de marque mystique','Fait apparaître l’outil exact requis par son métier','Reconstruit brièvement la dernière forme intacte d’un objet détruit','Perçoit la meilleure méthode de travail possible dans une crise','Son savoir-faire produit un effet que la logique ne peut expliquer'];
+const legendaryHistories=['A survécu à la chute d’un royaume entier','A vaincu seul une créature considérée invincible','A fermé une faille qui dévorait une région','A été le dernier défenseur d’une civilisation','A traversé vivant un monde condamné','A brisé une prophétie millénaire','A volé quelque chose à une divinité','A mené une armée à une victoire impossible','A survécu à sa propre exécution','A été emprisonné hors du temps','A détruit un artefact réputé indestructible','A sauvé une ville d’une catastrophe surnaturelle','A été choisi puis rejeté par une puissance cosmique','A parcouru plusieurs dimensions pour rentrer chez lui','A été le champion d’une arène mythique','A survécu à une guerre entre êtres divins','A réveillé accidentellement une puissance ancienne','A scellé un monstre primordial','A disparu pendant un siècle avant de revenir inchangé','Histoire légendaire unique'];
+const uniqueLegendaryHistories=['Son nom a été effacé de l’histoire mais les ruines se souviennent de lui','A gagné une bataille qui n’a officiellement jamais existé','Est revenu d’un futur où son monde avait disparu','A survécu sept jours dans le rêve d’une entité cosmique','A porté pendant une nuit le poids d’une malédiction mondiale','A été déclaré mort dans trois réalités différentes','A négocié avec une catastrophe consciente','A détruit sa propre légende pour empêcher une prophétie','A traversé un lieu dont personne ne peut se souvenir','A été témoin de la naissance d’un dieu'];
+const legendaryArmorTypes=['Armure draconique ancestrale','Armure céleste','Armure démoniaque souveraine','Armure de titan','Armure cosmique','Armure du Chaos','Armure spectrale royale','Exosquelette mythique','Armure vivante antique','Armure légendaire unique'];
+const legendaryArmorEffects=['Invulnérabilité brève après un impact majeur','Régénération accélérée de l’armure','Absorption massive d’énergie','Déphasage défensif','Adaptation progressive aux attaques répétées','Barrière autonome','Ancrage absolu contre déplacements forcés','Conversion partielle des dégâts en puissance','Protection contre altérations de réalité','Propriété légendaire unique'];
+const legendaryTechniques=['Frappe des Cent Horizons','Mur du Dernier Gardien','Pas au-delà de la Foudre','Coupe du Roi sans Couronne','Contre des Mille Guerres','Sceau du Dragon Endormi','Poing qui fend la Montagne','Tir de l’Étoile Morte','Danse du Champ de Bataille','Technique légendaire unique'];
+const legendaryDormantPowers=['Cœur de Phénix','Œil du Néant','Sang du Titan','Couronne des Tempêtes','Mémoire du Monde','Flamme primordiale','Ombre souveraine','Écho d’une divinité','Graine cosmique','Pouvoir dormant unique'];
+const legendaryRelics=['Fragment d’une arme divine','Couronne d’un royaume disparu','Cœur cristallisé de dragon','Orbe d’une étoile morte','Chaîne ayant lié un titan','Masque d’un dieu oublié','Clé dimensionnelle antique','Calice du premier vampire','Éclat du Chaos solidifié','Relique cosmique unique'];
+const legendaryCompanions=['Chevalier spectral ancestral','Androïde de guerre antique','Golem royal','Esprit gardien supérieur','Dragon mécanique','Automate céleste','Chimère protectrice','Machine extraterrestre souveraine','Sentinelle dimensionnelle','Compagnon légendaire unique'];
+
+const familiarTypes=['Chien','Chat','Loup','Renard','Corbeau','Aigle','Hibou','Serpent','Araignée','Singe','Félin sauvage','Ours','Reptile','Créature aquatique','Insecte','Petit esprit','Créature élémentaire','Créature extraterrestre','Créature fantastique','Familier unique'];
+const familiarAbilities=['Sens surdéveloppés','Pistage','Détection surnaturelle','Lien télépathique','Camouflage','Vol','Venin','Soins mineurs','Barrière protectrice','Attaque élémentaire','Entrave','Éclaireur','Partage sensoriel','Absorption d’énergie','Téléportation courte','Illusion','Régénération','Cri intimidant','Protection du maître','Capacité unique'];
+const uniqueFamiliars=['Renard de brume à trois queues','Corbeau de verre vivant','Lézard astral','Félin d’ombre sans yeux','Serpent de lumière liquide','Petit dragon d’horloge','Mante spectrale','Crabe de cristal flottant','Loup miniature de foudre','Méduse aérienne','Chimère de poche','Esprit-masque vivant','Oiseau origami animé','Araignée stellaire','Créature sans espèce connue'];
+const uniqueFamiliarAbilities=['Dévore les malédictions faibles','Traverse brièvement les murs','Mémorise puis rejoue un son surnaturel','Crée un double illusoire du maître','Transforme les ombres proches en cachettes','Stocke une attaque puis la relâche','Repère les failles dimensionnelles','Échange sa position avec son maître','Neutralise brièvement une odeur ou une trace','Produit une zone de silence','Projette une lumière révélant l’invisible','Change temporairement de taille','Absorbe une petite quantité de magie','Marque une cible pour la retrouver','Capacité biologique inconnue'];
+const mountTypes=['Cheval','Loup géant','Félin géant','Ours','Cerf','Éléphant','Rhinocéros','Oiseau géant','Reptile géant','Créature aquatique','Monture mécanique','Créature extraterrestre','Créature élémentaire','Créature fantastique','Monture unique'];
+const mountAbilities=['Charge dévastatrice','Sprint fulgurant','Endurance exceptionnelle','Saut prodigieux','Escalade','Vol','Nage rapide','Blindage naturel','Camouflage','Sens de piste','Passage en terrain difficile','Souffle élémentaire','Barrière de protection','Téléportation courte','Transport silencieux','Piétinement','Cri de guerre','Résistance environnementale','Morsure / griffes puissantes','Capacité unique'];
+const uniqueMounts=['Destrier d’obsidienne','Cerf aux bois stellaires','Raie céleste volante','Félin de brume géant','Varan cuirassé à six pattes','Bélier de cristal','Monture arachnide colossale','Serpent terrestre annelé','Cheval spectral sans tête','Manta mécanique antigravité','Bête de lave quadrupède','Oiseau-tempête','Chimère à sabots','Créature dimensionnelle sans nom','Monture biomécanique inconnue'];
+const artificialCompanionTypes=['Drone','Robot humanoïde','Robot quadrupède','Mécha miniature','Tourelle autonome','Essaim de drones','IA holographique','Automate magique','Golem mécanique','Androïde','Bio-robot','Exosquelette autonome','Machine extraterrestre','Prototype militaire','Compagnon artificiel unique'];
+const artificialAbilities=['Analyse tactique','Système de ciblage','Bouclier énergétique','Réparation de terrain','Camouflage optique','Vol','Arme énergétique','Tourelle intégrée','Brouillage électronique','Détection thermique','Scanner biologique','Interface technologique','Projection holographique','Entrave magnétique','Nanoréparation','Soutien médical','Cartographie instantanée','Interception de projectiles','Surcharge de puissance','Capacité unique'];
+const uniqueArtificialCompanions=['Orbe pensant fractal','Automate à corps liquide','Drone en forme de crâne','Robot-parasite protecteur','Cube mécanique transformable','Marionnette techno-organique','Essaim de micro-lames conscientes','IA incarnée dans un miroir','Araignée mécanique dimensionnelle','Satellite miniature autonome','Golem de câbles vivants','Machine sans architecture identifiable','Duo de drones jumeaux','Sphère antigravité armée','Prototype impossible'];
+const legendaryFamiliarTypes=['Créature fantastique','Esprit supérieur','Créature cosmique','Créature divine','Créature démoniaque','Créature du Chaos','Créature unique'];
+const legendaryFamiliarNames=['Griffon royal','Phénix ancien','Hydre juvénile','Basilic couronné','Kirin d’orage','Manticore blanche','Cerbère astral','Dragon lunaire','Léviathan miniature','Esprit-roi des forêts','Bête solaire','Gardien démoniaque écarlate','Prédateur du Chaos','Chimère cosmique','Créature légendaire sans nom'];
+const legendaryAbilities=['Résurrection flamboyante','Souffle primordial','Aura protectrice','Régénération majeure','Vol dimensionnel','Téléportation','Barrière divine','Dévoreur de magie','Altération locale de la gravité','Cri paralysant','Tempête élémentaire','Forme spectrale','Vision prophétique','Rupture de barrières','Capacité légendaire unique'];
+const mythicFamiliars=['Phénix primordial','Léviathan céleste','Dragon cosmique','Bête du Chaos','Gardien du temps','Hydre astrale','Kirin divin','Cerbère des mondes','Roc stellaire','Esprit primordial incarné'];
+const fantasyCreatures=['Licorne','Pégase','Griffon','Phénix','Basilic','Cocatrix','Fenrir','Cerbère','Hydre','Manticore','Chimère','Minotaure','Kelpie','Kraken','Serpent de mer','Léviathan','Loup spectral','Kitsune','Tengu','Naga'];
+const aquaticCreatures=['Requin','Raie manta','Murène','Espadon','Orque','Dauphin','Pieuvre','Calmar géant','Crabe géant','Homard cuirassé','Anguille électrique','Poisson-lune','Barracuda','Méduse','Tortue marine','Hippocampe géant'];
+const elementalCreatures=['Salamandre de feu','Loup de glace','Aigle de foudre','Golem de pierre','Serpent d’eau','Raie de vent','Cerf de lumière','Félin d’ombre','Bison de magma','Mante de cristal','Corbeau de tempête','Renard de brume'];
+const alienCreatures=['Quadrupède bioluminescent','Prédateur chitineux à six pattes','Mollusque télépathique','Oiseau orbital sans plumes','Félin xéno-organique','Serpent antigravité','Crustacé cristallin','Amphibien à peau miroir','Insecte symbiotique','Créature gazeuse consciente','Chasseur aveugle à écholocation','Organisme fractal mobile'];
+const smallSpirits=['Esprit du feu follet','Esprit des rivières','Esprit des pierres','Esprit des vents','Esprit des ombres','Esprit des souvenirs','Esprit des fleurs','Esprit de la pluie','Esprit des ruines','Esprit des lanternes','Esprit animal mineur','Esprit domestique'];
+const wildFelines=['Lynx','Puma','Jaguar','Léopard','Caracal','Serval','Panthère noire'];
+const reptiles=['Varan','Iguane','Gecko géant','Cobra','Python','Caméléon','Crocodilien miniature','Tortue terrestre'];
+const insects=['Scarabée','Mante religieuse','Libellule','Papillon','Frelon','Fourmi soldat','Lucane','Phasme','Cigale','Sauterelle'];
+const giantFelines=['Lion géant','Tigre géant','Panthère géante','Jaguar géant','Lynx géant','Smilodon'];
+const giantBirds=['Aigle géant','Roc mineur','Condor géant','Hibou géant','Corbeau géant','Casoar géant','Faucon géant'];
+const giantReptiles=['Varan géant','Crocodile géant','Python géant','Cobra géant','Iguane cuirassé','Tortue géante'];
+const mechanicalMounts=['Moto de guerre','Araignée mécanique','Cheval cybernétique','Hoverbike','Quadrupède robotique','Mécha bipède léger','Drone-porteur antigravité'];
+const relicForms=['Dent de dragon fossilisée','Fragment de statue divine','Médaille d’un empire disparu','Os gravé ancestral','Éclat de lame antique','Cendre enfermée dans un reliquaire','Œil pétrifié','Cloche rituelle miniature','Fragment de trône','Sceau royal brisé'];
+const strangeObjects=['Dé noir impossible','Boussole qui pointe vers les êtres vivants','Montre sans aiguilles','Miroir qui ne reflète pas son porteur','Pièce chaude en permanence','Clé sans serrure connue','Boîte qui murmure','Ruban qui flotte sans vent','Sablier dont le sable remonte','Pierre qui pulse comme un cœur','Livre aux pages blanches mouvantes','Masque qui change légèrement de visage'];
+const rareConsumables=['Potion de régénération majeure','Élixir de célérité','Fiole de résistance élémentaire','Capsule de surcharge énergétique','Baume anti-malédiction','Sérum de concentration','Grenade de fumée spectrale','Poudre d’invisibilité','Cristal de recharge magique','Injection de force temporaire','Talisman consommable de barrière','Antidote universel rare'];
+const extraordinarySenses=['Vision thermique','Écholocalisation','Vision nocturne parfaite','Perception des vibrations','Détection des champs magiques','Odorat surnaturel','Audition à très longue portée','Perception des âmes','Détection des mensonges physiologiques','Vision à travers la fumée et l’obscurité','Sens du danger','Perception des flux d’énergie'];
+const dominantAuras=['Aura de terreur','Aura royale','Aura apaisante','Aura prédatrice','Aura sacrée','Aura écrasante','Aura glaciale','Aura brûlante','Aura de silence','Aura de commandement','Aura chaotique','Aura lumineuse'];
+const mutations=['Bras supplémentaire','Œil supplémentaire','Peau écailleuse','Cornes fonctionnelles','Queue préhensile','Os renforcés','Sang luminescent','Branchies','Membrane de vol','Griffes rétractiles','Carapace partielle','Membres extensibles','Organes sensoriels supplémentaires','Peau chromatophore','Structure corporelle asymétrique'];
+const doubles=['Clone physique','Clone énergétique','Ombre vivante','Alter ego','Projection astrale','Double mécanique','Double temporel','Double dimensionnel','Double inversé','Double unique'];
+const doubleUnique=['Reflet sorti d’un miroir','Version issue d’un futur détruit','Silhouette faite de fumée solide','Copie constituée de souvenirs','Double parasite vivant','Écho de réalité alternative','Corps de papier animé','Réplique cristalline','Avatar miniature agrandi au combat','Double sans visage'];
+
+
+const powers=['Feu','Eau','Glace','Foudre','Air','Terre','Nature','Lumière','Ténèbres','Poison','Sang','Magnétisme','Son','Explosion','Télékinésie','Télépathie','Illusion','Invisibilité','Téléportation','Métamorphose','Clonage','Régénération','Barrières','Gravité','Temps','Espace','Absorption','Copie','Annulation','Pouvoir unique'];
+const chaos=['Réalité instable','Manipulation de probabilité','Réflexion','Inversion','Mutation chaotique','Distorsion sensorielle','Faille dimensionnelle','Malédiction','Échange','Vol de pouvoir','Surcharge','Sacrifice','Paradoxe','Fragmentation','Causalité','Adaptation','Mimétisme chaotique','Dernier recours','Anomalie','Chaos absolu'];
+const weapons=['Épée','Épée à deux mains','Katana','Dagues doubles','Hache','Hache à deux mains','Marteau de guerre','Rope Dart / Corde-dard','Lance','Hallebarde','Faux','Bâton','Nunchaku','Chaîne / Kusarigama','Fouet','Gantelets de combat','Bouclier offensif','Arc','Arbalète','Pistolet','Fusil','Fusil de précision','Fusil à pompe','Mitrailleuse','Lance-roquettes','Arme énergétique','Grimoire / catalyseur','Arme improvisée','Aucune arme','Arme unique'];
+const improvisedWeapons=['Barre métallique','Chaîne lourde','Bouteille brisée','Marteau d’atelier','Clé anglaise','Pied-de-biche','Pelle','Pioche','Hachette d’outil','Morceau de mobilier','Chaise','Panneau métallique','Tuyau','Câble lesté','Brique','Pierre massive','Débris de béton','Planche cloutée','Morceau de statue','Objet du décor inhabituel'];
+const secretTechniques=['Frappe éclair','Frappe destructrice','Point vital','Défense absolue','Contre parfait','Pas fantôme','Technique d’entrave','Lecture du combat','Coupe ultime','Tir impossible','Redirection','Libération physique','Contrôle corporel','Perception extrême','Onde de choc','Technique sacrificielle','Technique énergétique','Technique de scellement','Art martial légendaire','Technique unique'];
+const uniqueSecretTechniques=['Paume du Néant Retourné','Septième Pas sans Ombre','Coupure de l’Instant','Poing de la Dernière Étoile','Cercle des Mille Contres','Souffle du Fil Invisible','Frappe du Cœur Silencieux','Verrou du Destin','Danse de l’Arme Absente','Impact à Retardement'];
+const ranged=['Arc','Arbalète','Pistolet','Fusil','Fusil de précision','Fusil à pompe','Mitrailleuse','Lance-roquettes','Arme énergétique','Arme unique'];
+const ench=['Flamme','Givre','Foudre','Poison','Vampirisme','Explosion','Sacré','Spectral','Cosmique','Chaos','Démoniaque','Reality Break','Time Slasher','Distorsion','Anti-régénération','Exécution','Brise-garde','Amplification','Réflexion','Enchantement unique'];
+const blessings=['Fortune','Vitalité','Protection divine','Grâce guerrière','Puissance divine','Célérité divine','Clarté absolue','Prémonition','Grâce magique','Arme consacrée','Lumière protectrice','Grâce céleste','Refus de mourir','Dernier sursaut','Purification','Présence sacrée','Lien protecteur','Potentiel libéré','Faveur cosmique','Bénédiction unique'];
+const curses=['Corps fragile','Guérison entravée','Dégradation','Folie rampante','Hallucinations','Terreur','Pouvoir instable','Arme maudite','Soif','Transformation incontrôlée','Corruption','Entravé','Hanté','Double maléfique','Temps compté','Prix équivalent','Marqué','Destin inversé','Malédiction mortelle','Malédiction unique'];
+const artifactForms=['Anneau','Amulette','Couronne / Diadème','Vêtement','Talisman','Livre / Grimoire','Orbe / Cristal','Relique','Objet étrange','Forme unique'];
+const artifactEffects=['Barrière','Régénération','Téléportation','Invisibilité','Absorption d’énergie','Stockage d’énergie','Amplification d’un pouvoir','Amplification d’une arme','Résistance élémentaire','Résistance mentale','Détection surnaturelle','Invocation','Transformation','Manipulation spatiale','Manipulation temporelle','Manipulation de l’âme','Manipulation de probabilité','Altération de réalité','Copie','Pouvoir d’artefact unique'];
+const classicalWeak=['Soleil','Obscurité','Feu','Froid','Eau','Électricité','Vent','Terre','Poison','Sang','Sel','Argent','Fer','Énergie sacrée','Énergie démoniaque','Énergie cosmique','Chaos','Attaques mentales','Son','Explosions','Magnétisme','Magie','Dégâts physiques','Attaques spirituelles','Manipulation temporelle','Altération de réalité','Anti-régénération','Environnement hostile'];
+const improbableWeak=['Chats','Verre','Musique','Pollen','Café','Miroirs','Plumes','Champignons','Cloches','Mensonges','Canards','Applaudissements'];
+const personalities=['Agressif','Prudent','Calculateur','Impulsif','Imprévisible','Sanguinaire','Honorable','Fourbe','Courageux','Lâche','Froid','Colérique','Sadique','Pacifiste','Arrogant','Discipliné','Opportuniste','Protecteur','Excentrique','Personnalité unique'];
+
+const uniquePowers=['Manipulation du verre','Contrôle de la friction','Encre vivante','Manipulation des os','Portails miroirs','Vol de mouvement','Densité variable','Contrôle des rêves','Mémoire matérialisée','Papier tranchant','Manipulation des ombres solides','Chance inversée','Cristallisation','Filaments dimensionnels','Écho causal','Peinture vivante','Gravure de runes instantanée','Vol d’inertie','Manipulation des odeurs','Compression de matière'];
+const uniqueWeapons=['Épée-fouet segmentée','Lance télescopique orbitale','Arc à lames','Marteau gravitationnel','Chaîne de verre noir','Faux circulaire','Canon runique portatif','Gantelets à câbles','Trident magnétique','Boomerang monomoléculaire','Lame accordéon','Bouclier-lance','Harpie mécanique de combat','Aiguille géante','Arme vivante symbiotique','Disque dimensionnel','Fusil à portails','Sabre liquide','Chaîne d’éclairs solidifiés','Arme impossible'];
+const uniqueEnchants=['Friction zéro','Écho du Néant','Morsure d’âme','Poids infini','Mémoire des blessures','Rupture dimensionnelle','Gel du mouvement','Marque du chasseur','Onde inversée','Faim d’énergie','Lame miroir','Entropie','Résonance vitale','Trajectoire impossible','Saignement temporel','Silence absolu','Dette karmique','Ancrage spatial','Impact différé','Enchantement paradoxal'];
+const uniqueBlessings=['Seconde chance du destin','Main invisible protectrice','Œil des possibles','Souffle des anciens','Grâce du voyageur','Serment inviolable','Étoile gardienne','Cœur inépuisable','Pas hors du destin','Refuge de l’âme','Éclat du premier soleil','Voile du hasard','Mémoire ancestrale','Sceau de paix','Faveur du dernier instant','Sang de lumière','Horizon favorable','Écho du futur','Protection des oubliés','Miracle sans nom'];
+const uniqueCurses=['Ombre affamée','Nom véritable exposé','Blessures mémorielles','Dette envers le Néant','Reflet hostile','Cœur de verre','Temps volé','Voix maudite','Présence attirant les monstres','Douleur partagée','Corps qui se fissure','Pouvoir qui oublie son maître','Chance cannibale','Faim de souvenirs','Âme fragmentée','Serment fatal','Marque du dernier survivant','Mort différée','Écho de souffrance','Malédiction sans nom'];
+const uniqueArtifactEffects=['Arrêt d’un instant local','Porte vers une pièce impossible','Stockage d’une attaque reçue','Création d’un clone de lumière','Échange de blessures','Vol temporaire d’une propriété','Réécriture d’une trajectoire','Ancrage dans la réalité','Prison de souvenir','Transfert de vitesse','Dédoublement d’objet','Détection des mensonges physiques','Création d’une zone sans magie','Marquage d’une cible à travers les dimensions','Retour à une position précédente','Compression d’espace','Conversion douleur-énergie','Invocation d’une arme oubliée','Neutralisation d’un phénomène précis','Effet impossible'];
+const uniqueArtifactForms=['Masque brisé','Clé impossible','Dé à vingt faces noir','Montre sans aiguilles','Œil de cristal','Chaîne de sceaux','Fragment de météore','Miroir de poche','Gant solitaire','Pièce sans valeur','Plume métallique','Os gravé','Boussole folle','Coffret scellé','Dent gigantesque','Ruban vivant','Fragment de couronne','Prisme flottant','Aiguille cérémonielle','Objet indescriptible'];
+const uniquePersonalities=['Stoïque mais superstitieux','Jovial face au danger','Obsédé par les défis','Poliment terrifiant','Curieux jusqu’à l’imprudence','Fataliste serein','Théâtral et méthodique','Muet et observateur','Rieur sous pression','Protecteur envers ses ennemis','Obsédé par l’équité','Fasciné par la douleur sans être sadique','Paranoïaque lucide','Excessivement patient','Incapable de refuser un duel','Cherche toujours une sortie pacifique','Collectionne les techniques adverses','Combat comme s’il dansait','Imite le comportement de son adversaire','Tempérament impossible à classer'];
+
+const improbableJobs=['Éleveur de limaces de guerre','Testeur de pièges','Cartographe de rêves','Dresseur de nuages','Croque-mort pour immortels','Réparateur de portails','Bibliothécaire de monstres','Juge de duels culinaires','Chasseur de parapluies maudits','Messager interdimensionnel','Berger de golems','Collectionneur de cris','Gardien de portes inutiles','Fabricant de fausses prophéties','Pêcheur d’étoiles','Traducteur de fantômes','Coiffeur de dragons','Nettoyeur de donjons','Éleveur de mimics','Métier totalement absurde'];
+const improbableHistories=['A survécu à sa propre exécution par erreur administrative','A été élevé par une arme consciente','S’est réveillé dans le mauvais siècle','A gagné un royaume à un jeu de cartes','A été poursuivi dix ans par un canard immortel','A accidentellement créé sa propre religion','A vécu dans un miroir pendant sept ans','A été confondu avec une divinité','A perdu un duel contre son futur lui-même','A été adopté par une guilde de monstres','A volé son propre cadavre','A épousé son clone temporel','A détruit une prophétie en la lisant mal','A été banni d’un monde qui n’existe plus','A travaillé comme faux héros officiel','A survécu à une apocalypse en dormant','A trouvé une porte menant à son enfance','A été déclaré mort sans jamais mourir','A échangé son ombre contre un repas','Passé totalement impossible'];
+const improbableExtras=['Peut parler aux portes','Possède une cuillère indestructible','Est suivi par une pluie personnelle','Son ombre applaudit parfois','Peut invoquer une chaise une fois par combat','Entend les mensonges comme des cloches','A un deuxième reflet indépendant','Ses chaussures refusent certains terrains','Porte une clé qui n’ouvre rien de connu','Peut sentir la direction du nord absolu','Un petit nuage le suit','Son rire produit des étincelles','Possède un dé qui tombe toujours sur une face inconnue','Peut échanger deux objets identiques de place','Les animaux le prennent pour un roi','Sa cape change d’humeur','Peut faire apparaître une tasse vide','Les miroirs lui répondent parfois','Est accompagné d’un poisson spectral','Extra totalement absurde'];
+const improbableTransformations=['Forme de canard colossal','Forme de statue articulée','Forme de marionnette vivante','Forme de nuage humanoïde','Forme entièrement réfléchissante','Forme de squelette en verre','Forme de masse de rubans','Forme de géant minuscule paradoxal','Forme de silhouette en papier','Forme de cloche vivante','Forme de constellation ambulante','Forme de champignon guerrier','Forme de machine à vapeur organique','Forme de poupée inquiétante','Forme de liquide inversé','Forme d’ombre colorée','Forme de cristal mou','Forme de pluie consciente','Forme de mosaïque mouvante','Transformation impossible'];
+const uniqueTransformations=['Avatar du Premier Feu','Corps du Néant étoilé','Dragon de verre dimensionnel','Séraphin mécanique','Bête aux mille ombres','Titan de lumière noire','Forme du Temps brisé','Chimère astrale','Corps de runes vivantes','Monarque spectral','Machine divine organique','Phénix du Chaos','Forme de gravité incarnée','Archange abyssal','Léviathan humanoïde','Corps de matière impossible','Avatar de l’Entropie','Gardien des dimensions','Forme du Dernier Jour','Transformation sans équivalent'];
+const awakeningEvolutions=['Pouvoir principal transcendé','Arme principale transcendée','Trait racial actif transcendé','Transformation renforcée','Technique secrète transcendée','Chi transcendé','Enchantement principal transcendé','Capacité défensive transcendée','Mobilité transcendée','Perception transcendée','Régénération transcendée','Capacité de contrôle transcendée','Capacité d’attaque transcendée','Capacité de soutien transcendée','Capacité unique transcendée'];
+const transformationTypes=['Bestiale','Monstrueuse','Élémentaire','Démoniaque','Céleste','Draconique','Spectrale','Mécanique','Cosmique','Chaotique','Forme géante','Forme miniature','Forme énergétique','Forme ancestrale','Forme évoluée','Forme berserk','Forme parfaite','Forme interdite','Transformation improbable','Transformation unique'];
+const transformationTraits=['Aucun trait supplémentaire','Ailes temporaires','Écailles / armure naturelle','Aura élémentaire','Intangibilité partielle','Régénération accrue','Vision surnaturelle','Membres supplémentaires','Corps énergétique','Camouflage','Résistance mentale','Résistance élémentaire','Allonge accrue','Mobilité aérienne','Présence terrifiante','Perception accélérée','Armes naturelles','Corps adaptable','Trait improbable','Trait unique'];
+const statNames=['Combat','Force','Intelligence','Résilience','Vitesse'];
+const namingSets={
+Human:{start:['Al','Ald','Ar','Ari','Bel','Cael','Cal','Cor','Da','Dar','Del','El','Eli','Er','Fael','Ga','Hal','I','Ja','Ka','Kel','La','Leo','Lor','Ma','Mar','Na','Nor','Or','Ra','Ren','Ro','Sa','Sel','Ser','Ta','Th','Va','Val','Wil','Ys'],mid:['ri','an','el','or','ae','en','is','ar','io','ev','ul','em','ian','er','iel','on','as','ir','al','in','eo','ara','eth','us'],end:['n','r','s','a','ia','en','el','or','is','ys','ane','ion','ian','iel','as','os','us','in','en','ara','eth','ir','on','ea']},
+Elf:{start:['Ae','Ael','Aer','Ari','Cael','Cele','Eil','Ela','Ely','Fael','Ily','Lae','Leth','Lia','Myr','Nae','Nim','Sael','Syl','Tha','Thal','Vael','Yl','Zae'],mid:['li','ri','th','wen','ae','iel','yn','ora','eth','is','en','yl','ara','evi','ion','ael','ir','uin','ess','al','ith','eir','iel','ysa'],end:['r','n','l','a','iel','wen','ith','yn','eth','is','ara','ion','ael','ir','iel','uin','or','ys','ea','iel','iel','essa','ion','yr']},
+Dwarf:{start:['Bal','Bar','Bel','Bor','Br','Bryn','Dag','Dor','Dra','Dur','Gar','Gim','Har','Keld','Khar','Kor','Mor','Nor','Or','Rag','Th','Thor','Yr','Bro'],mid:['om','or','in','ag','un','ek','ald','rim','urn','okk','ild','arr','grim','dur','gar','rik','mund','var','din','rak','ulf','orn','mir','ain'],end:['m','n','r','a','in','ek','um','or','ald','ya','i','ok','grim','dur','rik','gar','mund','var','din','rak','ulf','orn','mir','a']},
+Orc:{start:['Br','Darg','Durg','Gar','Gor','Gr','Grom','Karg','Krag','Kr','Magr','Mok','Rag','Rog','Th','Thrag','Urg','Varg','Zog','Zurn','Druk','Khur','Maz','Gul'],mid:['ak','or','ug','ra','ash','uk','og','ar','un','rag','urk','az','gor','nak','dur','mak','rok','th','um','zar','gar','osh','rak','zul'],end:['k','g','r','a','uk','ash','og','ra','un','gar','za','ok','gor','nak','dur','mak','rok','th','um','zar','osh','zul','ag','ar']},
+Goblin:{start:['Bik','Fizz','Glim','Gri','Kip','Kre','Mog','Nib','Ni','Nix','Pip','Rik','Sk','Sn','Tik','Vek','Zib','Zi','Zog','Klak','Miz','Taz','Wik','Yip'],mid:['ki','zi','ak','ek','im','ig','ox','ap','ir','un','izz','og','nik','tik','zap','urk','ibi','onk','ash','ell','ip','rag','ux','ee'],end:['k','x','i','a','ik','ox','ek','zi','ip','og','ix','ka','nik','tik','zap','urk','ibi','onk','ash','ell','rag','ux','ee','o']},
+Demon:{start:['Ab','Aza','Az','Bel','Dra','Draz','Ere','Ish','Kha','Kor','Lil','Mal','Mor','Nyz','Nyx','Rhaz','Sha','Va','Vel','Vey','Xar','Zar','Zev','Vor'],mid:['ra','eth','or','akh','yss','iel','oth','ar','ez','un','ira','ax','ael','zur','mon','ith','esh','ul','az','ion','yr','oth','aen','yx'],end:['kh','n','x','a','eth','iel','or','is','ax','un','ara','oth','ael','zur','mon','ith','esh','ul','az','ion','yr','yx','os','ir']},
+Angel:{start:['Ael','Ana','Ast','Aur','Cae','Ely','Gab','Iri','Lum','Mik','Ori','Raz','Rem','Sar','Ser','Sol','Uri','Ves','Zad','Ari','Ciel','Elu','Ith','Liora'],mid:['aph','iel','ae','um','or','eth','ia','el','ari','ion','ael','eri','iel','iel','iel','ora','un','ael','iri','eth','ora','iel','aia','eon'],end:['el','a','um','iel','on','is','ael','ara','iel','os','en','ia','iel','ael','or','eth','iel','ion','iel','ora','aia','eon','ir','ys']},
+Spirit:{start:['Ai','Ash','Ei','Eir','Iri','Ka','Ki','Me','Mio','Na','No','O','Or','Rei','Sa','Shi','Si','Va','Yue','Yu','Ame','Hae','Lun','Sae'],mid:['r','mi','al','io','ue','ya','ri','ae','en','oi','uu','ei','shi','rai','no','mei','ka','ru','sei','yo','ha','rin','lua','ori'],end:['i','e','a','u','r','n','ya','ae','io','en','ri','s','shi','rai','no','mei','ka','ru','sei','yo','ha','lua','ori','ai']},
+Dragon:{start:['Azh','Drak','Drav','Khar','Kyr','Nyss','Rha','Rhaeg','Rhaz','Sary','Sylk','Taz','Thyr','Vaer','Vor','Vyra','Xyr','Zer','Zhyr','Ashk','Kaer','Myrr','Ska','Vhar'],mid:['az','yn','uun','ra','or','eth','ax','ir','ara','is','ek','oth','ael','yr','esh','uun','ak','or','ith','aen','oss','yra','ur','ez'],end:['ek','th','n','a','ax','ra','yn','ir','oth','is','uun','ara','ael','yr','esh','ak','or','ith','aen','oss','yra','ur','ez','ys']},
+Tech:{start:['Nex','Ax','Syn','Hex','Vect','Null','Iris','Node','Unit','K','Xen','Vant','Axiom','Core','Delta','Echo','Flux','Gamma','Ion','Nova','Omni','Proto','Sigma','Zero'],mid:['-','i','o','a','ex','on','7','9','x','-K','-R','-N','-X','-0','-V','ix','ar','um','-Prime','-Sigma','-Z','-A','01','Ω'],end:['7','9','X','0','12','Prime','Null','V','K','A','R','Ω','Sigma','Delta','01','IX','Core','Node','Z','N','Alpha','Beta','Vector','One']},
+Default:{start:['Ael','Ar','As','Aster','Ca','Dra','Eri','Ily','Kai','Kes','Lio','Mir','Na','Nar','Ny','Or','Ryn','Sa','Ser','Tal','Tor','Va','Var','Vey','Zel','Zor','Kae','Myr','Rha','Syl','Tha','Yri'],mid:['te','ra','el','an','io','yn','or','ae','is','ev','ul','en','ir','ael','oth','ara','iel','un','ys','eth','ai','eri','on','al','eir','uma','ith','oro','ien','esh','yr','iel'],end:['r','n','a','s','ia','el','or','yn','is','en','ar','ion','ir','ael','oth','ara','iel','un','ys','eth','ai','eri','on','al','eir','uma','ith','oro','ien','esh','yr','iel']}
+};const namePools={
+'Humain':['Aren','Mira','Kael','Lyra','Darian','Selene','Orin','Neris','Corvin','Elia','Rovan','Maelis'],
+'Elfe':['Aelir','Sylwen','Thalion','Elyra','Vaelis','Naevyn','Ilyndra','Caeril','Lethiel','Aerin','Saelith','Myriel'],
+'Nain':['Brom','Dagna','Korrin','Brynja','Thorek','Hilda','Garrum','Yrsa','Dorn','Freya','Kelda','Brokk'],
+'Orc':['Gorak','Urza','Krosh','Magra','Thruk','Varka','Rogha','Zurna','Brakk','Korga','Durg','Shara'],
+'Gobelin':['Zik','Nakka','Grib','Tizzi','Mog','Krekka','Rikk','Pippa','Snag','Vekki','Glim','Noxx'],
+'Démon':['Azrakh','Velka','Mordren','Nyxara','Zareth','Malka','Korvax','Ishra','Drazel','Veyra','Xarun','Lilith'],
+'Ange':['Seraphel','Aurelia','Caelum','Iriel','Lumiel','Elyon','Raziel','Astrae','Mikael','Sola','Oriael','Vespera'],
+'Esprit':['Eir','Nami','Vaal','Sio','Oru','Mey','Kiri','Asha','Nox','Yue','Iri','Sae'],
+'Dragon humanoïde':['Rhazek','Sarynth','Vaerax','Nyssara','Kharuun','Zerya','Dravik','Ashkara','Voryn','Tazira','Rhaeg','Sylkara'],
+'N.E.X.U.S.':['NEX-7','AXIOM','K-Null','Vektor','Syn-9','Iris-X','Node-3','Hexa','Unit-12','Noma','Zero-K','Vanta'],
+'Default':['Aster','Veyl','Ryn','Kaia','Drax','Nara','Torin','Sera','Varo','Ilya','Kest','Mirae']};
+const uniqueColors=['Ivoire irisé','Bleu abyssal','Vert spectral','Rouge carmin métallique','Violet cosmique','Noir opalescent','Blanc lunaire','Or rose incandescent','Turquoise bioluminescent','Ambre vivant','Pourpre fumé','Argent bleuté','Bronze verdigris','Rose néon','Gris cendré luminescent','Couleur prismatique changeante','Couleur impossible','Teinte stellaire'];
+const armorTypes=['Armure légère','Armure moyenne','Armure lourde','Armure segmentée','Armure de plaques','Armure organique','Armure énergétique','Exosquelette','Armure runique','Armure vivante','Armure extraterrestre','Armure unique'];
+const armorEffects=['Résistance physique accrue','Résistance magique accrue','Résistance élémentaire','Bouclier énergétique','Régénération de l’armure','Camouflage adaptatif','Absorption d’énergie','Réflexion partielle','Mobilité augmentée','Force augmentée','Résistance mentale','Protection anti-projectiles','Protection anti-explosion','Protection anti-régénération','Ancrage gravitationnel','Adaptation au terrain','Stockage d’énergie','Aura protectrice','Transformation défensive','Propriété unique'];
+const armorUniqueEffects=['Plaques qui se déplacent avant l’impact','Armure qui mémorise les attaques reçues','Peau d’ombre solidifiée','Cristal autoréparant','Champ de stase instantané','Armure qui dévie l’inertie','Carapace dimensionnelle','Plaques spectrales traversables à volonté','Armure qui convertit la douleur en énergie','Manteau gravitationnel','Armure symbiotique consciente','Déphasage bref à l’impact','Armure qui se nourrit de magie','Armure qui repousse les attaques répétées','Armure à géométrie impossible'];
+const bodies=['Très mince','Mince','Élancé','Standard','Athlétique','Musclé','Très musclé','Massif','Corpulent','Corpulence atypique']; const colors=['Noir','Blanc','Gris','Rouge','Orange','Jaune','Vert','Bleu','Cyan','Violet','Rose','Brun','Or','Argent','Cuivre','Couleur unique']; const signs=['Cicatrices','Tatouages','Peintures corporelles','Marques lumineuses','Marques mystiques','Prothèse','Bijoux','Cape / manteau remarquable','Masque','Casque','Yeux inhabituels','Chevelure remarquable','Mutation visible','Aucun','Signe unique'];
+const mods={'Humain':[0,0,0,0,0],'Elfe':[0,-1,1,-1,1],'Nain':[1,1,0,2,-1],'Orc':[2,3,-1,2,0],'Gobelin':[-1,-2,2,-2,1],'Fée':[-1,-3,1,-2,2],'Géant':[2,4,-1,3,-2],'Vampire':[2,2,1,1,2],'Loup-garou':[2,3,0,2,2],'Démon':[2,2,1,1,1],'Ange':[1,1,1,2,1],'Esprit':[-1,-3,1,1,2],'Dragon humanoïde':[2,3,1,2,2],'Golem / Artificiel':[1,3,-1,3,-2],'Demi-dieu':[2,2,1,2,2],'Divinité':[3,4,2,3,3],'Titan':[3,5,0,4,-2],'Titan primordial':[5,8,0,6,-3],'Squelette':[0,-1,0,1,0],'Liche':[0,-1,3,2,0],'Cyborg':[1,2,1,2,1],'N.E.X.U.S.':[2,2,2,3,2]};
+const amods={'Guerrier':[2,1,0,1,0],'Berserker':[3,3,-1,2,1],'Gardien':[1,1,0,3,-1],'Assassin':[2,-1,1,-1,2],'Artiste martial':[3,1,0,1,2],'Tireur':[1,-1,1,-1,0],'Mage':[-1,-2,1,-1,-1],'Sorcier':[0,-1,0,0,0],'Érudit':[-1,-2,3,-1,-1],'Ingénieur':[0,0,2,0,0],'Stratège':[1,-1,3,0,0],'Soutien':[-1,-1,1,1,0],'Chasseur':[1,0,1,1,1],'Éclaireur':[1,-1,1,-1,2],'Commandant':[2,1,2,1,0],'Trickster':[0,-1,2,-1,1],'Slayer':[0,1,1,0,1],'Invocateur':[-1,-2,1,0,-1]};
+const pmr={'Elfe':1,'Nain':-1,'Orc':-1,'Fée':2,'Géant':-1,'Vampire':1,'Loup-garou':-1,'Démon':2,'Ange':2,'Esprit':3,'Dragon humanoïde':3,'Golem / Artificiel':-2,'Demi-dieu':2,'Divinité':4,'Squelette':1,'Liche':4,'Cyborg':-1,'N.E.X.U.S.':-2}; const wmr={'Elfe':1,'Nain':1,'Orc':1,'Gobelin':1,'Fée':-1,'Vampire':1,'Dragon humanoïde':1,'Golem / Artificiel':1,'Demi-dieu':1,'Divinité':2,'Titan':-1,'Titan primordial':-2,'Cyborg':1,'N.E.X.U.S.':2}; const pma={'Guerrier':-1,'Berserker':-1,'Mage':3,'Sorcier':3,'Érudit':1,'Ingénieur':-1,'Soutien':2,'Trickster':1,'Invocateur':2}; const beastMods={'Lion':[2,2,0,1,1],'Tigre':[2,2,0,1,2],'Loup':[2,1,0,1,2],'Renard':[1,-1,1,-1,2],'Ours':[2,3,-1,3,-1],'Sanglier':[2,2,-1,2,0],'Taureau':[1,3,-1,2,0],'Cheval':[1,1,0,1,3],'Cerf':[1,1,0,0,2],'Chèvre':[1,1,0,1,1],'Gorille':[2,3,0,2,0],'Singe':[1,0,1,0,2],'Éléphant':[1,4,0,3,-2],'Rhinocéros':[2,4,-1,4,-2],'Crocodile':[2,3,-1,3,-1],'Serpent':[1,-1,1,-1,2],'Lézard':[0,0,0,1,1],'Tortue':[-1,0,0,4,-3],'Aigle':[2,0,0,-1,3],'Hibou':[1,-1,2,-1,1],'Chauve-souris':[1,-1,0,-1,2],'Requin':[2,2,-1,2,2],'Baleine':[0,4,0,4,-2],'Poulpe':[1,0,2,0,1],'Scorpion':[2,1,-1,2,1],'Araignée':[2,0,0,0,2],'Scarabée':[1,3,-1,3,0],'Fourmi':[1,3,-1,2,1],'Guépard':[2,0,-1,-1,4],'Papillon':[-1,-2,0,-2,2],'Licorne':[1,1,1,1,2],'Pégase':[1,1,0,0,3],'Griffon':[3,2,0,1,2],'Phénix':[1,0,1,2,3],'Basilic':[2,1,0,2,0],'Cocatrix':[1,0,-1,0,1],'Fenrir':[4,4,0,3,3],'Cerbère':[3,3,-1,3,1],'Hydre':[3,3,-1,4,-1],'Manticore':[3,2,0,2,1],'Chimère':[3,2,0,2,1],'Minotaure':[3,4,-1,2,0],'Kelpie':[1,1,1,1,3],'Kraken':[2,5,0,4,-2],'Serpent de mer':[2,3,0,3,1],'Léviathan':[3,5,0,5,-2],'Loup spectral':[2,0,1,0,3],'Kitsune':[1,-1,3,0,2],'Tengu':[2,1,2,0,3],'Naga':[2,1,2,1,1]}; const beastPmr={'Lion':0,'Tigre':0,'Loup':0,'Renard':1,'Ours':0,'Sanglier':0,'Taureau':0,'Cheval':0,'Cerf':1,'Chèvre':0,'Gorille':0,'Singe':0,'Éléphant':0,'Rhinocéros':0,'Crocodile':0,'Serpent':1,'Lézard':0,'Tortue':0,'Aigle':0,'Hibou':1,'Chauve-souris':1,'Requin':0,'Baleine':0,'Poulpe':1,'Scorpion':1,'Araignée':1,'Scarabée':0,'Fourmi':0,'Guépard':0,'Papillon':2,'Licorne':3,'Pégase':1,'Griffon':1,'Phénix':4,'Basilic':3,'Cocatrix':3,'Fenrir':2,'Cerbère':2,'Hydre':2,'Manticore':2,'Chimère':3,'Minotaure':0,'Kelpie':2,'Kraken':2,'Serpent de mer':2,'Léviathan':3,'Loup spectral':3,'Kitsune':4,'Tengu':2,'Naga':3}; const beastWmr={'Lion':0,'Tigre':0,'Loup':0,'Renard':0,'Ours':-1,'Sanglier':-1,'Taureau':-1,'Cheval':0,'Cerf':0,'Chèvre':0,'Gorille':1,'Singe':1,'Éléphant':-1,'Rhinocéros':-1,'Crocodile':-1,'Serpent':0,'Lézard':0,'Tortue':-1,'Aigle':1,'Hibou':0,'Chauve-souris':0,'Requin':-1,'Baleine':-2,'Poulpe':1,'Scorpion':-1,'Araignée':0,'Scarabée':-1,'Fourmi':-1,'Guépard':0,'Papillon':-1,'Licorne':0,'Pégase':0,'Griffon':0,'Phénix':-1,'Basilic':-1,'Cocatrix':-1,'Fenrir':-1,'Cerbère':-1,'Hydre':-2,'Manticore':0,'Chimère':-1,'Minotaure':1,'Kelpie':0,'Kraken':-2,'Serpent de mer':-1,'Léviathan':-2,'Loup spectral':-1,'Kitsune':0,'Tengu':2,'Naga':1};
+function beastAnimal(p){
+  p=String(p||'');
+  let m=p.match(/^Homme-bête \((.+)\)$/);
+  if(m)return m[1];
+  if(p.startsWith('Homme-bête '))return p.slice('Homme-bête '.length);
+  return null;
+}
+const wma={'Guerrier':2,'Gardien':1,'Assassin':2,'Artiste martial':1,'Tireur':3,'Mage':-1,'Sorcier':-1,'Érudit':-1,'Ingénieur':2,'Chasseur':2,'Éclaireur':2,'Commandant':1,'Trickster':1,'Slayer':1,'Invocateur':-1};
+const mysticLinkTargets=['Une créature inconnue','Un esprit ancestral','Un démon errant','Une entité céleste','Un animal surnaturel','Une arme consciente','Un artefact ancien','Un lieu sacré','Un lieu maudit','Un autre personnage','Un ancêtre disparu','Une ombre vivante','Une entité cosmique','Une créature du Chaos','Un double dimensionnel','Une intelligence artificielle mystique','Un dragon ancien','Une divinité oubliée','Une âme prisonnière','Cible unique'];
+const otherCharacterStatus=['Personnage déjà existant','Personnage à venir'];
+const relationshipTypes=['Lien familial','Rivalité','Pacte','Protecteur / protégé','Dette','Âmes liées','Ennemis jurés','Serment commun','Lien maître / disciple','Destins entremêlés'];
+const mysticUniqueTargets=['Le dernier rêve d’un monde mort','Une étoile consciente','Son propre futur','Une version de lui-même jamais née','Une porte entre deux réalités','Le souvenir vivant d’un dieu','Une constellation prédatrice','Une âme sans propriétaire','Un royaume miniature conscient','Une présence sans forme ni nom'];
+const mysticLinkNatures=['Partage des blessures','Partage d’énergie','Perception mutuelle','Communication mentale','Localisation mutuelle','Transfert de vitalité','Amplification à proximité','Protection réciproque','Invocation temporaire','Échange de position','Partage partiel des pouvoirs','Résistance commune','Émotions partagées','Destins liés','Lien de survie','Transmission de souvenirs','Résonance magique','Ancrage spirituel','Dette mystique','Effet unique'];
+const mysticUniqueEffects=['Les blessures deviennent des souvenirs échangeables','Le lien se renforce lorsque les deux êtres sont séparés','L’un peut emprunter brièvement l’ombre de l’autre','Une attaque reçue peut parfois être transformée en énergie pour l’autre','Le lien permet de traverser brièvement les rêves de l’autre','La mort de l’un déclenche une manifestation inconnue chez l’autre','Leurs positions peuvent se superposer un instant','Le lien conserve une copie d’un instant vécu ensemble','Leur puissance fluctue selon leur distance','Le lien attire périodiquement des anomalies surnaturelles'];
+
+let seasonNumber=1;
+const STORAGE_ROSTER='roue_roster_v16';
+const STORAGE_CURRENT='roue_characterNumber_v16';
+const STORAGE_DESC='roue_descendants_v18';
+const STORAGE_NPCS='roue_npcs_v18';
+const STORAGE_META='roue_universe_meta_v18';
+let characterNumber=parseInt(localStorage.getItem(STORAGE_CURRENT)||'1',10);
+if(!Number.isFinite(characterNumber)||characterNumber<1) characterNumber=1;
+
+function currentCharacterId(){return `S${seasonNumber}-${String(characterNumber).padStart(3,'0')}`}
+
+function loadRoster(){
+  try{
+    const raw=localStorage.getItem(STORAGE_ROSTER);
+    const data=raw?JSON.parse(raw):{};
+    return data&&typeof data==='object'?data:{};
+  }catch(e){return {}}
+}
+function saveRoster(roster){localStorage.setItem(STORAGE_ROSTER,JSON.stringify(roster))}
+function ensureGenealogyShape(s){
+  if(!s.genealogy) s.genealogy={parents:[],children:[],generation:1,lineage:[],partnerLinks:[]};
+  if(!Array.isArray(s.genealogy.parents)) s.genealogy.parents=[];
+  if(!Array.isArray(s.genealogy.children)) s.genealogy.children=[];
+  if(!Array.isArray(s.genealogy.lineage)) s.genealogy.lineage=[];
+  if(!Array.isArray(s.genealogy.partnerLinks)) s.genealogy.partnerLinks=[];
+  if(!Array.isArray(s.genealogy.siblings)) s.genealogy.siblings=[];
+  if(!Number.isFinite(s.genealogy.generation)) s.genealogy.generation=1;
+  if(!Array.isArray(s.relationships)) s.relationships=[];
+  return s;
+}
+function saveCurrentCharacter(){
+  applyAlienStateIfNeeded();
+  applyAlienModifiersToStats();
+
+  if(state.race==='Extraterrestre'){
+    applyAlienStateIfNeeded();
+    if(state.alienBiology?.trait && state.alienBiology?.mods?.length===3 && Array.isArray(state.logs) && !state.logs.some(x=>x.cat==='Biologie extraterrestre')){
+      state.logs.push({cat:'Biologie extraterrestre',val:state.alienBiology.trait});
+      state.logs.push({cat:'Adaptation extraterrestre',val:state.alienBiology.mods.map(x=>`${x.stat} ${x.value>0?'+':''}${x.value}`).join(' / ')});
+    }
+  }
+
+  if(!state || !state.id) return;
+  ensureGenealogyShape(state);
+  const roster=loadRoster();
+  roster[state.id]=JSON.parse(JSON.stringify(state));
+  saveRoster(roster);
+  renderRoster();
+}
+function blankCharacterState(id){
+  return {alienBiology:null,id:id||currentCharacterId(),name:'',title:'',raceParts:[],race:'',gender:'',size:'',arch:'',archParts:[],slayerTarget:null,job:'',history:[],extra:'',extraDetail:[],extraStatMods:[],relationships:[],genealogy:{parents:[],children:[],generation:1,lineage:[],partnerLinks:[]},personality:'',stats:{},powers:[],weapons:[],weakness:'',blessings:[],curses:[],appearance:{},transformation:null,awakening:null,chi:null,prodigeMods:[],logs:[]};
+}
+function rebuildGenerationFromLogs(saved){
+  const logs=Array.isArray(saved?.logs)?JSON.parse(JSON.stringify(saved.logs)):[];
+  state=blankCharacterState(saved?.id||currentCharacterId());
+  queue=[];index=0;rotation=0;spinNumber=0;
+  buildInitial();
+  for(const entry of logs){
+    const t=queue[index];
+    if(!t) break;
+    try{
+      t.apply(entry.val);
+      state.logs.push({cat:entry.cat||t.title,val:entry.val});
+      index++; spinNumber++;
+    }catch(e){
+      console.warn('Reprise arrêtée à',entry,e);
+      break;
+    }
+  }
+  ensureGenealogyShape(state);
+}
+function loadCharacterById(id){
+  const roster=loadRoster(), saved=roster[id];
+  if(!saved) return false;
+
+  rebuildGenerationFromLogs(saved);
+
+  // If an old file contains fields that are not reconstructed from wheel logs,
+  // preserve them without replacing the rebuilt queue/index.
+  const rebuilt=state;
+  for(const [k,v] of Object.entries(saved)){
+    if(k==='logs') continue;
+    if((rebuilt[k]===undefined || rebuilt[k]===null || rebuilt[k]==='' ||
+       (Array.isArray(rebuilt[k])&&rebuilt[k].length===0)) && v!==undefined){
+      rebuilt[k]=JSON.parse(JSON.stringify(v));
+    }
+  }
+  state=ensureGenealogyShape(rebuilt);
+
+  auto=false;spinning=false;autoBtn.textContent='Auto : OFF';spinBtn.disabled=false;
+  const complete=!!state.name && !!state.title && index>=queue.length;
+  if(complete){
+    spinBtn.textContent='Nouveau personnage';
+    taskTitle.textContent='Personnage terminé';
+    result.innerHTML='Fiche terminée et sauvegardée<small>'+state.id+' — '+state.name+'</small>';
+  }else{
+    spinBtn.textContent=index===0?'Commencer':'Continuer';
+    taskTitle.textContent=index<queue.length?'Reprise — '+queue[index].title:'Reprise';
+    result.innerHTML='Progression restaurée<small>Prochaine roue : '+(queue[index]?.title||'fin')+'.</small>';
+  }
+  count.textContent=`${state.logs.length} tirages`;
+  render();
+  drawWheel(index<queue.length ? queue[index].options() : [W('✓')]);
+  return true;
+}
+function newCharacterAtCurrentId(){
+  reset();
+  taskTitle.textContent='Prêt';
+  count.textContent='0 roue';
+  result.innerHTML='Clique sur « Commencer »<small>Nouveau personnage : '+currentCharacterId()+'.</small>';
+}
+function goToCharacterNumber(n){
+  if(n<1) return;
+  saveCurrentCharacter();
+  characterNumber=n;
+  localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
+  if(!loadCharacterById(currentCharacterId())) newCharacterAtCurrentId();
+}
+function previousCharacter(){
+  if(characterNumber<=1) return;
+  goToCharacterNumber(characterNumber-1);
+}
+function advanceCharacter(){
+  goToCharacterNumber(characterNumber+1);
+}
+function relationSummary(s){
+  const bits=[];
+  const g=s.genealogy||{};
+  if(g.parents?.length) bits.push('Parents: '+g.parents.join(', '));
+  if(g.children?.length) bits.push('Enfants: '+g.children.join(', '));
+  if(g.generation>1) bits.push('Génération '+g.generation);
+  if(g.lineage?.length) bits.push('Lignée: '+g.lineage.join(' → '));
+  if(s.relationships?.length){
+    const rels=s.relationships.map(r=>{
+      const target=r.targetId||r.targetName||r.status||'inconnu';
+      return (r.type||r.kind||'Lien')+' ↔ '+target;
+    });
+    bits.push('Liens: '+rels.join(' ; '));
+  }
+  return bits.join(' • ');
+}
+function showTab(which){
+  const isWheel=which==='wheel';
+  const isList=which==='list';
+  const isGenealogy=which==='genealogy';
+
+  wheelTab.classList.toggle('active',isWheel);
+  listTab.classList.toggle('active',isList);
+  genealogyTab.classList.toggle('active',isGenealogy);
+
+  wheelTabBtn.classList.toggle('active',isWheel);
+  listTabBtn.classList.toggle('active',isList);
+  genealogyTabBtn.classList.toggle('active',isGenealogy);
+
+  if(isList) renderRoster();
+  if(isGenealogy) renderGenealogy();
+}
+
+function needsMysticExistingTargetRepair(s){
+  if(!s||s.extra!=='Lien mystique') return false;
+  const logs=s.logs||[];
+  const targetLog=logs.find(x=>x.cat==='Lien mystique — Cible');
+  const wantsExisting=targetLog?.val==='Un autre personnage'||targetLog?.val==='Personnage déjà existant'||targetLog?.val==='Un personnage déjà existant';
+  const rel=(s.relationships||[]).find(r=>r&&(r.kind==='Lien interpersonnage'||r.status==='Personnage déjà existant'||String(r.status||'').includes('Personnage déjà existant')));
+  return !!(wantsExisting && !(rel?.targetId));
+}
+function repairMysticExistingTarget(id){
+  const roster=loadRoster(), s=roster[id];
+  if(!s) return;
+  const candidates=Object.values(roster).filter(c=>c&&c.id&&c.id!==id);
+  if(!candidates.length){alert('Aucun autre personnage sauvegardé ne peut être choisi.');return;}
+  const labels=candidates.map(c=>`${c.id} — ${c.name||'Sans nom'}`);
+  const choice=prompt('Choisis la cible du lien mystique :\n\n'+labels.map((x,i)=>`${i+1}. ${x}`).join('\n')+'\n\nEntre le numéro correspondant :');
+  if(choice===null) return;
+  const n=Number(choice);
+  if(!Number.isInteger(n)||n<1||n>candidates.length){alert('Choix invalide.');return;}
+  const target=candidates[n-1];
+  s.relationships=Array.isArray(s.relationships)?s.relationships:[];
+  let r=s.relationships.find(x=>x&&(x.kind==='Lien interpersonnage'||x.status==='Personnage déjà existant'||String(x.status||'').includes('Personnage déjà existant')));
+  if(!r){r={kind:'Lien interpersonnage',status:'Personnage déjà existant',type:null,targetId:null,targetName:null};s.relationships.push(r);}
+  r.status='Personnage déjà existant'; r.targetId=target.id; r.targetName=target.name||null;
+  // Complète aussi l'Extra sans altérer les anciens tirages.
+  s.extraDetail=Array.isArray(s.extraDetail)?s.extraDetail:[];
+  let d=s.extraDetail.find(x=>x&&x.kind==='Lien mystique');
+  if(!d){d={kind:'Lien mystique',target:'Un autre personnage'};s.extraDetail.push(d);}
+  d.targetId=target.id; d.targetName=target.name||null;
+  localStorage.setItem(ROSTER_KEY,JSON.stringify(roster));
+  if(state?.id===id){
+    state.relationships=structuredClone(s.relationships);
+    state.extraDetail=structuredClone(s.extraDetail);
+  }
+  openCharacterDetail(id);
+}
+function openCharacterDetail(id){
+  setTimeout(()=>refreshIllustrationFor(id),0);
+  setTimeout(()=>{
+    const box=document.querySelector('#characterDetail,.character-detail,.detail-panel');
+    if(box && !box.querySelector('.danger-btn')){
+      const b=document.createElement('button');
+      b.className='danger-btn';
+      b.textContent='🗑️ Supprimer définitivement';
+      b.onclick=()=>deleteCharacterCompletely(id);
+      box.appendChild(b);
+    }
+  },0);
+  const roster=loadRoster(), s=roster[id];
+  if(!s) return;
+  ensureGenealogyShape(s);
+  const g=s.genealogy||{};
+  const powers=s.chi?[`Chi — rang ${s.chi.rank}/10 : ${s.chi.label}`]:(s.powers||[]).map(p=>`${p.name} — maîtrise ${p.mastery??'…'}`);
+  const weapons=(s.weapons||[]).map(w=>`${w.name}${w.mastery!==null&&w.mastery!=='—'?` — maîtrise ${w.mastery}`:''}${w.ench?.length?` — ${w.ench.join(', ')}`:''}`);
+  const links=(s.relationships||[]).map(r=>`${r.type||r.kind||'Lien'} ↔ ${r.targetId||r.targetName||r.status||'inconnu'}`);
+  const statsFull=['Combat','Force','Intelligence','Résilience','Vitesse'].map(k=>{
+    const d=s.stats?.[k+'_detail'], br=d?.breakdown?.map(b=>`${b.source} ${b.value>=0?'+':''}${b.value}`).join(' • ')||'';
+    return `<div class="detail-row"><b>${k}</b> : ${s.stats?.[k]??'—'}${d?` <span class="muted">(jet ${d.base}${br?' • '+br:''})</span>`:''}</div>`;
+  }).join('');
+  characterDetail.innerHTML=`${illustrationControlsHtml(id)}<button class="secondary detail-back" id="detailBackBtn">← Retour à la liste</button>
+  <div class="detail-sheet">
+    <div class="detail-title">${s.name||'Sans nom'}</div><div class="muted">${id} • ${s.title||'Sans titre'}</div>
+    <div class="detail-grid">
+      <div class="detail-box"><h4>Identité</h4>
+        <div class="detail-row"><b>Race :</b> ${s.race||'—'}</div><div class="detail-row"><b>Genre :</b> ${s.gender||'—'}</div>
+        <div class="detail-row"><b>Taille :</b> ${s.size||'—'}</div><div class="detail-row"><b>Archétype :</b> ${s.arch||'—'}${s.slayerTarget?` — cible ${s.slayerTarget}`:''}</div>${s.summon?summonerSummaryHtml(s):''}
+        <div class="detail-row"><b>Métier :</b> ${s.job||'—'}</div><div class="detail-row"><b>Histoire :</b> ${s.history?.join(' + ')||'—'}</div>
+        <div class="detail-row"><b>Personnalité :</b> ${s.personality||'—'}</div>
+      </div>
+      <div class="detail-box"><h4>Stats</h4>${statsFull}</div>
+      <div class="detail-box"><h4>Pouvoirs & armes</h4>
+        <div class="detail-row"><b>Pouvoirs :</b> ${powers.length?powers.join('<br>'):'—'}</div>
+        <div class="detail-row"><b>Armes :</b> ${weapons.length?weapons.join('<br>'):'—'}</div>
+        <div class="detail-row"><b>Faiblesse :</b> ${s.weakness||'—'}</div>
+        <div class="detail-row"><b>Extra :</b> ${s.extra||'—'}</div>
+      </div>
+      <div class="detail-box"><h4>Famille & lignée</h4>
+        <div class="detail-row"><b>Parents :</b> ${g.parents?.length?g.parents.join(', '):'—'}</div>
+        <div class="detail-row"><b>Enfants :</b> ${g.children?.length?g.children.join(', '):'—'}</div>
+        <div class="detail-row"><b>Génération :</b> ${g.generation||1}</div>
+        <div class="detail-row"><b>Lignée :</b> ${g.lineage?.length?g.lineage.join(' → '):'—'}</div>
+        <div class="detail-row"><b>Liens :</b> ${links.length?links.join('<br>'):'—'}${needsMysticExistingTargetRepair(s)?`<br><span class="muted">Cible du lien mystique non définie.</span><br><button class="secondary" onclick="repairMysticExistingTarget('${id}')">🔗 Choisir le personnage lié</button>`:''}</div>
+      </div>
+      <div class="detail-box"><h4>Apparence</h4>
+        <div class="detail-row">${s.appearance?.age||'—'} • ${s.appearance?.body||'—'}</div>
+        <div class="detail-row">${s.appearance?.c1||'—'} + ${s.appearance?.c2||'—'} • ${s.appearance?.sign||'—'}</div>
+      </div>
+    </div>
+  </div>`;
+  characterDetail.classList.add('active');
+  rosterList.style.display='none';
+  document.getElementById('detailBackBtn').onclick=closeCharacterDetail;
+  characterDetail.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function closeCharacterDetail(){
+  characterDetail.classList.remove('active');
+  characterDetail.innerHTML='';
+  rosterList.style.display='';
+}
+
+const RACIAL_TRAITS={
+'Humain':['Adaptabilité'],'Elfe':['Sens aiguisés','Affinité naturelle','Longévité'],
+'Nain':['Corps robuste','Résistance aux toxines','Vision nocturne'],
+'Orc':['Force naturelle','Fureur de survie'],'Gobelin':['Ingéniosité','Vision nocturne','Survie opportuniste'],
+'Fée':['Vol','Poussière féerique','Affinité magique'],'Géant':['Force colossale','Masse gigantesque'],
+'Vampire':['Régénération','Sens surnaturels','Longévité'],'Loup-garou':['Transformation','Régénération','Sens surnaturels'],
+'Démon':['Résistance surnaturelle','Énergie démoniaque'],'Ange':['Vol','Énergie céleste','Perception surnaturelle'],
+'Esprit':['Intangibilité','Possession / traversée de matière','Aucun besoin biologique'],
+'Dragon humanoïde':['Souffle draconique','Écailles','Sens draconiques'],
+'Golem / Artificiel':['Aucun besoin biologique','Immunité poison / maladie','Corps artificiel'],
+'Extraterrestre':[0,0,0,0,0,0,0],'Demi-dieu':['Corps divin mineur','Longévité surnaturelle'],
+'Divinité':['Corps divin','Immortalité naturelle','Présence divine'],
+'Dieu céleste':['Corps divin céleste','Immortalité naturelle','Présence divine renforcée'],
+'Titan':['Puissance titanesque','Gigantisme'],'Titan primordial':['Puissance titanesque primordiale','Gigantisme primordial'],
+'Titan fondateur':['Puissance titanesque fondatrice','Gigantisme fondateur'],
+'Squelette':['Aucun besoin biologique','Immunité saignement / poison / maladie'],
+'Liche':['Phylactère','Nature morte-vivante','Magie innée'],
+'Cyborg':['Augmentations cybernétiques','Interface technologique'],
+'N.E.X.U.S.':['Corps techno-organique','Auto-réparation','Interface technologique'],
+'Neoxus':['Corps techno-organique renforcé','Auto-réparation supérieure','Interface technologique'],
+'Deus Machina':['Corps divin','Immortalité naturelle','Présence divine','Corps techno-organique','Auto-réparation','Interface technologique'],
+'Titan céleste':['Corps divin','Immortalité naturelle','Présence divine','Puissance titanesque primordiale','Gigantisme primordial'],
+'Colosse Nexus':['Corps techno-organique','Auto-réparation','Interface technologique','Puissance titanesque primordiale','Gigantisme primordial']
+};
+const ACTIVE_RACIAL_TRAITS=new Set(['Affinité naturelle','Fureur de survie','Vol','Poussière féerique','Régénération','Transformation','Énergie démoniaque','Énergie céleste','Intangibilité','Possession / traversée de matière','Souffle draconique','Phylactère','Magie innée','Auto-réparation','Auto-réparation supérieure']);
+const ORDINARY_COMPONENTS=['Humain','Elfe','Nain','Orc','Gobelin','Fée','Géant','Vampire','Loup-garou','Démon','Ange','Esprit','Dragon humanoïde','Golem / Artificiel','Extraterrestre','Squelette','Liche'];
+const LOW_CHAIN=new Set(['Demi-dieu','Cyborg','Titan']);
+const HIGH_CHAIN=new Set(['Divinité','N.E.X.U.S.','Titan primordial']);
+const REINFORCED=new Set(['Dieu céleste','Neoxus','Titan fondateur']);
+const HIGH_TO_LOW={'Divinité':'Demi-dieu','N.E.X.U.S.':'Cyborg','Titan primordial':'Titan'};
+const REINFORCED_TO_HIGH={'Dieu céleste':'Divinité','Neoxus':'N.E.X.U.S.','Titan fondateur':'Titan primordial'};
+const CHAIN={
+'Demi-dieu':0,'Divinité':1,'Dieu céleste':2,
+'Cyborg':0,'N.E.X.U.S.':1,'Neoxus':2,
+'Titan':0,'Titan primordial':1,'Titan fondateur':2
+};
+const CHAIN_FAMILY={
+'Demi-dieu':'divine','Divinité':'divine','Dieu céleste':'divine',
+'Cyborg':'nexus','N.E.X.U.S.':'nexus','Neoxus':'nexus',
+'Titan':'titan','Titan primordial':'titan','Titan fondateur':'titan'
+};
+const SPECIAL_CROSS={
+'Divinité|N.E.X.U.S.':'Deus Machina','Divinité|Titan primordial':'Titan céleste','N.E.X.U.S.|Titan primordial':'Colosse Nexus'
+};
+const SPECIAL_PARTS={
+'Deus Machina':['Divinité','N.E.X.U.S.'],'Titan céleste':['Divinité','Titan primordial'],'Colosse Nexus':['N.E.X.U.S.','Titan primordial'],
+'Dieu céleste':['Divinité'],'Neoxus':['N.E.X.U.S.'],'Titan fondateur':['Titan primordial']
+};
+
+const alienBiologyTraits=[
+  'Vision thermique',
+  'Écholocalisation',
+  'Respiration aquatique',
+  'Exosquelette naturel',
+  'Bioluminescence',
+  'Membres supplémentaires',
+  'Sens électromagnétique',
+  'Peau caméléon',
+  'Organes redondants',
+  'Sang corrosif',
+  'Membrane de vol',
+  'Vision ultraviolette',
+  'Perception des vibrations',
+  'Respiration sans oxygène',
+  'Métabolisme cryogénique',
+  'Carapace minérale',
+  'Tentacules sensoriels',
+  'Régénération organique lente',
+  'Photosynthèse partielle',
+  'Squelette flexible'
+];
+
+const CHILD_MUTATIONS=[
+'Ailes angéliques','Écailles draconiques','Vision thermique','Carapace cristalline','Veines bioluminescentes',
+'Respiration aquatique','Bras supplémentaire','Sens électromagnétique','Peau caméléon','Sang corrosif',
+'Régénération mutante','Ombre autonome','Organes redondants','Cristallisation partielle','Aura glaciale',
+'Déphasage bref','Résistance extrême à la chaleur','Écho télépathique','Métabolisme sans sommeil','Corne énergétique'
+];
+const IMPROBABLE_ORIGINS=['Créé artificiellement','Paradoxe temporel','Façonné par une divinité','Fragment du parent devenu autonome','Clone doté de sa propre identité','Fusion d’énergies','Matérialisé depuis un rêve','Créé par un artefact','Réalité parallèle','Réincarnation liée au parent','Malédiction créatrice','Bénédiction créatrice','Créé accidentellement par un pouvoir','Manifestation devenue vivante'];
+const NPC_JOBS=['Artisan','Marchand','Érudit','Médecin','Explorateur','Mercenaire','Gardien','Diplomate','Chasseur','Ingénieur','Prêtre','Nomade','Agriculteur','Forgeron','Archiviste','Messager'];
+const CHILD_NAME_START=['Ael','Ny','Ka','Va','Iri','Ze','Or','Tha','Ly','Sa','Myr','Eli','No','Ra','Shi','Vor','Ae','Ky'];
+const CHILD_NAME_MID=['ra','li','en','or','ae','yn','is','va','eth','io','ar','un'];
+const CHILD_NAME_END=['n','a','is','or','el','yx','ia','en','os','ar','eth','i'];
+function loadStore(key,fallback){try{const x=JSON.parse(localStorage.getItem(key)||'null');return x??fallback}catch(e){return fallback}}
+function saveStore(key,v){localStorage.setItem(key,JSON.stringify(v))}
+function descendants(){return loadStore(STORAGE_DESC,{})}
+function npcs(){return loadStore(STORAGE_NPCS,{})}
+function universeMeta(){return loadStore(STORAGE_META,{nextDesc:1,nextNpc:1,selectedBySeason:{}})}
+function rpick(a){return a[Math.floor(Math.random()*a.length)]}
+function chance(p){return Math.random()*100<p}
+function weightedValue(items){let r=Math.random()*items.reduce((s,x)=>s+x[1],0);for(const [v,w] of items){r-=w;if(r<0)return v}return items[items.length-1][0]}
+function centeredRoll(){return parseInt(weightedValue([[1,2],[2,4],[3,8],[4,14],[5,22],[6,22],[7,14],[8,8],[9,4],[10,2]]),10)}
+function childName(){return rpick(CHILD_NAME_START)+(chance(50)?rpick(CHILD_NAME_MID):'')+rpick(CHILD_NAME_END)}
+function baseComponentList(s){
+  if(!s)return ['Humain'];
+  if(SPECIAL_PARTS[s.race])return [...SPECIAL_PARTS[s.race]];
+  let parts=(s.raceParts||[]).filter(x=>mods[x]||CHAIN[x]!==undefined||ORDINARY_COMPONENTS.includes(x));
+  parts=parts.filter(x=>!['Ascension Demi-dieu','Martial God'].includes(x));
+  if(!parts.length && s.race) parts=[s.race];
+  return [...new Set(parts.flatMap(x=>SPECIAL_PARTS[x]||[x]))];
+}
+function transmittedComponent(s){let p=baseComponentList(s);return rpick(p)}
+function isOrdinary(c){return !LOW_CHAIN.has(c)&&!HIGH_CHAIN.has(c)&&!REINFORCED.has(c)}
+function combineComponents(a,b){
+  a=REINFORCED_TO_HIGH[a]||a;b=REINFORCED_TO_HIGH[b]||b;
+  if(a===b){
+    if(a==='Demi-dieu')return {race:'Divinité',parts:['Divinité']};
+    if(a==='Divinité')return {race:'Dieu céleste',parts:['Dieu céleste']};
+    if(a==='Cyborg')return {race:'N.E.X.U.S.',parts:['N.E.X.U.S.']};
+    if(a==='N.E.X.U.S.')return {race:'Neoxus',parts:['Neoxus']};
+    if(a==='Titan')return {race:'Titan primordial',parts:['Titan primordial']};
+    if(a==='Titan primordial')return {race:'Titan fondateur',parts:['Titan fondateur']};
+    return {race:a,parts:[a]};
+  }
+  if(CHAIN_FAMILY[a]&&CHAIN_FAMILY[a]===CHAIN_FAMILY[b]){
+    const winner=CHAIN[a]>=CHAIN[b]?a:b;return {race:winner,parts:[winner]};
+  }
+  if(HIGH_CHAIN.has(a)&&isOrdinary(b))a=HIGH_TO_LOW[a];
+  if(HIGH_CHAIN.has(b)&&isOrdinary(a))b=HIGH_TO_LOW[b];
+  const key=[a,b].sort((x,y)=>['Divinité','N.E.X.U.S.','Titan primordial'].indexOf(x)-['Divinité','N.E.X.U.S.','Titan primordial'].indexOf(y)).join('|');
+  if(SPECIAL_CROSS[key])return {race:SPECIAL_CROSS[key],parts:[a,b]};
+  return {race:`${a}/${b}`,parts:[a,b]};
+}
+function singleParentRace(s){
+  let c=transmittedComponent(s);c=HIGH_TO_LOW[c]||c;c=REINFORCED_TO_HIGH[c]||c;
+  return {race:c,parts:[c]};
+}
+
+function rollAlienBiology(){
+  const statKeys=['Combat','Pouvoir','Arme','Intelligence','Résilience','Vitesse','Force'];
+  const shuffled=[...statKeys].sort(()=>Math.random()-0.5);
+  return {
+    trait:rpick(alienBiologyTraits),
+    mods:[
+      {stat:shuffled[0],value:2},
+      {stat:shuffled[1],value:1},
+      {stat:shuffled[2],value:-1}
+    ]
+  };
+}
+
+function raceTraitsFor(race,parts){
+  let list=RACIAL_TRAITS[race]||[];
+  if(race==='Extraterrestre'){
+    const bio=rollAlienBiology();
+    return [{name:bio.trait,origin:'Extraterrestre',active:ACTIVE_RACIAL_TRAITS.has(bio.trait),mastery:ACTIVE_RACIAL_TRAITS.has(bio.trait)?centeredRoll():null,natural:true,alienBiology:true,alienMods:bio.mods}];
+  }
+  if(!list.length) list=(parts||[]).flatMap(p=>RACIAL_TRAITS[p]||[]);
+  return [...new Set(list)].map(name=>({name,origin:race,active:ACTIVE_RACIAL_TRAITS.has(name),mastery:ACTIVE_RACIAL_TRAITS.has(name)?centeredRoll():null,natural:true}));
+}
+function parentMutationTraits(s){
+  let out=[];
+  for(const m of (s?.mutations||[])) if(m?.name) out.push(m);
+  for(const d of (s?.extraDetail||[])) if(d.kind==='Mutation'&&d.manifestation) out.push({name:d.manifestation,origin:s.id,hereditary:false});
+  return out;
+}
+function inheritMutations(pa,pb){
+  const map={};
+  for(const p of [pa,pb].filter(Boolean))for(const m of parentMutationTraits(p)){if(!map[m.name])map[m.name]=[];map[m.name].push(p.id||p.name||'PNJ')}
+  let out=[];
+  for(const [name,origins] of Object.entries(map)){
+    const prob=origins.length>=2?50:25;
+    if(chance(prob))out.push({name,originIds:[...new Set(origins)],hereditary:true,transmissionChance:25});
+  }
+  return out;
+}
+function personalPowers(s){
+  let arr=[];
+  for(const p of (s?.powers||[]))if(p?.name)arr.push({name:p.name,source:s.id||s.name});
+  if(s?.chi)arr.push({name:'Chi',source:s.id||s.name});
+  if(s?.npcPower)arr.push({name:s.npcPower,source:s.id||s.name});
+  return arr;
+}
+function inheritPowers(pa,pb){
+  const map={};
+  for(const p of [pa,pb].filter(Boolean))for(const pow of personalPowers(p)){if(!map[pow.name])map[pow.name]=[];map[pow.name].push(pow.source)}
+  let out=[];
+  for(const [name,origins] of Object.entries(map)){
+    if(chance(origins.length>=2?50:25))out.push({name,mastery:centeredRoll(),inherited:true,origins:[...new Set(origins)]});
+  }
+  return out;
+}
+function compatibleGender(a,b){
+  return (a==='Homme'&&b==='Femme')||(a==='Femme'&&b==='Homme')||(a==='Autre / indéterminé'&&b==='Autre / indéterminé');
+}
+function incompatibleReinforcedRace(a,b){
+  const ra=REINFORCED.has(a?.race), rb=REINFORCED.has(b?.race);
+  return ra&&rb&&a.race!==b.race;
+}
+function makeNpc(parent,meta,npcStore){
+  let id=`PNJ-${String(meta.nextNpc++).padStart(3,'0')}`;
+  let gender=parent.gender==='Homme'?'Femme':parent.gender==='Femme'?'Homme':'Autre / indéterminé';
+  let race=rpick([...ORDINARY_COMPONENTS,'Demi-dieu','Divinité','Titan','Titan primordial','Cyborg','N.E.X.U.S.']);
+  let npc={id,name:childName(),gender,race,raceParts:[race],job:rpick(NPC_JOBS),appearance:{age:rpick(['Jeune adulte','Adulte','Mature','Âgé']),body:rpick(bodies),c1:rpick(colors.filter(x=>x!=='Couleur unique')),c2:rpick(colors.filter(x=>x!=='Couleur unique')),sign:rpick(signs.filter(x=>x!=='Signe unique'))},racialTraits:raceTraitsFor(race,[race]),npcPower:rpick(powers.filter(x=>x!=='Pouvoir unique')),genealogy:{parents:[],children:[],siblings:[],generation:1,lineage:[],partnerLinks:[]},status:'PNJ extérieur'};
+  npcStore[id]=npc;return npc;
+}
+function chooseOtherFighter(parent,roster){
+  let candidates=Object.values(roster).filter(x=>x.id!==parent.id&&compatibleGender(parent.gender,x.gender)&&!incompatibleReinforcedRace(parent,x));
+  return candidates.length?rpick(candidates):null;
+}
+function inheritedAppearance(pa,pb,finalRace){
+  const fresh=()=>({body:rpick(bodies),c1:rpick(colors.filter(x=>x!=='Couleur unique')),c2:rpick(colors.filter(x=>x!=='Couleur unique')),sign:rpick(signs.filter(x=>x!=='Signe unique'))});
+  let f=fresh(), app={};
+  if(pb){
+    app.body=weightedValue([[pa.appearance?.body||f.body,40],[pb.appearance?.body||f.body,40],[f.body,20]]);
+    app.c1=weightedValue([[pa.appearance?.c1||f.c1,40],[pb.appearance?.c1||f.c1,40],[f.c1,20]]);
+    app.c2=weightedValue([[pa.appearance?.c2||f.c2,40],[pb.appearance?.c2||f.c2,40],[f.c2,20]]);
+    app.sign=weightedValue([[pa.appearance?.sign||f.sign,25],[pb.appearance?.sign||f.sign,25],[f.sign,50]]);
+  }else app=f;
+  app.age='À tirer lors de l’entrée en tournoi';
+  return app;
+}
+function mutationForChild(raceInfo){
+  if(!chance(10))return null;
+  const ascensible={'Demi-dieu':'Divinité','Cyborg':'N.E.X.U.S.','Titan':'Titan primordial'};
+  const eligible=(raceInfo.parts||[]).filter(p=>ascensible[p]);
+  if(eligible.length&&chance(12)){
+    const from=rpick(eligible),to=ascensible[from];
+    raceInfo.parts=raceInfo.parts.map(p=>p===from?to:p);
+    if(raceInfo.parts.length===1){raceInfo.race=to}
+    else{let c=combineComponents(raceInfo.parts[0],raceInfo.parts[1]);raceInfo.race=c.race;raceInfo.parts=c.parts}
+    return {name:`Ascension raciale : ${from} → ${to}`,type:'Ascension raciale',hereditary:false};
+  }
+  return {name:rpick(CHILD_MUTATIONS),type:'Mutation',hereditary:false};
+}
+function mergedLineage(pa,pb){
+  let x=[];
+  for(const p of [pa,pb].filter(Boolean)){
+    const l=p.genealogy?.lineage?.length?p.genealogy.lineage:[p.id||p.name];
+    x.push(...l);
+  }
+  return [...new Set(x.filter(Boolean))];
+}
+function childCountRoll(){let r=Math.random()*100;if(r<90)return 1;if(r<98)return 2;if(r<99.5)return 3;return 4+Math.floor(Math.random()*5)}
+function createChild(pa,pb,origin,event,meta,descStore){
+  let raceInfo=pb?combineComponents(transmittedComponent(pa),transmittedComponent(pb)):singleParentRace(pa);
+  let mutation=mutationForChild(raceInfo);
+  let inheritedMut=inheritMutations(pa,pb);
+  if(mutation&&mutation.type!=='Ascension raciale')inheritedMut.push(mutation);
+  let id=`DESC-${String(meta.nextDesc++).padStart(4,'0')}`;
+  let generation=Math.max(pa.genealogy?.generation||1,pb?.genealogy?.generation||1)+1;
+  let child={id,name:childName(),status:`Descendant — en attente S${event.eligibleSeason}`,birthSeason:event.birthSeason,eligibleSeason:event.eligibleSeason,selectedForSeason:null,origin,parentIds:[pa.id,...(pb?[pb.id]:[])],gender:rpick(['Homme','Femme','Autre / indéterminé']),race:raceInfo.race,raceParts:raceInfo.parts,racialTraits:raceTraitsFor(raceInfo.race,raceInfo.parts),inheritedPowers:inheritPowers(pa,pb),mutations:inheritedMut,appearance:inheritedAppearance(pa,pb,raceInfo.race),genealogy:{parents:[pa.id,...(pb?[pb.id]:[])],children:[],siblings:[],generation,lineage:mergedLineage(pa,pb),partnerLinks:[]},fighterDataGenerated:false};
+  descStore[id]=child;return child;
+}
+function resolveBirthEvents(){
+  saveCurrentCharacter();
+  const roster=loadRoster(), descStore=descendants(), npcStore=npcs(), meta=universeMeta();
+  let made=0, events=0;
+  for(const pa of Object.values(roster)){
+    ensureGenealogyShape(pa);
+    for(const ev of (pa.extraDetail||[]).filter(x=>x.kind==='Enfant'&&(!x.childIds||!x.childIds.length))){
+      events++;
+      let origin=weightedValue([['Autre combattant',50],['PNJ extérieur',30],['Parent unique',10],['Origine improbable',10]]);
+      let pb=null;
+      if(origin==='Autre combattant'){
+        pb=chooseOtherFighter(pa,roster);
+        if(!pb){origin='PNJ extérieur';pb=makeNpc(pa,meta,npcStore)}
+      }else if(origin==='PNJ extérieur')pb=makeNpc(pa,meta,npcStore);
+      let improbable=null;
+      if(origin==='Origine improbable')improbable=rpick(IMPROBABLE_ORIGINS);
+      ev.origin=improbable?`${origin} — ${improbable}`:origin;
+      ev.otherParentId=pb?.id||null;ev.childIds=[];
+      let n=childCountRoll(), siblings=[];
+      for(let i=0;i<n;i++){
+        let child=createChild(pa,pb,ev.origin,ev,meta,descStore);
+        ev.childIds.push(child.id);siblings.push(child.id);made++;
+      }
+      for(const id of siblings)descStore[id].genealogy.siblings=siblings.filter(x=>x!==id);
+      pa.genealogy.children.push(...siblings);
+      if(pb){
+        ensureGenealogyShape(pb);pb.genealogy.children.push(...siblings);
+        pa.genealogy.partnerLinks.push(pb.id);pb.genealogy.partnerLinks.push(pa.id);
+        if(roster[pb.id])roster[pb.id]=pb;else npcStore[pb.id]=pb;
+      }
+      ev.status=`${n} naissance${n>1?'s':''} résolue${n>1?'s':''}`;
+    }
+    roster[pa.id]=pa;
+  }
+  saveRoster(roster);saveStore(STORAGE_DESC,descStore);saveStore(STORAGE_NPCS,npcStore);saveStore(STORAGE_META,meta);
+  renderRoster();renderGenealogy();
+  alert(events?`${made} descendant${made>1?'s':''} généré${made>1?'s':''} à partir de ${events} événement${events>1?'s':''}.`:'Aucune naissance en attente.');
+}
+function selectDescendantsForNextSeason(){
+  const d=descendants(), meta=universeMeta(), target=seasonNumber+1;
+  let eligible=Object.values(d).filter(x=>x.eligibleSeason===target&&x.selectedForSeason==null);
+  if(!eligible.length){alert(`Aucun descendant à sélectionner pour S${target}.`);return}
+  for(let i=eligible.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[eligible[i],eligible[j]]=[eligible[j],eligible[i]]}
+  let selected=eligible.slice(0,16), chosen=new Set(selected.map(x=>x.id));
+  for(const x of eligible){
+    if(chosen.has(x.id)){x.selectedForSeason=target;x.status=`Sélectionné pour S${target}`}
+    else{x.selectedForSeason=false;x.status='PNJ actif — garantie de tournoi perdue'}
+    d[x.id]=x;
+  }
+  meta.selectedBySeason[target]=selected.map(x=>x.id);
+  saveStore(STORAGE_DESC,d);saveStore(STORAGE_META,meta);renderRoster();renderGenealogy();
+  alert(`${selected.length} descendant${selected.length>1?'s':''} sélectionné${selected.length>1?'s':''} pour S${target}${eligible.length>16?` sur ${eligible.length} éligibles`:''}.`);
+}
+
+function alienBiologyHtml(s){
+  if(s?.race!=='Extraterrestre' || !s.alienBiology) return '';
+  return `<b>Biologie extraterrestre</b><span>${s.alienBiology.trait} • ${s.alienBiology.mods.map(x=>`${x.stat} ${x.value>0?'+':''}${x.value}`).join(' • ')}</span>`;
+}
+
+function descendantCard(x){
+  return `<div class="roster-card" style="border-style:dashed">
+    <div class="roster-head"><div><div class="roster-name">👶 ${x.name}</div><div class="muted">${x.status}</div></div><span class="tag roster-id">${x.id}</span></div>
+    <div class="roster-info">
+      <b>Race</b><span>${x.race}</span><b>Genre</b><span>${x.gender}</span>
+      <b>Parents</b><span>${x.parentIds.join(', ')||'—'}</span>
+      <b>Lignée</b><span>${x.genealogy?.lineage?.join(' → ')||'—'}</span>
+      <b>Traits</b><span>${x.racialTraits?.map(t=>t.name+(t.mastery?` (${t.mastery})`:'')).join(' • ')||'—'}</span>
+      <b>Pouvoirs hérités</b><span>${x.inheritedPowers?.map(p=>`${p.name} (${p.mastery})`).join(' • ')||'—'}</span>
+      <b>Mutations</b><span>${x.mutations?.map(m=>m.name).join(' • ')||'—'}</span>
+      <b>Apparence</b><span>${x.appearance?.body||'—'} • ${x.appearance?.c1||'—'} + ${x.appearance?.c2||'—'} • ${x.appearance?.sign||'—'}</span>
+    </div>
+  </div>`;
+}
+function exportUniverse(){
+  saveCurrentCharacter();
+  const payload={version:'V18.25',season:seasonNumber,roster:loadRoster(),descendants:descendants(),npcs:npcs(),meta:universeMeta()};
+  let a=document.createElement('a'),blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  a.href=URL.createObjectURL(blob);a.download=`Roue_de_la_Fortune_Univers_S${seasonNumber}_V18_25.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+
+function renderGenealogy(){
+  const roster=loadRoster(), d=descendants(), n=npcs();
+  const ds=Object.values(d).sort((a,b)=>a.id.localeCompare(b.id));
+  const ns=Object.values(n).sort((a,b)=>a.id.localeCompare(b.id));
+  const pending=[];
+  for(const p of Object.values(roster)){
+    for(const ev of (p.extraDetail||[]).filter(x=>x.kind==='Enfant'&&(!x.childIds||!x.childIds.length))){
+      pending.push({parent:p,event:ev});
+    }
+  }
+  const target=seasonNumber+1, selected=ds.filter(x=>x.selectedForSeason===target).length;
+  const stats=document.getElementById('genealogyStats');
+  if(stats)stats.innerHTML=`
+    <div class="genealogy-stat"><b>${ds.length}</b><span>Descendants</span></div>
+    <div class="genealogy-stat"><b>${pending.length}</b><span>Naissances en attente</span></div>
+    <div class="genealogy-stat"><b>${ns.length}</b><span>PNJ familiaux</span></div>
+    <div class="genealogy-stat"><b>${selected}</b><span>Sélectionnés pour S${target}</span></div>`;
+  const summary=document.getElementById('descendantSummary');
+  if(summary)summary.innerHTML=ds.length
+    ? `🩸 <b>${ds.length} descendant${ds.length>1?'s':''}</b> dans l’univers • ${ds.filter(x=>x.status?.includes('PNJ actif')).length} PNJ descendant${ds.filter(x=>x.status?.includes('PNJ actif')).length>1?'s':''} • prochaine sélection : <b>S${target}</b>`
+    : 'Aucun descendant enregistré. Les événements « Possède un enfant » apparaîtront ici après sauvegarde.';
+  const pb=document.getElementById('pendingBirths');
+  if(pb)pb.innerHTML=pending.length?pending.map(({parent,event})=>`
+    <div class="lineage-card pending-birth">
+      <div class="lineage-title"><strong>Naissance liée à ${parent.name||parent.id}</strong><span class="tag">${parent.id}</span></div>
+      <div class="lineage-meta"><b>Saison</b><span>S${event.birthSeason} → éligible S${event.eligibleSeason}</span><b>Statut</b><span>${event.status||'En attente'}</span></div>
+    </div>`).join(''):'<div class="muted">Aucune naissance en attente.</div>';
+  const dl=document.getElementById('descendantList');
+  if(dl)dl.innerHTML=ds.length?ds.map(x=>`
+    <div class="lineage-card ${x.selectedForSeason===target?'selected':''}">
+      <div class="lineage-title"><strong>👶 ${x.name}</strong><span class="tag">${x.id}</span></div>
+      <div class="lineage-meta">
+        <b>Statut</b><span>${x.status}</span>
+        <b>Race</b><span>${x.race}</span>
+        <b>Genre</b><span>${x.gender}</span>
+        <b>Parents</b><span>${x.parentIds?.join(' + ')||'—'}</span>
+        <b>Fratrie</b><span>${x.genealogy?.siblings?.join(', ')||'—'}</span>
+        <b>Lignée</b><span>${x.genealogy?.lineage?.join(' → ')||'—'}</span>
+        <b>Pouvoirs</b><span>${x.inheritedPowers?.map(p=>`${p.name} (${p.mastery})`).join(' • ')||'—'}</span>
+        <b>Mutations</b><span>${x.mutations?.map(m=>m.name).join(' • ')||'—'}</span>
+      </div>
+    </div>`).join(''):'<div class="muted">Aucun descendant pour le moment.</div>';
+  const nl=document.getElementById('npcLineageList');
+  if(nl)nl.innerHTML=ns.length?ns.map(x=>`
+    <div class="lineage-card npc-card">
+      <div class="lineage-title"><strong>🧑 ${x.name}</strong><span class="tag">${x.id}</span></div>
+      <div class="lineage-meta">
+        <b>Race</b><span>${x.race}</span><b>Genre</b><span>${x.gender}</span>
+        <b>Métier</b><span>${x.job||'—'}</span><b>Pouvoir</b><span>${x.npcPower||'—'}</span>
+        <b>Enfants</b><span>${x.genealogy?.children?.join(', ')||'—'}</span>
+      </div>
+    </div>`).join(''):'<div class="muted">Aucun PNJ familial enregistré.</div>';
+}
+
+
+
+function applyAlienModifiersToStats(){
+  if(state.race!=='Extraterrestre' || !state.stats) return;
+  applyAlienStateIfNeeded();
+  for(const [statName,detailKey] of [['Combat','Combat_detail'],['Force','Force_detail'],['Intelligence','Intelligence_detail'],['Résilience','Résilience_detail'],['Vitesse','Vitesse_detail']]){
+    const add=alienStatModifierFor(statName);
+    if(!add) continue;
+    const d=state.stats[detailKey];
+    if(d){
+      const already=(d.breakdown||[]).some(x=>x.source==='Extraterrestre');
+      if(!already){
+        d.mod=(d.mod||0)+add;
+        d.breakdown=d.breakdown||[];
+        d.breakdown.push({source:'Extraterrestre',value:add});
+        state.stats[statName]=Math.max(0,(d.base||0)+d.mod);
+      }
+    }
+  }
+}
+
+function enforceNoWeaponDisplay(){
+  const noWeapon=Array.isArray(state?.weapons)&&state.weapons.length>0&&state.weapons.every(w=>w.name==='Aucune arme');
+  const labels=[...document.querySelectorAll('body *')].filter(el=>{
+    if(el.children.length)return false;
+    const t=(el.textContent||'').trim().toLowerCase();
+    return t==='maîtrise de l’arme'||t==='maitrise de l’arme'||t==='maîtrise arme'||t==='enchantement'||t==='enchantements';
+  });
+  labels.forEach(el=>{
+    const row=el.closest('.row,.result-row,.field,.stat-row,.line,.kv')||el.parentElement;
+    if(row) row.style.display=noWeapon?'none':'';
+  });
+}
+
+
+
+const ILLUSTRATION_DB_NAME='RoueFortuneDB';
+const ILLUSTRATION_STORE='illustrations';
+let __illustrationDbPromise=null;
+
+function openIllustrationDB(){
+  if(__illustrationDbPromise) return __illustrationDbPromise;
+  __illustrationDbPromise=new Promise((resolve,reject)=>{
+    const req=indexedDB.open(ILLUSTRATION_DB_NAME,1);
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains(ILLUSTRATION_STORE)){
+        db.createObjectStore(ILLUSTRATION_STORE);
+      }
+    };
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+  return __illustrationDbPromise;
+}
+
+async function saveIllustration(characterId,file){
+  const db=await openIllustrationDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');
+    tx.objectStore(ILLUSTRATION_STORE).put(file,characterId);
+    tx.oncomplete=()=>resolve(true);
+    tx.onerror=()=>reject(tx.error);
+  });
+}
+
+async function getIllustration(characterId){
+  const db=await openIllustrationDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(ILLUSTRATION_STORE,'readonly');
+    const req=tx.objectStore(ILLUSTRATION_STORE).get(characterId);
+    req.onsuccess=()=>resolve(req.result||null);
+    req.onerror=()=>reject(req.error);
+  });
+}
+
+async function deleteIllustration(characterId){
+  const db=await openIllustrationDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');
+    tx.objectStore(ILLUSTRATION_STORE).delete(characterId);
+    tx.oncomplete=()=>resolve(true);
+    tx.onerror=()=>reject(tx.error);
+  });
+}
+
+async function chooseIllustrationFor(characterId){
+  const input=document.createElement('input');
+  input.type='file';
+  input.accept='image/png,image/jpeg,image/webp';
+  input.onchange=async()=>{
+    const file=input.files?.[0];
+    if(!file) return;
+    await saveIllustration(characterId,file);
+    await refreshIllustrationFor(characterId);
+    setTimeout(hydrateIllustrationThumbs,0);
+  };
+  input.click();
+}
+
+async function removeIllustrationFor(characterId){
+  if(!confirm('Supprimer uniquement l’illustration de ce personnage ?')) return;
+  await deleteIllustration(characterId);
+  await refreshIllustrationFor(characterId);
+  setTimeout(hydrateIllustrationThumbs,0);
+}
+
+function illustrationControlsHtml(characterId){
+  return `
+    <div class="illustration-block">
+      <div class="illustration-frame">
+        <img class="character-illustration" data-illustration-for="${characterId}" alt="Illustration du personnage" style="display:none">
+        <div class="illustration-placeholder" data-illustration-placeholder-for="${characterId}">Aucune illustration</div>
+      </div>
+      <div class="illustration-actions">
+        <button class="smallbtn" onclick="chooseIllustrationFor('${characterId}')">🖼️ Ajouter / remplacer</button>
+        <button class="smallbtn" onclick="removeIllustrationFor('${characterId}')">🗑️ Retirer l’illustration</button>
+        <button class="smallbtn" onclick="exportCharacterJson('${characterId}')">💾 Exporter cette fiche en JSON</button>
+      </div>
+    </div>`;
+}
+
+function illustrationThumbHtml(characterId){
+  return `<span class="illustration-thumb-wrap">
+    <img class="illustration-thumb" data-illustration-thumb-for="${characterId}" alt="">
+    <span class="illustration-thumb-placeholder" data-illustration-thumb-placeholder-for="${characterId}">🖼️</span>
+  </span>`;
+}
+
+async function refreshIllustrationFor(characterId){
+  const img=document.querySelector(`[data-illustration-for="${characterId}"]`);
+  const ph=document.querySelector(`[data-illustration-placeholder-for="${characterId}"]`);
+  if(!img) return;
+  if(img.dataset.objectUrl){
+    URL.revokeObjectURL(img.dataset.objectUrl);
+    delete img.dataset.objectUrl;
+  }
+  const blob=await getIllustration(characterId);
+  if(blob){
+    const url=URL.createObjectURL(blob);
+    img.src=url;
+    img.dataset.objectUrl=url;
+    img.style.display='block';
+    if(ph) ph.style.display='none';
+  }else{
+    img.removeAttribute('src');
+    img.style.display='none';
+    if(ph) ph.style.display='flex';
+  }
+}
+
+async function hydrateIllustrationThumbs(){
+  const imgs=[...document.querySelectorAll('[data-illustration-thumb-for]')];
+  for(const img of imgs){
+    const id=img.dataset.illustrationThumbFor;
+    const ph=document.querySelector(`[data-illustration-thumb-placeholder-for="${id}"]`);
+    if(img.dataset.objectUrl){
+      URL.revokeObjectURL(img.dataset.objectUrl);
+      delete img.dataset.objectUrl;
+    }
+    const blob=await getIllustration(id);
+    if(blob){
+      const url=URL.createObjectURL(blob);
+      img.src=url;
+      img.dataset.objectUrl=url;
+      img.style.display='block';
+      if(ph) ph.style.display='none';
+    }else{
+      img.style.display='none';
+      if(ph) ph.style.display='inline-flex';
+    }
+  }
+}
+
+function deleteCharacterCompletely(id){
+  if(!id) return;
+
+  // loadRoster() returns an object keyed by character ID, not an array.
+  const rosterObj=loadRoster();
+  const fighter=rosterObj[id];
+  if(!fighter) return;
+
+  const ok=confirm(`Supprimer définitivement ${fighter.name || fighter.id} ?
+
+Cette action retire le personnage de la liste et efface ses références locales.`);
+  if(!ok) return;
+
+  // Delete the fighter from the keyed roster.
+  delete rosterObj[id];
+
+  // Clean references in remaining fighters.
+  for(const c of Object.values(rosterObj)){
+    if(Array.isArray(c.relationships)){
+      c.relationships=c.relationships.filter(r=>r?.targetId!==id && r?.characterId!==id);
+    }
+    if(c.genealogy){
+      if(Array.isArray(c.genealogy.parents)) c.genealogy.parents=c.genealogy.parents.filter(x=>x!==id);
+      if(Array.isArray(c.genealogy.children)) c.genealogy.children=c.genealogy.children.filter(x=>x!==id);
+      if(Array.isArray(c.genealogy.partnerLinks)) c.genealogy.partnerLinks=c.genealogy.partnerLinks.filter(x=>x!==id && x?.targetId!==id && x?.characterId!==id);
+      if(Array.isArray(c.genealogy.siblings)) c.genealogy.siblings=c.genealogy.siblings.filter(x=>x!==id);
+      if(Array.isArray(c.genealogy.lineage)) c.genealogy.lineage=c.genealogy.lineage.filter(x=>x!==id);
+    }
+    if(Array.isArray(c.extraDetail)){
+      for(const e of c.extraDetail){
+        if(e?.otherParentId===id) e.otherParentId=null;
+        if(Array.isArray(e?.childIds)) e.childIds=e.childIds.filter(x=>x!==id);
+      }
+    }
+  }
+
+  // Genealogy universe entities stay in the universe, but direct references are cleaned.
+  if(Array.isArray(descendants)){
+    for(const d of descendants){
+      if(Array.isArray(d.parents)) d.parents=d.parents.filter(x=>x!==id);
+      if(Array.isArray(d.parentIds)) d.parentIds=d.parentIds.filter(x=>x!==id);
+      if(Array.isArray(d.lineage)) d.lineage=d.lineage.filter(x=>x!==id);
+      if(Array.isArray(d.siblings)) d.siblings=d.siblings.filter(x=>x!==id);
+    }
+  }
+  if(Array.isArray(npcs)){
+    for(const n of npcs){
+      if(Array.isArray(n.parents)) n.parents=n.parents.filter(x=>x!==id);
+      if(Array.isArray(n.parentIds)) n.parentIds=n.parentIds.filter(x=>x!==id);
+      if(Array.isArray(n.lineage)) n.lineage=n.lineage.filter(x=>x!==id);
+    }
+  }
+
+  saveRoster(rosterObj);
+  try{localStorage.setItem('roue_descendants_v18',JSON.stringify(descendants))}catch(e){}
+  try{localStorage.setItem('roue_npcs_v18',JSON.stringify(npcs))}catch(e){}
+  try{localStorage.setItem('roue_universe_meta_v18',JSON.stringify(universeMeta))}catch(e){}
+
+  // If the deleted fighter was the current generated/saved selection, clear the pointer.
+  try{
+    const current=currentCharacterId();
+    if(current===id) localStorage.removeItem('roue_currentCharacterId_v16');
+  }catch(e){}
+
+  // Keep numbering monotonic: deleting S1-005 must not make a future fighter reuse S1-005.
+  try{
+    const stored=Number(localStorage.getItem('roue_characterNumber_v16'))||1;
+    const nums=Object.keys(rosterObj)
+      .map(k=>Number((k||'').match(/^S1-(\d+)$/)?.[1]))
+      .filter(Number.isFinite);
+    const minimumNext=nums.length?Math.max(...nums)+1:1;
+    characterNumber=Math.max(stored,minimumNext);
+    localStorage.setItem('roue_characterNumber_v16',String(characterNumber));
+  }catch(e){}
+
+  deleteIllustration(id).catch(()=>{});
+  closeCharacterDetail();
+  renderRoster();
+  renderGenealogy();
+}
+
+
+function downloadJsonFile(data, filename){
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function safeJsonFilenamePart(value){
+  return String(value||'personnage')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-zA-Z0-9_-]+/g,'_')
+    .replace(/^_+|_+$/g,'') || 'personnage';
+}
+
+function exportAllCharactersJson(){
+  const roster=loadRoster();
+  const characters=Object.keys(roster).sort((a,b)=>{
+    const ma=(a||'').match(/^S(\d+)-(\d+)$/), mb=(b||'').match(/^S(\d+)-(\d+)$/);
+    const sa=ma?Number(ma[1]):9999, sb=mb?Number(mb[1]):9999;
+    if(sa!==sb) return sa-sb;
+    const na=ma?Number(ma[2]):9999, nb=mb?Number(mb[2]):9999;
+    return na-nb;
+  }).map(id=>roster[id]);
+  downloadJsonFile({
+    exportType:'Liste complète des personnages',
+    version:'V18.25',
+    exportedAt:new Date().toISOString(),
+    count:characters.length,
+    characters
+  },`Roue_de_la_Fortune_Personnages_V18_25.json`);
+}
+
+function exportCharacterJson(id){
+  const roster=loadRoster();
+  const character=roster[id];
+  if(!character){
+    alert('Personnage introuvable.');
+    return;
+  }
+  const name=safeJsonFilenamePart(character.name);
+  downloadJsonFile(character,`${id}_${name}.json`);
+}
+
+function renderRoster(){
+  if(!rosterList) return;
+  const roster=loadRoster();
+  const ids=Object.keys(roster).sort((a,b)=>{
+    const ma=(a||'').match(/^S(\d+)-(\d+)$/), mb=(b||'').match(/^S(\d+)-(\d+)$/);
+    const sa=ma?Number(ma[1]):9999, sb=mb?Number(mb[1]):9999;
+    if(sa!==sb) return sa-sb;
+    const na=ma?Number(ma[2]):9999, nb=mb?Number(mb[2]):9999;
+    return na-nb;
+  });
+
+  if(rosterCount) rosterCount.textContent=ids.length+' personnage'+(ids.length>1?'s':'');
+
+  const dstore=descendants(), dlist=Object.values(dstore).sort((a,b)=>a.id.localeCompare(b.id));
+  const nstore=npcs(), selected=dlist.filter(x=>x.selectedForSeason===seasonNumber+1).length;
+  const summary=document.getElementById('descendantSummary');
+  if(summary) summary.innerHTML=`👶 <b>${dlist.length} descendant${dlist.length>1?'s':''}</b> enregistré${dlist.length>1?'s':''} • 🧑 ${Object.keys(nstore).length} PNJ • 🎟️ ${selected} sélectionné${selected>1?'s':''} pour S${seasonNumber+1}`;
+
+  if(!ids.length){
+    rosterList.innerHTML='<div class="roster-empty">Aucun personnage sauvegardé.</div>';
+    renderGenealogy();
+    return;
+  }
+
+  const groups={};
+  for(const id of ids){
+    const m=id.match(/^S(\d+)-(\d+)$/);
+    const season=m?Number(m[1]):0;
+    (groups[season]??=[]).push(id);
+  }
+
+  const rosterExportBar=`<div class="roster-export-bar">
+    <button type="button" class="smallbtn" id="exportAllCharactersBtn">💾 Exporter toute la liste en JSON</button>
+  </div>`;
+
+  rosterList.innerHTML=rosterExportBar+Object.keys(groups).map(Number).sort((a,b)=>a-b).map(season=>{
+    const label=season>0?`S${season}`:'Autres';
+    const rows=groups[season].map(id=>{
+      const s=roster[id]||{};
+      return `<div class="compact-roster-row ${id===currentCharacterId()?'current':''}" data-roster-id="${id}">
+        ${illustrationThumbHtml(id)}
+        <div class="compact-roster-main">
+          <span class="compact-roster-id">${id}</span>
+          <span class="compact-roster-separator">—</span>
+          <span class="compact-roster-name">${s.name||'Sans nom'}</span>
+        </div>
+      </div>`;
+    }).join('');
+    return `<section class="season-roster-group">
+      <div class="season-roster-title">${label} —</div>
+      <div class="season-roster-list">${rows}</div>
+    </section>`;
+  }).join('');
+
+  const exportAllBtn=document.getElementById('exportAllCharactersBtn');
+  if(exportAllBtn) exportAllBtn.onclick=(ev)=>{
+    ev.stopPropagation();
+    exportAllCharactersJson();
+  };
+
+  rosterList.querySelectorAll('[data-roster-id]').forEach(el=>el.onclick=()=>{
+    const id=el.getAttribute('data-roster-id');
+    openCharacterDetail(id);
+  });
+  setTimeout(hydrateIllustrationThumbs,0);
+}
+
+let state,queue,index,spinning=false,auto=false,rotation=0,spinNumber=0; const cvs=document.getElementById('wheel'),ctx=cvs.getContext('2d');
+function valNum(s){return parseInt(s,10)} function log(cat,val){state.logs.push({cat,val});saveCurrentCharacter();render()}
+
+
+function alienStatModifierFor(label){
+  if(state.race!=='Extraterrestre') return 0;
+  applyAlienStateIfNeeded();
+  const aliases={
+    'Combat':'Combat','Power':'Pouvoir','Pouvoir':'Pouvoir',
+    'Weapon':'Arme','Arme':'Arme','Intelligence':'Intelligence',
+    'Résilience':'Résilience','Vitesse':'Vitesse','Force':'Force'
+  };
+  const key=aliases[label]||label;
+  return (state.alienBiology?.mods||[]).filter(x=>x.stat===key).reduce((s,x)=>s+x.value,0);
+}
+
+function applyAlienStateIfNeeded(){
+  if(state.race!=='Extraterrestre') return;
+  if(!state.alienBiology) state.alienBiology={trait:null,mods:[]};
+  if(!Array.isArray(state.alienBiology.mods)) state.alienBiology.mods=[];
+  state.racialTraits=state.racialTraits||[];
+}
+
+function reset(){state={alienBiology:null,id:currentCharacterId(),name:'',title:'',raceParts:[],race:'',gender:'',size:'',arch:'',archParts:[],slayerTarget:null,job:'',history:[],extra:'',extraDetail:[],extraStatMods:[],relationships:[],genealogy:{parents:[],children:[],generation:1,lineage:[],partnerLinks:[]},personality:'',stats:{},powers:[],weapons:[],weakness:'',blessings:[],curses:[],appearance:{},transformation:null,awakening:null,chi:null,prodigeMods:[],logs:[]};queue=[];index=0;rotation=0;spinNumber=0;buildInitial();render();drawWheel([W('?')])}
+function task(title,options,apply){return{title,options:()=>typeof options==='function'?options():options,apply}} function insert(tasks){queue.splice(index+1,0,...tasks)}
+function raceKey(p){if(p.startsWith('Homme-bête'))return null;return p} 
+function summonCountFromMastery(m){
+  m=Number(m)||0;
+  if(m<=3)return 1;if(m<=5)return 2;if(m<=7)return 3;
+  if(m===8)return 4;if(m===9)return 5;if(m===10)return 6;
+  return 6+(m-10);
+}
+function summonRaceMods(parts){
+  let s=[0,0,0,0,0];
+  for(const p of parts||[]){
+    const m=mods[raceKey(p)]||[0,0,0,0,0];
+    s=s.map((v,i)=>v+(m[i]||0));
+  }
+  return s;
+}
+function summonTraits(parts){
+  let out=[];
+  for(const p of parts||[]){
+    const k=raceKey(p);
+    for(const t of (RACIAL_TRAITS[k]||[]))if(!out.includes(t))out.push(t);
+  }
+  return out;
+}
+function beginSummonerInvocation(){
+  if(state.summon)return;
+  state.summon={raceParts:[],race:null,statsRaw:[null,null,null,null,null],statsFinal:null,traits:[]};
+  insert([task('Invocateur — Race invoquée',raceOptions,x=>resolveSummonRace(x))]);
+}
+function resolveSummonRace(r){
+  const s=state.summon;
+  if(r==='Divinité / Demi-dieu'){
+    insert([task('Invocation — Rang divin',EQ(['Demi-dieu','Divinité']),x=>resolveSummonRace(x))]);return;
+  }
+  if(r==='Homme-bête'){
+    insert([task('Invocation — Animal',EQ(animals),x=>{s.raceParts=[`Homme-bête ${x}`];finishSummonRace()})]);return;
+  }
+  if(r==='Hybride'){
+    insert([
+      task('Invocation hybride — Race A',()=>raceOptions().filter(x=>x.label!=='Hybride'),x=>{s._hybridA=x}),
+      task('Invocation hybride — Race B',()=>raceOptions().filter(x=>x.label!=='Hybride'),x=>{
+        const conv=v=>v==='Divinité / Demi-dieu'?'Demi-dieu':v;
+        s.raceParts=[conv(s._hybridA),conv(x)];delete s._hybridA;finishSummonRace();
+      })
+    ]);return;
+  }
+  if(r==='Extraterrestre'){
+    s.raceParts=['Extraterrestre'];
+    insert([task('Invocation — Biologie extraterrestre',EQ(alienBiologyTraits),x=>{s.alienTrait=x;finishSummonRace()})]);return;
+  }
+  s.raceParts=[r];
+  finishSummonRace();
+}
+function finishSummonRace(){
+  const s=state.summon;
+  s.race=s.raceParts.join(' / ');
+  s.traits=summonTraits(s.raceParts);
+  if(s.alienTrait&&!s.traits.includes(s.alienTrait))s.traits.push(s.alienTrait);
+  insert(statNames.map((name,i)=>task(`Invocation — ${name}`,centered,x=>{
+    s.statsRaw[i]=valNum(x);
+    if(s.statsRaw.every(v=>v!==null)){
+      const rm=summonRaceMods(s.raceParts);
+      s.statsFinal=s.statsRaw.map((v,j)=>Math.max(0,v+(rm[j]||0)));
+    }
+  })));
+}
+function summonerMastery(s=state){
+  if(!s?.powers?.length)return 0;
+  return Number(s.powers[0]?.mastery)||0;
+}
+function summonerSummaryHtml(s=state){
+  if(!s?.summon)return '';
+  const q=s.summon,m=summonerMastery(s),n=summonCountFromMastery(m);
+  const stats=(q.statsFinal||[]).map((v,i)=>`${statNames[i]} ${v}`).join(' • ');
+  return `<div class="box summoner-box"><b>🜲 Invocation</b><br>Race : <b>${q.race||'En attente'}</b><br>Nombre simultané : <b>${n}</b> <span class="muted">(maîtrise ${m})</span>${stats?`<br>Stats : ${stats}`:''}<br>Capacités raciales : ${(q.traits||[]).join(', ')||'—'}</div>`;
+}
+
+function activeArchs(){return state.archParts&&state.archParts.length?state.archParts:(state.arch?[state.arch]:[])} function modSum(){let s=[0,0,0,0,0];for(const p of state.raceParts){let m=mods[raceKey(p)]||beastMods[beastAnimal(p)];if(m)s=s.map((x,i)=>x+m[i])}for(const a of activeArchs()){let m=amods[a];if(m)s=s.map((x,i)=>x+m[i])}for(const pm of state.prodigeMods||[]){let i=statNames.indexOf(pm.stat);if(i>=0)s[i]+=pm.value}for(const em of state.extraStatMods||[]){let i=statNames.indexOf(em.stat);if(i>=0)s[i]+=em.value}if(state.race==='Extraterrestre'){for(const am of state.alienBiology?.mods||[]){let i=statNames.indexOf(am.stat);if(i>=0)s[i]+=am.value}}return s} function masteryMod(kind){let s=0;for(const p of state.raceParts){const a=beastAnimal(p);s+=(kind==='power'?(pmr[raceKey(p)]??beastPmr[a]):(wmr[raceKey(p)]??beastWmr[a]))||0;}for(const a of activeArchs())s+=(kind==='power'?pma[a]:wma[a])||0;if(state.race==='Extraterrestre')s+=alienStatModifierFor(kind==='power'?'Pouvoir':'Arme');return s}
+
+function statBreakdown(si){let arr=[];for(const p of state.raceParts){let m=mods[raceKey(p)]||beastMods[beastAnimal(p)];if(m&&m[si])arr.push({source:p,value:m[si]})}for(const a of activeArchs()){let m=amods[a];if(m&&m[si])arr.push({source:`Archétype ${a}`,value:m[si]})}for(const pm of state.prodigeMods||[]){if(statNames.indexOf(pm.stat)===si)arr.push({source:'Prodige',value:pm.value})}for(const em of state.extraStatMods||[]){if(statNames.indexOf(em.stat)===si)arr.push({source:em.source||'Extra',value:em.value})}if(state.race==='Extraterrestre'){for(const am of state.alienBiology?.mods||[]){if(statNames.indexOf(am.stat)===si)arr.push({source:'Adaptation extraterrestre',value:am.value})}}return arr}
+function replaceUniquePower(idx,label){insert([task(`${label} — Manifestation unique`,EQ(uniquePowers),u=>state.powers[idx].name=u)])}
+function replaceUniqueWeapon(idx,label){insert([task(`${label} — Manifestation unique`,EQ(uniqueWeapons),u=>state.weapons[idx].name=u)])}
+function enchantTasks(w,label,n){let ts=[];for(let j=1;j<=n;j++)ts.push(task(`${label} — Enchantement ${j}`,EQ(ench),e=>{if(e==='Enchantement unique')insert([task(`${label} — Enchantement unique ${j}`,EQ(uniqueEnchants),u=>w.ench.push(u))]);else w.ench.push(e)}));return ts}
+function armorStatBonus(level){return level<=3?1:level<=6?2:level<=8?3:level===9?4:5}
+function registerArmorStatBonus(a){if(!a||!a.power)return;let map={'Force augmentée':'Force','Mobilité augmentée':'Vitesse','Résistance physique accrue':'Résilience'};let stat=map[a.effect];if(!stat)return;state.extraStatMods=state.extraStatMods||[];state.extraStatMods.push({stat,value:armorStatBonus(a.power),source:`Armure spéciale — ${a.effect}`})}
+function addSlayerTarget(label='Slayer'){insert([task(`${label} — Race cible`,()=>raceOptions().filter(o=>o.label!=='Hybride'),r=>state.slayerTarget=r)])}
+function addPower(label='Pouvoir',chaosMode=false){insert([task(label,()=>EQ(chaosMode?chaos:powers),x=>{let p={name:x,mastery:null};state.powers.push(p);let follow=[];if(x==='Pouvoir unique')follow.push(task(`${label} — Manifestation unique`,EQ(uniquePowers),u=>p.name=u));follow.push(task(`${label} — Maîtrise`,centered,m=>{p.masteryBase=valNum(m);p.masteryMod=masteryMod('power');p.mastery=Math.max(0,p.masteryBase+p.masteryMod)}));insert(follow)})])}
+function addWeapon(label='Arme',forceRanged=false,after=null){insert([task(label,()=>weaponOptions(forceRanged),x=>{let w={name:x,mastery:null,ench:[]};state.weapons.push(w);let follow=[];if(x==='Arme unique')follow.push(task(`${label} — Manifestation unique`,EQ(uniqueWeapons),u=>w.name=u));if(x==='Arme improvisée')follow.push(task(`${label} — Objet improvisé`,EQ(improvisedWeapons),u=>w.name=`Arme improvisée — ${u}`));if(x==='Aucune arme'){w.mastery='—';w.enchantmentCount=0;if(after)after()}else{follow.push(task(`${label} — Maîtrise`,centered,m=>{w.masteryBase=valNum(m);w.masteryMod=masteryMod('weapon');w.mastery=Math.max(0,w.masteryBase+w.masteryMod);let n=(w.mastery>=8?2:(w.mastery>=5?1:0));w.directEnchantBonus=activeArchs().includes('Tireur')?1:0;n+=w.directEnchantBonus;w.enchantmentCount=n;insert(enchantTasks(w,label,n));if(after)after()}))}insert(follow)})])}
+function namingStyle(){let r=state.race||'';if(r.includes('N.E.X.U.S.'))return'Tech';if(r.includes('Dragon'))return'Dragon';if(r.includes('Démon'))return'Demon';if(r.includes('Ange'))return'Angel';if(r.includes('Elfe')||r.includes('Fée'))return'Elf';if(r.includes('Nain'))return'Dwarf';if(r.includes('Orc')||r.includes('Géant'))return'Orc';if(r.includes('Gobelin'))return'Goblin';if(r.includes('Esprit'))return'Spirit';if(r.includes('Humain'))return'Human';return'Default'}
+function addNameGeneration(){insert([task('Prénom — Structure',EQ(['Court','Long']),x=>{state._nameParts=[];let set=namingSets[namingStyle()]||namingSets.Default;let ts=[task('Prénom — Début',EQ(set.start),v=>state._nameParts.push(v))];if(x==='Long')ts.push(task('Prénom — Milieu',EQ(set.mid),v=>state._nameParts.push(v)));ts.push(task('Prénom — Fin',EQ(set.end),v=>{state._nameParts.push(v);let raw=state._nameParts.join('');state.name=raw.charAt(0).toUpperCase()+raw.slice(1);delete state._nameParts}));insert(ts)})])}
+function titleOptions(){
+  const out=['Sans titre'];
+  const add=(...xs)=>xs.filter(Boolean).forEach(x=>out.push(x));
+  const p=state.powers?.[0]?.name;
+  const w=state.weapons?.find(x=>x?.name && x.name!=='Aucune arme')?.name;
+  const archsNow=activeArchs();
+  const racesNow=state.raceParts||[];
+  const histories=state.history||[];
+  const pers=state.personality||'';
+  const ap=state.appearance||{};
+  const size=parseFloat(String(state.size||'').replace(',','.'))||0;
+
+  // Titres génériques : toujours possibles.
+  add(
+    'le Sans-Nom','l’Inattendu','le Briseur de Destin','la Main du Hasard',
+    'le Survivant impossible','l’Enfant du Hasard','le Vagabond','l’Étranger',
+    'l’Ombre errante','le Dernier Rempart','le Fléau des armées','le Briseur de lignes',
+    'le Marcheur solitaire','le Porteur de ruine','le Sans-Pitié','l’Insaisissable',
+    'l’Implacable','le Silencieux','le Maudit','le Béni','l’Élu',
+    'le Sans-Couronne','le Sans-Patrie','le Sans-Visage','le Sans-Peur',
+    'le Porte-Malheur','le Présage','le Fléau vivant','la Légende oubliée',
+    'le Fantôme des batailles','le Cauchemar des braves','le Dernier Debout',
+    'le Briseur de serments','le Marcheur des frontières','l’Indomptable',
+    'le Porteur d’aube','le Héraut du crépuscule','l’Enfant des ruines',
+    'le Voyageur sans fin','le Gardien oublié','le Chasseur d’horizons',
+    'l’Âme errante','le Cœur indomptable','le Visage du destin'
+  );
+
+  // Pouvoir / Chi.
+  if(p) add(
+    `le Fléau de ${p}`,`le Maître de ${p}`,`l’Héritier de ${p}`,
+    `le Cœur de ${p}`,`le Porteur de ${p}`,`l’Incarnation de ${p}`,
+    `l’Œil de ${p}`,`la Voix de ${p}`,`l’Ombre de ${p}`,
+    `le Héraut de ${p}`,`le Poing de ${p}`,`le Fléau né de ${p}`
+  );
+  if(state.chi) add(
+    'le Poing du Chi','le Maître intérieur','le Souffle transcendant',
+    'le Poing sans égal','le Corps sans faille','le Disciple éternel',
+    'le Poing silencieux','le Maître des méridiens','le Souffle vivant',
+    'Celui qui frappe sans haine'
+  );
+
+  // Arme réellement possédée.
+  if(w) {
+    const short=w.replace(/ .*/,'');
+    add(
+      `le Porte-${short}`,`le Maître du ${w}`,`le Fléau au ${w}`,
+      `l’Ombre au ${w}`,`le Vagabond au ${w}`,`le Gardien au ${w}`,
+      `le Duelliste au ${w}`,'la Lame errante','la Main armée'
+    );
+  }
+  if((state.weapons||[]).filter(x=>x?.name&&x.name!=='Aucune arme').length>=2)
+    add('aux Deux Armes','le Maître des armes jumelles','l’Arsenal vivant');
+
+  // Archétypes.
+  const archTitles={
+    'Guerrier':['le Fer de lance','le Vétéran','le Briseur de lignes'],
+    'Berserker':['la Fureur vivante','le Sang déchaîné','l’Inarrêtable'],
+    'Gardien':['le Rempart','le Bouclier vivant','le Gardien immuable'],
+    'Assassin':['la Mort silencieuse','l’Ombre meurtrière','la Lame invisible'],
+    'Artiste martial':['le Poing errant','le Corps d’acier','le Maître sans arme'],
+    'Tireur':['l’Œil mortel','le Tireur sans faille','la Mort lointaine'],
+    'Mage':['l’Arcaniste','le Tisseur de sorts','la Main des arcanes'],
+    'Sorcier':['le Porte-Chaos','le Sorcier maudit','la Voix interdite'],
+    'Érudit':['le Savant interdit','la Mémoire vivante','l’Œil du savoir'],
+    'Ingénieur':['l’Architecte','le Façonneur','le Maître des mécanismes'],
+    'Stratège':['le Maître du jeu','l’Œil du champ de bataille','le Calculateur de guerres'],
+    'Soutien':['le Porte-Espoir','la Main salvatrice','le Pilier'],
+    'Chasseur':['le Traqueur','le Prédateur patient','l’Œil des pistes'],
+    'Éclaireur':['l’Avant-Coureur','le Marcheur des ombres','l’Œil lointain'],
+    'Commandant':['le Général sans armée','la Voix du champ de bataille','le Meneur'],
+    'Trickster':['le Trompe-la-Mort','le Faiseur de tours','le Sourire du hasard'],
+    'Slayer':['le Tueur de monstres','le Fléau des puissants','le Chasseur ultime'],
+    'Invocateur':['le Maître des légions','le Porteur de meute','Celui qui n’est jamais seul'],
+    'Prodige':['le Surdoué','le Né pour vaincre','l’Exception'],
+    'Inclassable':['l’Inclassable','l’Anomalie','Celui qui défie les catégories']
+  };
+  for(const a of archsNow){
+    add(`le ${a} sans couronne`,`l’Œil du ${a}`,...(archTitles[a]||[]));
+  }
+  if(state.slayerTarget) add(`le Fléau des ${state.slayerTarget}s`,`le Chasseur de ${state.slayerTarget}s`);
+
+  // Races : seulement si elles existent réellement dans la fiche.
+  const raceTitles={
+    'Humain':['l’Enfant des hommes','le Mortel indomptable'],
+    'Elfe':['l’Enfant des bois','le Sang ancien'],
+    'Nain':['le Fils de la pierre','le Cœur de forge'],
+    'Orc':['le Croc de guerre','le Sang vert'],
+    'Gobelin':['le Petit Fléau','le Rusé'],
+    'Fée':['l’Enfant des lueurs','l’Aile errante'],
+    'Géant':['le Colosse','le Marche-Montagne'],
+    'Vampire':['le Sang éternel','le Croc nocturne','l’Enfant de la nuit'],
+    'Loup-garou':['le Croc lunaire','la Bête sous la peau','l’Enfant de la lune'],
+    'Démon':['le Sang infernal','le Fléau des profondeurs'],
+    'Ange':['l’Aile céleste','le Héraut des cieux'],
+    'Esprit':['l’Âme sans corps','le Murmure du monde'],
+    'Dragon humanoïde':['le Sang du dragon','l’Héritier des écailles'],
+    'Golem / Artificiel':['le Corps façonné','l’Inusable'],
+    'Extraterrestre':['l’Enfant des étoiles','l’Étranger des mondes'],
+    'Demi-dieu':['le Sang divin','l’Héritier des dieux'],
+    'Divinité':['l’Immortel','la Présence divine'],
+    'Titan':['le Sang des Titans','le Colosse ancien'],
+    'Titan primordial':['le Premier Colosse','le Vestige primordial'],
+    'Squelette':['le Sans-Chair','l’Os errant'],
+    'Liche':['l’Immortel profane','le Seigneur du phylactère'],
+    'Cyborg':['le Sang d’acier','la Chair mécanique'],
+    'N.E.X.U.S.':['l’Être unifié','la Singularité vivante']
+  };
+  for(const r of racesNow){
+    add(`le Dernier ${r}`,`la Terreur ${r}`,...(raceTitles[r]||[]));
+    if(String(r).startsWith('Homme-bête ')){
+      const animal=String(r).slice('Homme-bête '.length);
+      add(`le Sang du ${animal}`,`le ${animal} errant`,`le Croc du ${animal}`);
+    }
+  }
+
+  // Histoire : on ne propose le titre que si l’événement existe.
+  for(const x of histories){
+    const z=String(x).toLowerCase();
+    if(z.includes('orphelin')) add('l’Orphelin','l’Enfant sans foyer');
+    if(z.includes('esclave')) add('le Briseur de chaînes','l’Affranchi');
+    if(z.includes('vétéran')) add('le Vétéran des guerres','le Survivant des champs de bataille');
+    if(z.includes('rescapé')) add('le Rescapé','le Survivant d’un autre monde');
+    if(z.includes('revenu')||z.includes('morts')) add('le Revenant','Celui qui refusa la mort');
+    if(z.includes('disciple')) add('l’Héritier du maître','le Disciple errant');
+    if(z.includes('chasseur de monstres')) add('le Fléau des monstres','le Traqueur de bêtes');
+    if(z.includes('formé depuis')) add('l’Arme façonnée','l’Enfant du combat');
+    if(z.includes('effacé de l’histoire')) add('l’Oublié','Celui dont les ruines se souviennent');
+  }
+
+  // Personnalité.
+  const persTitles={
+    'Froid':['le Cœur froid','l’Impassible'],
+    'Calculateur':['le Calculateur','Celui qui prévoit tout'],
+    'Colérique':['la Colère vivante','le Sang bouillant'],
+    'Pacifiste':['le Guerrier sans haine','le Pacifique'],
+    'Lâche':['le Fuyard','le Survivant prudent'],
+    'Discipliné':['le Discipliné','la Volonté de fer']
+  };
+  add(...(persTitles[pers]||[]));
+
+  // Apparence et gabarit.
+  if(ap.sign==='Cicatrices') add('le Balafré','aux Mille Cicatrices');
+  if(ap.sign==='Yeux inhabituels') add('aux Yeux étranges','le Regard impossible');
+  if(ap.sign==='Cape / manteau remarquable') add('au Manteau errant','la Cape noire');
+  if(ap.sign==='Masque') add('le Masqué','le Visage caché');
+  if(ap.c1) add(`le ${ap.c1}`); // ex. "le Cuivre", volontairement surnom simple
+  if(size>=3) add('le Colosse','le Géant errant');
+  if(size>0 && size<=1) add('le Petit Fléau','le Minuscule');
+
+  return EQ([...new Set(out)]);
+}
+function transformationBonus(level){return level<=3?1:level<=6?2:level<=8?3:level===9?4:5}
+
+function abilityCount(level){return level>=10?3:level>=8?2:1}
+function creatureDetailTask(prefix,type,setter){let map={
+'Félin sauvage':wildFelines,'Reptile':reptiles,'Créature aquatique':aquaticCreatures,'Insecte':insects,'Petit esprit':smallSpirits,'Créature élémentaire':elementalCreatures,'Créature extraterrestre':alienCreatures,'Créature fantastique':fantasyCreatures,
+'Félin géant':giantFelines,'Oiseau géant':giantBirds,'Reptile géant':giantReptiles,'Monture mécanique':mechanicalMounts
+};let pool=map[type];if(!pool)return;insert([task(`${prefix} — Espèce / manifestation`,EQ(pool),u=>setter(u))])}
+function artifactFormDetail(kind,obj){if(obj.form==='Relique')insert([task(`${kind} — Relique précise`,EQ(relicForms),u=>obj.form=`Relique — ${u}`)]);else if(obj.form==='Objet étrange')insert([task(`${kind} — Objet étrange précis`,EQ(strangeObjects),u=>obj.form=u)])}
+
+function addFamiliar(){let f={kind:'Familier',type:null,power:null,abilities:[]};state.extraDetail.push(f);insert([task('Familier — Type',EQ(familiarTypes),v=>{f.type=v;if(v==='Familier unique')insert([task('Familier unique — Manifestation',EQ(uniqueFamiliars),u=>f.type=u)]);else creatureDetailTask('Familier',v,u=>f.type=`${v} — ${u}`)}),task('Familier — Puissance',centered,v=>{f.power=valNum(v);let ts=[];for(let i=1;i<=abilityCount(f.power);i++)ts.push(task(`Familier — Capacité ${i}`,()=>EQ(familiarAbilities.filter(a=>!f.abilities.includes(a))),a=>{f.abilities.push(a);if(a==='Capacité unique')insert([task(`Familier — Capacité ${i} unique`,EQ(uniqueFamiliarAbilities),u=>f.abilities[f.abilities.length-1]=u)])}));insert(ts)})])}
+function addMount(){let m={kind:'Monture',type:null,power:null,abilities:[],scale:null};state.extraDetail.push(m);insert([task('Monture — Type',EQ(mountTypes),v=>{m.type=v;if(v==='Monture unique')insert([task('Monture unique — Manifestation',EQ(uniqueMounts),u=>m.type=u)]);else creatureDetailTask('Monture',v,u=>m.type=`${v} — ${u}`)}),task('Monture — Puissance',centered,v=>{m.power=valNum(v);let n=abilityCount(m.power),ts=[];for(let i=1;i<=n;i++)ts.push(task(`Monture — Capacité ${i}`,()=>EQ(mountAbilities.filter(a=>!m.abilities.includes(a))),a=>{m.abilities.push(a);if(a==='Capacité unique')insert([task(`Monture — Capacité ${i} unique`,EQ(uniqueFamiliarAbilities),u=>m.abilities[m.abilities.length-1]=u)])}));insert(ts)}),task('Monture — Gabarit',()=>{let giant=state.raceParts.some(r=>r.includes('Titan')||r==='Géant');return EQ(giant?['Gigantesque adaptée au porteur','Colossale adaptée au porteur','Titanesque adaptée au porteur']:['Adaptée au porteur','Grande','Massive'])},v=>m.scale=v)])}
+function addArtificialCompanion(){let c={kind:'Compagnon artificiel',type:null,power:null,abilities:[]};state.extraDetail.push(c);insert([task('Compagnon artificiel — Type',EQ(artificialCompanionTypes),v=>{c.type=v;if(v==='Compagnon artificiel unique')insert([task('Compagnon artificiel unique — Manifestation',EQ(uniqueArtificialCompanions),u=>c.type=u)])}),task('Compagnon artificiel — Puissance',centered,v=>{c.power=valNum(v);let ts=[];for(let i=1;i<=abilityCount(c.power);i++)ts.push(task(`Compagnon artificiel — Capacité ${i}`,()=>EQ(artificialAbilities.filter(a=>!c.abilities.includes(a))),a=>{c.abilities.push(a);if(a==='Capacité unique')insert([task(`Compagnon artificiel — Capacité ${i} unique`,EQ(uniqueFamiliarAbilities),u=>c.abilities[c.abilities.length-1]=u)])}));insert(ts)})])}
+function addLegendaryFamiliar(){let f={kind:'Familier légendaire',type:null,name:null,power:null,abilities:[],mythic:false};state.extraDetail.push(f);insert([task('Familier légendaire — Nature',EQ(legendaryFamiliarTypes),v=>f.type=v),task('Familier légendaire — Manifestation',EQ(legendaryFamiliarNames),v=>f.name=v),task('Familier légendaire — Puissance',centered,v=>{f.power=valNum(v);if(f.power===10){f.mythic=true;insert([task('Familier mythique — Manifestation',EQ(mythicFamiliars),u=>f.name=u)])}let ts=[];for(let i=1;i<=abilityCount(f.power);i++)ts.push(task(`Familier légendaire — Capacité ${i}`,()=>EQ(legendaryAbilities.filter(a=>!f.abilities.includes(a))),a=>f.abilities.push(a)));insert(ts)})])}
+
+function addTransformation(){insert([task('Transformation — Type',EQ(transformationTypes),x=>{state.transformation={type:x,level:null,stats:[],bonus:0,trait:null};state.extraDetail.push({kind:'Transformation',ref:state.transformation});if(x==='Transformation improbable')insert([task('Transformation improbable — Manifestation',EQ(improbableTransformations),u=>state.transformation.type=u)]);if(x==='Transformation unique')insert([task('Transformation unique — Manifestation',EQ(uniqueTransformations),u=>state.transformation.type=u)])}),task('Transformation — Niveau',centered,x=>{state.transformation.level=valNum(x);state.transformation.bonus=transformationBonus(state.transformation.level)}),task('Transformation — Stat renforcée 1',EQ(statNames),x=>state.transformation.stats.push(x)),task('Transformation — Stat renforcée 2',()=>EQ(statNames.filter(s=>!state.transformation.stats.includes(s))),x=>state.transformation.stats.push(x)),task('Transformation — Trait temporaire',EQ(transformationTraits),x=>state.transformation.trait=x)])}
+function awakeningBonus(level){return level<=3?2:level<=6?3:level<=8?4:level===9?5:6}
+function addAwakening(){insert([task('Éveil — Niveau',centered,x=>{let level=valNum(x);state.awakening={level,primary:null,primaryBonus:awakeningBonus(level),secondary:null,secondaryBonus:level>=7?2:0,evolution:null};state.extraDetail.push({kind:'Éveil',ref:state.awakening})}),task('Éveil — Stat principale',EQ(statNames),x=>{state.awakening.primary=x;let follow=[];if(state.awakening.level>=7)follow.push(task('Éveil — Stat secondaire',()=>EQ(statNames.filter(s=>s!==state.awakening.primary)),y=>state.awakening.secondary=y));if(state.awakening.level===10)follow.push(task('Éveil — Évolution temporaire',EQ(awakeningEvolutions),y=>state.awakening.evolution=y));if(follow.length)insert(follow)})])}
+function addRaceResult(r,depth=0){
+if(r==='Extraterrestre'){
+  state.raceParts.push('Extraterrestre');updateRace();
+  state.alienBiology={trait:null,mods:[]};
+  const alienCategories=['Combat','Pouvoir','Arme','Intelligence','Résilience','Vitesse','Force'];
+  insert([
+    task('Extraterrestre — Biologie',EQ(alienBiologyTraits),x=>state.alienBiology.trait=x),
+    task('Extraterrestre — Adaptation +2',()=>EQ(alienCategories),x=>state.alienBiology.mods=[{stat:x,value:2}]),
+    task('Extraterrestre — Adaptation +1',()=>EQ(alienCategories.filter(x=>!state.alienBiology.mods.some(m=>m.stat===x))),x=>state.alienBiology.mods.push({stat:x,value:1})),
+    task('Extraterrestre — Adaptation −1',()=>EQ(alienCategories.filter(x=>!state.alienBiology.mods.some(m=>m.stat===x))),x=>state.alienBiology.mods.push({stat:x,value:-1}))
+  ]);
+  return;
+}
+if(r==='Divinité / Demi-dieu'){insert([task('Sous-race divine',EQ(['Demi-dieu','Divinité']),x=>{state.raceParts.push(x);updateRace()})]);return} if(r==='Homme-bête'){insert([task('Animal de l’Homme-bête',EQ(animals),x=>{if(x==='Animal fantastique'){insert([task('Animal fantastique — Espèce',EQ(fantasyCreatures),u=>{state.raceParts.push('Homme-bête '+u);updateRace()})])}else{state.raceParts.push('Homme-bête '+x);updateRace()}})]);return} if(r==='Titan'){state.raceParts.push('Titan');updateRace();insert([task('Origine du Titan',raceOptions(),x=>{if(x==='Titan'){state.raceParts[state.raceParts.lastIndexOf('Titan')]='Titan primordial';updateRace();insert([task('Origine du Titan primordial',raceOptions(['Titan']),y=>addRaceResult(y))])}else addRaceResult(x)})]);return} if(r==='Squelette'){state.raceParts.push('Squelette');updateRace();insert([task('Origine du Squelette',raceOptions(),x=>{if(x==='Squelette'){state.raceParts[state.raceParts.lastIndexOf('Squelette')]='Liche';updateRace();insert([task('Origine de la Liche',raceOptions(['Squelette']),y=>addRaceResult(y))])}else addRaceResult(x)})]);return} if(r==='Cyborg'){state.raceParts.push('Cyborg');updateRace();insert([task('Origine du Cyborg',raceOptions(),x=>{if(x==='Cyborg'){state.raceParts=['N.E.X.U.S.'];updateRace()}else addRaceResult(x)})]);return} if(r==='Hybride'){state.raceParts.push('Hybride');updateRace();insert([task('Race hybride A',raceOptions(['Hybride']),x=>addRaceResult(x)),task('Race hybride B',raceOptions(['Hybride']),x=>addRaceResult(x))]);return} state.raceParts.push(r);updateRace() }
+function updateRace(){state.race=state.raceParts.join(' / ')}
+function sizeOptions(){let titan=state.raceParts.some(x=>x==='Titan'||x==='Titan primordial'), giant=state.raceParts.includes('Géant');if(titan||giant)return EQ(Array.from({length:28},(_,i)=>`${i+3} m`));return EQ(Array.from({length:28},(_,i)=>(0.3+i*.1).toFixed(2)+' m'))}
+function addBlessing(source){insert([task(`${source} — Bénédiction`,EQ(blessings),x=>{state._pendingBless=x;if(x==='Bénédiction unique')insert([task(`${source} — Bénédiction unique`,EQ(uniqueBlessings),u=>state._pendingBless=u)])}),task(`${source} — Intensité`,intensity,x=>{state.blessings.push({source,name:state._pendingBless,intensity:valNum(x)});delete state._pendingBless})])}
+function addCurse(source){insert([task(`${source} — Malédiction`,EQ(curses),x=>{state._pendingCurse=x;if(x==='Malédiction unique')insert([task(`${source} — Malédiction unique`,EQ(uniqueCurses),u=>state._pendingCurse=u)])}),task(`${source} — Intensité`,intensity,x=>{state.curses.push({source,name:state._pendingCurse,intensity:valNum(x)});delete state._pendingCurse})])}
+function addArtifact(kind){insert([task(`${kind} — Forme`,EQ(artifactForms),x=>{state._art={kind,form:x};if(x==='Forme unique')insert([task(`${kind} — Forme unique`,EQ(uniqueArtifactForms),u=>state._art.form=u)]);else artifactFormDetail(kind,state._art)}),task(`${kind} — Effet`,EQ(artifactEffects),x=>{state._art.effect=x;if(x==='Pouvoir d’artefact unique')insert([task(`${kind} — Pouvoir unique`,EQ(uniqueArtifactEffects),u=>state._art.effect=u)])}),task(`${kind} — Puissance`,centered,x=>{state._art.power=valNum(x);state.extraDetail.push(state._art);state._art=null}),...(kind==='Objet béni'?[task('Objet béni — Bénédiction',EQ(blessings),x=>{state._pendingBless=x;if(x==='Bénédiction unique')insert([task('Objet béni — Bénédiction unique',EQ(uniqueBlessings),u=>state._pendingBless=u)])}),task('Objet béni — Intensité de bénédiction',intensity,x=>{state.blessings.push({source:'Objet béni',name:state._pendingBless,intensity:valNum(x)});delete state._pendingBless})]:[]),...(kind==='Objet maudit'?[task('Objet maudit — Malédiction',EQ(curses),x=>{state._pendingCurse=x;if(x==='Malédiction unique')insert([task('Objet maudit — Malédiction unique',EQ(uniqueCurses),u=>state._pendingCurse=u)])}),task('Objet maudit — Intensité de malédiction',intensity,x=>{state.curses.push({source:'Objet maudit',name:state._pendingCurse,intensity:valNum(x)});delete state._pendingCurse})]:[])])}
+function addPower(label='Pouvoir'){insert([task(label,state.archParts.includes('Sorcier')||state.arch==='Sorcier'?EQ(chaos):EQ(powers),x=>{state.powers.push({name:x,mastery:null});state._powerIndex=state.powers.length-1;if(x==='Pouvoir unique')replaceUniquePower(state._powerIndex,label)}),task(`${label} — Maîtrise`,centered,x=>{state.powers[state._powerIndex].masteryBase=valNum(x);state.powers[state._powerIndex].masteryMod=masteryMod('power');state.powers[state._powerIndex].mastery=Math.max(0,state.powers[state._powerIndex].masteryBase+state.powers[state._powerIndex].masteryMod);delete state._powerIndex})])}
+function noWeakChance(r){if(r<=2)return 0;if(r<=4)return 2;if(r===5)return 5;if(r===6)return 8;if(r===7)return 12;if(r===8)return 16;if(r===9)return 20;if(r===10)return 25;if(r===11)return 30;if(r===12)return 35;if(r===13)return 40;if(r===14)return 45;return 50}
+function weaknessTypeOptions(){return [W('Aucune faiblesse',50),W('Faiblesse improbable',25),W('Faiblesse classique',25)]}
+function applyAscensionMods(kind){const map={
+'Demi-dieu':[2,2,1,2,2],
+'Divinité':[3,4,2,3,3]
+};const arr=map[kind];if(!arr)return;['Combat','Force','Intelligence','Résilience','Vitesse'].forEach((st,i)=>{if(state.stats[st]!=null){state.stats[st]+=arr[i];let d=state.stats[st+'_detail'];if(d){d.mod+=arr[i];d.breakdown.push({source:kind+' (ascension Chi)',value:arr[i]})}}});}
+
+function addLegendaryExtra(){insert([task('Extra légendaire — Catégorie',EQ(['Artefact légendaire','Objet béni légendaire','Familier mythique','Armure légendaire','Technique légendaire','Pouvoir dormant légendaire','Relique cosmique','Compagnon légendaire']),y=>{
+ let d={kind:'Extra légendaire',manifestation:y,detail:null,power:null,ability:null,mastery:null};state.extraDetail.push(d);
+ if(y==='Artefact légendaire'){insert([task('Artefact légendaire — Forme',EQ(artifactForms),v=>{d.detail=v;if(v==='Relique')insert([task('Artefact légendaire — Relique précise',EQ(relicForms),u=>d.detail=`Relique — ${u}`)]);else if(v==='Objet étrange')insert([task('Artefact légendaire — Objet étrange précis',EQ(strangeObjects),u=>d.detail=u)])}),task('Artefact légendaire — Pouvoir',EQ(artifactEffects),v=>d.ability=v),task('Artefact légendaire — Puissance',centered,v=>d.power=valNum(v))])}
+ else if(y==='Objet béni légendaire'){insert([task('Objet béni légendaire — Forme',EQ(artifactForms),v=>{d.detail=v;if(v==='Relique')insert([task('Objet béni légendaire — Relique précise',EQ(relicForms),u=>d.detail=`Relique — ${u}`)]);else if(v==='Objet étrange')insert([task('Objet béni légendaire — Objet étrange précis',EQ(strangeObjects),u=>d.detail=u)])}),task('Objet béni légendaire — Pouvoir',EQ(artifactEffects),v=>d.ability=v),task('Objet béni légendaire — Puissance',centered,v=>d.power=valNum(v)),task('Objet béni légendaire — Bénédiction',EQ(blessings),v=>d.blessing=v),task('Objet béni légendaire — Intensité',intensity,v=>d.intensity=valNum(v))])}
+ else if(y==='Familier mythique'){insert([task('Familier mythique — Manifestation',EQ(mythicFamiliars),v=>d.detail=v),task('Familier mythique — Puissance',centered,v=>d.power=valNum(v)),task('Familier mythique — Capacité',EQ(legendaryAbilities),v=>d.ability=v)])}
+ else if(y==='Armure légendaire'){insert([task('Armure légendaire — Type',EQ(legendaryArmorTypes),v=>d.detail=v),task('Armure légendaire — Propriété',EQ(legendaryArmorEffects),v=>d.ability=v),task('Armure légendaire — Puissance',centered,v=>d.power=valNum(v))])}
+ else if(y==='Technique légendaire'){insert([task('Technique légendaire — Nom',EQ(legendaryTechniques),v=>d.detail=v),task('Technique légendaire — Maîtrise',centered,v=>d.mastery=valNum(v))])}
+ else if(y==='Pouvoir dormant légendaire'){insert([task('Pouvoir dormant légendaire — Nature',EQ(legendaryDormantPowers),v=>d.detail=v),task('Pouvoir dormant légendaire — Potentiel',centered,v=>d.power=valNum(v)),task('Pouvoir dormant légendaire — Déclencheur',EQ(['Danger mortel','Colère extrême','Protection d’un proche','Blessure critique','Épuisement total','Contact avec une énergie similaire','Lieu particulier','Émotion intense','Défaite imminente','Déclencheur unique']),v=>d.ability=v)])}
+ else if(y==='Relique cosmique'){insert([task('Relique cosmique — Nature',EQ(legendaryRelics),v=>d.detail=v),task('Relique cosmique — Effet',EQ(artifactEffects),v=>d.ability=v),task('Relique cosmique — Puissance',centered,v=>d.power=valNum(v))])}
+ else if(y==='Compagnon légendaire'){insert([task('Compagnon légendaire — Nature',EQ(legendaryCompanions),v=>d.detail=v),task('Compagnon légendaire — Puissance',centered,v=>d.power=valNum(v)),task('Compagnon légendaire — Capacité',EQ(legendaryAbilities),v=>d.ability=v)])}
+})])}
+function buildInitial(){queue=[task('Race',raceOptions(),x=>addRaceResult(x)),task('Genre',[W('Homme',45),W('Femme',45),W('Autre / indéterminé',10)],x=>state.gender=x),task('Taille',sizeOptions,x=>{let n=parseFloat(x);if(state.raceParts.includes('Titan primordial'))n=Math.round(n*1.75*100)/100;state.size=n+' m'}),task('Archétype',EQ(archs),x=>{state.arch=x;state.archParts=[x];if(x==='Inclassable')insert([task('Inclassable — Archétype A',EQ(archs.filter(a=>a!=='Inclassable')),a=>{state.archParts=[a];if(a==='Slayer')addSlayerTarget('Slayer');if(a==='Invocateur')beginSummonerInvocation()}),task('Inclassable — Archétype B',EQ(archs.filter(a=>a!=='Inclassable')),a=>{state.archParts.push(a);state.arch=`Inclassable (${state.archParts.join(' + ')})`;if(a==='Slayer')addSlayerTarget('Slayer');if(a==='Invocateur')beginSummonerInvocation()})]);else if(x==='Slayer')addSlayerTarget('Slayer');if(x==='Invocateur')beginSummonerInvocation();if(x==='Prodige')insert([task('Prodige — Stat majeure',EQ(statNames),a=>{state.prodigeMods=[{stat:a,value:4}]}),task('Prodige — Stat secondaire',()=>EQ(statNames.filter(s=>s!==state.prodigeMods[0]?.stat)),a=>state.prodigeMods.push({stat:a,value:2}))])}),task('Métier',EQ(jobs),x=>{state.job=x;if(x==='Métier improbable')insert([task('Métier improbable — Manifestation',EQ(improbableJobs),u=>state.job=u)]);else if(x==='Métier légendaire'){let j={kind:'Métier légendaire',name:null,ability:null};state.extraDetail.push(j);insert([task('Métier légendaire — Profession',EQ(legendaryJobs),v=>j.name=v),task('Métier légendaire — Capacité',EQ(legendaryJobAbilities),v=>{j.ability=v;if(v==='Capacité professionnelle unique')insert([task('Métier légendaire — Capacité unique',EQ(uniqueLegendaryJobAbilities),u=>j.ability=u)])}),task('Métier légendaire — Finalisation',[W('Inscrire le métier')],()=>state.job=j.name||'Métier légendaire')])}}),task('Nombre d’histoires',[W('1 histoire',90),W('2 histoires',10)],x=>{let n=x.startsWith('2')?2:1;let ts=[];for(let j=1;j<=n;j++)ts.push(task(`Histoire ${j}`,EQ(histories),h=>{state.history.push(h);if(h==='Béni')addBlessing(`Histoire ${j}`);if(h==='Maudit')addCurse(`Histoire ${j}`);if(h==='Histoire improbable')insert([task(`Histoire ${j} improbable — Manifestation`,EQ(improbableHistories),u=>{state.history[state.history.length-1]=u})]);if(h==='Histoire légendaire'){let hi=state.history.length-1;insert([task(`Histoire ${j} légendaire — Événement`,EQ(legendaryHistories),u=>{state.history[hi]=u;if(u==='Histoire légendaire unique')insert([task(`Histoire ${j} légendaire — Manifestation unique`,EQ(uniqueLegendaryHistories),z=>state.history[hi]=z)])})])}}));insert(ts)}),task('Extra',EQ(extras),x=>{state.extra=x;if(x==='Familier')addFamiliar();else if(x==='Monture')addMount();else if(x==='Compagnon artificiel')addArtificialCompanion();else if(x==='Familier légendaire')addLegendaryFamiliar();else if(x==='Objet béni'||x==='Objet maudit'||x==='Artefact')addArtifact(x);else if(x==='Bénédiction')addBlessing('Extra');else if(x==='Deuxième pouvoir')state._extraPower=true;else if(x==='Deuxième arme')state._extraWeapon=true;else if(x==='Transformation')addTransformation();else if(x==='Éveil')addAwakening();else if(x==='Technique secrète'){let t={kind:'Technique secrète',name:null,mastery:null};state.extraDetail.push(t);insert([task('Technique secrète — Type',EQ(secretTechniques),v=>{t.name=v;if(v==='Technique unique')insert([task('Technique secrète — Manifestation unique',EQ(uniqueSecretTechniques),u=>t.name=u)])}),task('Technique secrète — Maîtrise',centered,v=>t.mastery=valNum(v))])}else if(x==='Armure spéciale'){let a={kind:'Armure spéciale',type:null,effect:null,power:null};state.extraDetail.push(a);insert([task('Armure spéciale — Type',EQ(armorTypes),v=>a.type=v),task('Armure spéciale — Propriété',EQ(armorEffects),v=>{a.effect=v;if(v==='Propriété unique')insert([task('Armure spéciale — Propriété unique',EQ(armorUniqueEffects),u=>a.effect=u)])}),task('Armure spéciale — Puissance',centered,v=>{a.power=valNum(v);registerArmorStatBonus(a)})])}else if(x==='Lien mystique'){let l={kind:'Lien mystique',target:null,nature:null,power:null,ownership:null,linkedItem:null,relationship:null};state.extraDetail.push(l);insert([task('Lien mystique — Cible',EQ(mysticLinkTargets),v=>{l.target=v;
+if(v==='Une arme consciente'){l.ownership='Possédé par le personnage';l.linkedItem='Arme équipée';}
+else if(v==='Un artefact ancien'){l.ownership='Possédé par le personnage';l.linkedItem='Artefact possédé';}
+else if(v==='Un autre personnage'){l.ownership='Lié à un autre personnage';let r={kind:'Lien interpersonnage',status:null,type:null,targetId:null,targetName:null};l.relationship=r;state.relationships.push(r);insert([task('Lien — Statut du personnage',EQ(otherCharacterStatus),u=>{r.status=u;if(u==='Personnage déjà existant'){insert([task('Lien — Personnage existant',()=>{let roster=loadRoster();let candidates=Object.values(roster||{}).filter(c=>c&&c.id&&c.id!==state.id);return candidates.length?EQ(candidates.map(c=>`${c.id} — ${c.name||'Sans nom'}`)):[W('Aucun autre personnage sauvegardé')];},z=>{if(z==='Aucun autre personnage sauvegardé'){r.targetId=null;r.targetName=null;r.status='Personnage déjà existant — aucun candidat disponible';return;}let sep=z.indexOf(' — ');r.targetId=sep>=0?z.slice(0,sep):z;let roster=loadRoster();r.targetName=roster?.[r.targetId]?.name||(sep>=0?z.slice(sep+3):null);l.ownership=`Lié à ${r.targetId}${r.targetName?` — ${r.targetName}`:''}`;} )])}}),task('Lien — Nature de la relation',EQ(relationshipTypes),u=>r.type=u)])}
+else if(v==='Cible unique')insert([task('Lien mystique — Cible unique',EQ(mysticUniqueTargets),u=>l.target=u)])}),
+task('Lien mystique — Nature',EQ(mysticLinkNatures),v=>{l.nature=v;if(v==='Effet unique')insert([task('Lien mystique — Effet unique',EQ(mysticUniqueEffects),u=>l.nature=u)])}),
+task('Lien mystique — Intensité',centered,v=>{l.power=valNum(v);
+if(l.target==='Une arme consciente'){let owned=state.weapons.find(w=>w.name&&w.name!=='Aucune arme');if(owned){l.linkedItem=owned.name;owned.conscious=true;owned.mysticLink=true}else l.linkedItem='Arme consciente possédée (à matérialiser)';}
+if(l.target==='Un artefact ancien'){let art=state.extraDetail.find(o=>o!==l&&(o.kind==='Artefact'||o.kind==='Objet béni'||o.kind==='Objet maudit'||o.kind==='Extra légendaire'));if(art)l.linkedItem=art.form||art.manifestation||'Artefact possédé';}
+})])}else if(x==='Consommable rare'){let d={kind:'Consommable rare',manifestation:null};state.extraDetail.push(d);insert([task('Consommable rare — Nature',EQ(rareConsumables),u=>d.manifestation=u)])}else if(x==='Sens extraordinaire'){let d={kind:'Sens extraordinaire',manifestation:null};state.extraDetail.push(d);insert([task('Sens extraordinaire — Nature',EQ(extraordinarySenses),u=>d.manifestation=u)])}else if(x==='Aura dominante'){let d={kind:'Aura dominante',manifestation:null};state.extraDetail.push(d);insert([task('Aura dominante — Nature',EQ(dominantAuras),u=>d.manifestation=u),task('Aura dominante — Intensité',centered,u=>d.power=valNum(u))])}else if(x==='Mutation'){let d={kind:'Mutation',manifestation:null};state.extraDetail.push(d);insert([task('Mutation — Nature',EQ(mutations),u=>d.manifestation=u)])}else if(x==='Double'){let d={kind:'Double',manifestation:null,power:null};state.extraDetail.push(d);insert([task('Double — Type',EQ(doubles),u=>{d.manifestation=u;if(u==='Double unique')insert([task('Double unique — Manifestation',EQ(doubleUnique),z=>d.manifestation=z)])}),task('Double — Puissance',[10,20,30,40,50,60,70,80,90,100].map(n=>W(n+' %')),u=>d.power=parseInt(u))])}else if(x==='Possède un enfant'){
+  let c={kind:'Enfant',status:'Naissance en attente de résolution',birthEventId:`BIRTH-${state.id}`,childIds:[],otherParentId:null,origin:null,birthSeason:seasonNumber,eligibleSeason:seasonNumber+1};
+  state.extraDetail.push(c);
+}else if(x==='Extra improbable')insert([task('Extra improbable — Manifestation',EQ(improbableExtras),u=>state.extraDetail.push({kind:'Extra improbable',manifestation:u}))]);else if(x==='Extra légendaire')addLegendaryExtra()}),task('Personnalité',EQ(personalities),x=>{state.personality=x;if(x==='Personnalité unique')insert([task('Personnalité unique — manifestation',EQ(uniquePersonalities),u=>state.personality=u)])}),...['Combat','Force','Intelligence','Résilience','Vitesse'].map((stat,si)=>task(`Stat — ${stat}`,centered,x=>{let base=valNum(x),m=modSum()[si];state.stats[stat]=Math.max(0,base+m);state.stats[stat+'_detail']={base,mod:m,breakdown:statBreakdown(si)}})),task('Pouvoir / Chi',()=>activeArchs().includes('Artiste martial')?[W('Chi')]:EQ(activeArchs().includes('Sorcier')?chaos:powers),x=>{if(activeArchs().includes('Artiste martial')){insert([task('Chi — Rang',()=>centered().map(o=>W(`${valNum(o.label)} — ${chiRanks[valNum(o.label)-1]}`,o.w)),m=>{let n=valNum(m);state.chi={rank:n,label:chiRanks[n-1]};if(n===9){state.raceParts.push('Ascension Demi-dieu');applyAscensionMods('Demi-dieu')}else if(n===10){state.raceParts.push('Martial God');applyAscensionMods('Divinité')}})]);return;}let p={name:x,mastery:null};state.powers.push(p);let follow=[];if(x==='Pouvoir unique')follow.push(task('Pouvoir principal — Manifestation unique',EQ(uniquePowers),u=>p.name=u));follow.push(task('Pouvoir principal — Maîtrise',centered,m=>{p.masteryBase=valNum(m);p.masteryMod=masteryMod('power');p.mastery=Math.max(0,p.masteryBase+p.masteryMod);if(activeArchs().includes('Mage'))addPower('Pouvoir de Mage',false);if(state._extraPower){state._extraPower=false;addPower('Deuxième pouvoir (Extra)',false)}}));insert(follow)}),
+task('Arme principale',()=>activeArchs().includes('Artiste martial')?martialWeaponOptions():weaponOptions(activeArchs().includes('Tireur')),x=>{let w={name:x,mastery:null,ench:[]};state.weapons.push(w);let follow=[];if(x==='Arme unique')follow.push(task('Arme principale — Manifestation unique',EQ(uniqueWeapons),u=>w.name=u));if(x==='Arme improvisée')follow.push(task('Arme principale — Objet improvisé',EQ(improvisedWeapons),u=>w.name=`Arme improvisée — ${u}`));let afterMainWeapon=()=>{if(activeArchs().includes('Berserker'))addWeapon('Deuxième arme du Berserker');if(state._extraWeapon){state._extraWeapon=false;addWeapon('Deuxième arme (Extra)')}};if(x==='Aucune arme'){w.mastery='—';w.enchantmentCount=0;afterMainWeapon()}else{follow.push(task('Arme principale — Maîtrise',centered,m=>{w.masteryBase=valNum(m);w.masteryMod=masteryMod('weapon');w.mastery=Math.max(0,w.masteryBase+w.masteryMod);let n=(w.mastery>=8?2:(w.mastery>=5?1:0));w.directEnchantBonus=activeArchs().includes('Tireur')?1:0;n+=w.directEnchantBonus;w.enchantmentCount=n;insert(enchantTasks(w,'Arme principale',n));afterMainWeapon()}))}insert(follow)}),task('Type de faiblesse',weaknessTypeOptions,x=>{if(x==='Aucune faiblesse')state.weakness='Aucune faiblesse';else if(x==='Faiblesse improbable')insert([task('Faiblesse improbable',EQ(improbableWeak),w=>{state._weak=w}),task('Gravité de la faiblesse',centered,g=>{state.weakness=`Improbable : ${state._weak} — ${valNum(g)}/10`;delete state._weak})]);else insert([task('Faiblesse classique',EQ(classicalWeak),w=>state._weak=w),task('Gravité de la faiblesse',centered,g=>{state.weakness=`${state._weak} — ${valNum(g)}/10`;delete state._weak})])}),task('Âge apparent',[W('Très jeune adulte',10),W('Jeune adulte',25),W('Adulte',35),W('Mature',20),W('Âgé',10)],x=>state.appearance.age=x),task('Corpulence',EQ(bodies),x=>state.appearance.body=x),task('Couleur dominante 1',EQ(colors),x=>{state.appearance.c1=x;if(x==='Couleur unique')insert([task('Couleur dominante 1 — Couleur unique',EQ(uniqueColors),u=>state.appearance.c1=u)])}),task('Couleur dominante 2',()=>EQ(colors.filter(c=>c!==state.appearance.c1)),x=>{state.appearance.c2=x;if(x==='Couleur unique')insert([task('Couleur dominante 2 — Couleur unique',EQ(uniqueColors.filter(c=>c!==state.appearance.c1)),u=>state.appearance.c2=u)])}),task('Signe distinctif',EQ(signs),x=>{state.appearance.sign=x;if(x==='Signe unique')insert([task('Signe unique — manifestation',EQ(['Œil supplémentaire','Halo fracturé','Veines lumineuses','Ombre indépendante','Corne asymétrique','Runes mouvantes','Main cristalline','Cheveux flottant sans vent','Cicatrice en forme de constellation','Tatouage vivant','Peau irisée','Reflet absent','Voix visible comme de la brume','Couronne d’étincelles','Marque impossible']),u=>state.appearance.sign=u)])}),task('Prénom — Structure',EQ(['Court','Long']),x=>{state._nameParts=[];let set=namingSets[namingStyle()]||namingSets.Default;let ts=[task('Prénom — Début',EQ(set.start),v=>state._nameParts.push(v))];if(x==='Long')ts.push(task('Prénom — Milieu',EQ(set.mid),v=>state._nameParts.push(v)));ts.push(task('Prénom — Fin',EQ(set.end),v=>{state._nameParts.push(v);let raw=state._nameParts.join('');state.name=raw.charAt(0).toUpperCase()+raw.slice(1);delete state._nameParts}));insert(ts)}),task('Titre',titleOptions,x=>state.title=x)];}
+function weightedPick(opts){let total=opts.reduce((s,o)=>s+o.weight,0),r=Math.random()*total;for(let i=0;i<opts.length;i++){r-=opts[i].weight;if(r<0)return i}return opts.length-1}
+function drawWheel(opts,rot=rotation){ctx.clearRect(0,0,760,760);let cx=380,cy=380,R=325,total=opts.reduce((s,o)=>s+o.weight,0),a=-Math.PI/2;ctx.save();ctx.translate(cx,cy);ctx.rotate(rot);opts.forEach((o,i)=>{let span=2*Math.PI*o.weight/total,a1=a+span;ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,R,a,a1);ctx.closePath();ctx.fillStyle=`hsl(${(i*53+18)%360} 48% ${i%2?45:37}%)`;ctx.fill();ctx.strokeStyle='#10151e';ctx.lineWidth=2;ctx.stroke();if(span>.07){ctx.save();ctx.rotate(a+span/2);ctx.textAlign='right';ctx.fillStyle='#fff';ctx.font=`700 ${Math.max(10,Math.min(18,13+span*4))}px system-ui`;let t=o.label.length>27?o.label.slice(0,25)+'…':o.label;ctx.fillText(t,R-18,5);ctx.restore()}a=a1});ctx.beginPath();ctx.arc(0,0,66,0,Math.PI*2);ctx.fillStyle='#151a22';ctx.fill();ctx.strokeStyle='#ffd166';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='850 17px system-ui';ctx.fillText('ROUE',0,6);ctx.restore()}
+async function spin(opts){spinning=true;spinBtn.disabled=true;let chosen=weightedPick(opts),total=opts.reduce((s,o)=>s+o.weight,0),before=opts.slice(0,chosen).reduce((s,o)=>s+o.weight,0),center=(before+opts[chosen].weight/2)/total*2*Math.PI;let start=rotation,desired=-center,turns=(5+Math.floor(Math.random()*3))*2*Math.PI,end=start+turns+(desired-(start%(2*Math.PI))),dur=1700+Math.random()*500,t0=performance.now();await new Promise(done=>{function f(t){let p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,4);rotation=start+(end-start)*e;drawWheel(opts,rotation);p<1?requestAnimationFrame(f):done()}requestAnimationFrame(f)});rotation=end;spinning=false;spinBtn.disabled=false;return opts[chosen].label}
+function finishGeneration(){
+  if(index<queue.length)return false;
+  auto=false;
+  autoBtn.textContent='Auto : OFF';
+  if(!state._autoSavedAtFinish){
+    saveCurrentCharacter();
+    state._autoSavedAtFinish=true;
+  }
+  taskTitle.textContent='Personnage terminé et sauvegardé ✅';
+  result.innerHTML=`<span class="ok">${state.id} est terminé et sauvegardé automatiquement</span><small>Clique sur « Nouveau personnage » pour préparer le suivant.</small>`;
+  spinBtn.textContent='Nouveau personnage';
+  spinBtn.disabled=false;
+  resetBtn.textContent='Réinitialiser';
+  return true;
+}
+async function next(){if(spinning)return;if(index>=queue.length){finishGeneration();return}let t=queue[index],opts=t.options();taskTitle.textContent=t.title;count.textContent=`Roue ${spinNumber+1} • ${index+1}/${queue.length} étapes actuelles`;drawWheel(opts);let r=await spin(opts);spinNumber++;result.innerHTML=`${r}<small>${t.title}</small>`;state.logs.push({cat:t.title,val:r});t.apply(r);index++;saveCurrentCharacter();render();if(finishGeneration())return;spinBtn.textContent='Tourner la roue';if(auto)setTimeout(next,280)}
+function fmtMods(map,parts){let out=[];for(const p of parts){let k=raceKey(p),v=map[k];if(v)out.push(`${p} ${v>0?'+':''}${v}`)}return out.join(' • ')||'aucun'}
+function raceBonusText(){let stat=[];for(const p of state.raceParts){let m=mods[raceKey(p)]||beastMods[beastAnimal(p)];if(m){let xs=statNames.map((st,i)=>m[i]?`${st} ${m[i]>0?'+':''}${m[i]}`:null).filter(Boolean);if(xs.length)stat.push(`${p}: ${xs.join(', ')}`)}}let pm=fmtMods(pmr,state.raceParts),wm=fmtMods(wmr,state.raceParts);
+if(state.race==='Extraterrestre'&&state.alienBiology){
+  const am=state.alienBiology.mods||[];
+  const p=am.find(x=>x.stat==='Pouvoir'),w=am.find(x=>x.stat==='Arme');
+  if(p)pm=(pm==='aucun'?'':pm+' • ')+`Adaptation ${p.value>0?'+':''}${p.value}`;
+  if(w)wm=(wm==='aucun'?'':wm+' • ')+`Adaptation ${w.value>0?'+':''}${w.value}`;
+  const personal=am.filter(x=>statNames.includes(x.stat)).map(x=>`${x.stat} ${x.value>0?'+':''}${x.value}`);
+  if(personal.length)stat.push(`Extraterrestre: ${personal.join(', ')}`);
+  if(state.alienBiology.trait)stat.push(`Biologie: ${state.alienBiology.trait}`);
+}
+return `${stat.join(' • ')||'Stats: aucun'}<br><span class="muted">Maîtrise pouvoir: ${pm||'aucun'} • Maîtrise arme: ${wm||'aucun'}</span>`}
+function archBonusText(){let stat=activeArchs().map(a=>{let m=amods[a];if(!m)return a==='Prodige'?(state.prodigeMods.map(x=>`${x.stat} +${x.value}`).join(', ')||'à déterminer'):'spécial';return `${a}: `+(statNames.map((st,i)=>m[i]?`${st} ${m[i]>0?'+':''}${m[i]}`:null).filter(Boolean).join(', ')||'aucun')}).join(' • ');let pm=fmtMods(pma,activeArchs()),wm=fmtMods(wma,activeArchs());return `${stat||'aucun'}<br><span class="muted">Maîtrise pouvoir: ${pm} • Maîtrise arme: ${wm}</span>`}
+function masteryBreakdown(kind){let bits=[];for(const p of state.raceParts){let v=(kind==='power'?pmr[raceKey(p)]:wmr[raceKey(p)])||0;if(v)bits.push(`${p} ${v>0?'+':''}${v}`)}for(const a of activeArchs()){let v=(kind==='power'?pma[a]:wma[a])||0;if(v)bits.push(`${a} ${v>0?'+':''}${v}`)}if(state.race==='Extraterrestre'){let v=alienStatModifierFor(kind==='power'?'Pouvoir':'Arme');if(v)bits.push(`Adaptation extraterrestre ${v>0?'+':''}${v}`)}return bits.join(' • ')||'aucun bonus'}
+function render(){charId.textContent=state.id;identity.innerHTML=[['Nom',state.name?`<b>${state.name}</b>`:'—'],['Titre',state.title||'—'],['Race',state.race],['Bonus de race',raceBonusText()],['Genre',state.gender],['Taille',state.size],['Archétype',state.arch],['Invocation',activeArchs().includes('Invocateur')?summonerSummaryHtml():'—'],['Cible du Slayer',activeArchs().includes('Slayer')?(state.slayerTarget||'À déterminer'):'—'],['Bonus archétype',archBonusText()+(activeArchs().includes('Slayer')&&state.slayerTarget?`<br><span class="muted">Spécial Slayer : +2 Combat contre ${state.slayerTarget}</span>`:'')],['Métier',state.job],['Histoire',state.history.join(' + ')],['Personnalité',state.personality]].map(([k,v])=>`<b>${k}</b><span>${v||'—'}</span>`).join('');stats.innerHTML=['Combat','Force','Intelligence','Résilience','Vitesse'].map(k=>{let d=state.stats[k+'_detail'];let br=d?.breakdown?.length?d.breakdown.map(b=>`${b.source} ${b.value>=0?'+':''}${b.value}`).join(' • '):'aucun modificateur';return`<div class="stat" style="display:block"><div style="display:flex;justify-content:space-between"><span>${k}</span><strong>${state.stats[k]??'—'}</strong></div>${d?`<small class="muted">Jet ${d.base} • ${br} → ${state.stats[k]}</small>`:''}</div>`}).join('');document.getElementById('powers').innerHTML=state.chi?`<div class="item">🥋 <b>Chi</b> — Rang ${state.chi.rank}/10 : ${state.chi.label}</div>`:(state.powers.length?state.powers.map(p=>`<div class="item">✨ <b>${p.name}</b> — Maîtrise ${p.mastery??'…'}${Number.isFinite(p.masteryBase)?` <span class="muted">(jet ${p.masteryBase}; ${masteryBreakdown('power')} → ${p.mastery})</span>`:(p.mastery!==null?` <span class="muted">(${masteryBreakdown('power')})</span>`:'')}</div>`).join(''):'—');document.getElementById('weapons').innerHTML=state.weapons.length?state.weapons.map(w=>`<div class="item">🗡️ <b>${w.name}</b>${w.conscious?' 🧠 <span class="muted">(consciente)</span>':''}${w.mysticLink?' 🔗':''}${w.mastery!==null?` — Maîtrise ${w.mastery}${Number.isFinite(w.masteryBase)?` (jet ${w.masteryBase}; ${masteryBreakdown('weapon')} → ${w.mastery})`:''}`:''}${Number.isFinite(w.enchantmentCount)?` — ${w.enchantmentCount} enchantement${w.enchantmentCount>1?'s':''}`:''}${w.ench.length?` — ✨ ${w.ench.join(', ')}`:''}</div>`).join(''):'—';weakness.textContent=state.weakness||'—';let ex=`<div><b>Extra :</b> ${state.extra||'—'}</div>`;state.extraDetail.forEach(o=>{if(o.kind==='Familier'){ex+=`<div class="item">🐾 <b>Familier :</b> ${o.type||'…'}${o.power?` — puissance ${o.power}/10`:''}${o.abilities?.length?` — capacités : ${o.abilities.join(', ')}`:''}</div>`}else if(o.kind==='Monture'){ex+=`<div class="item">🐎 <b>Monture :</b> ${o.type||'…'}${o.power?` — puissance ${o.power}/10`:''}${o.scale?` — ${o.scale}`:''}${o.abilities?.length?` — capacités : ${o.abilities.join(', ')}`:''}</div>`}else if(o.kind==='Compagnon artificiel'){ex+=`<div class="item">🤖 <b>Compagnon artificiel :</b> ${o.type||'…'}${o.power?` — puissance ${o.power}/10`:''}${o.abilities?.length?` — capacités : ${o.abilities.join(', ')}`:''}</div>`}else if(o.kind==='Familier légendaire'){ex+=`<div class="item">🐉 <b>${o.mythic?'Familier mythique':'Familier légendaire'} :</b> ${o.name||'…'}${o.type?` (${o.type})`:''}${o.power?` — puissance ${o.power}/10`:''}${o.abilities?.length?` — capacités : ${o.abilities.join(', ')}`:''}</div>`}else if(o.kind==='Technique secrète'){ex+=`<div class="item">🥋 <b>Technique secrète :</b> ${o.name||'…'}${o.mastery?` — maîtrise ${o.mastery}/10`:''}</div>`}else if(o.kind==='Armure spéciale'){ex+=`<div class="item">🛡️ <b>Armure spéciale :</b> ${o.type||'…'} — ${o.effect||'…'}${o.power?` — puissance ${o.power}/10`:''}</div>`}else if(o.kind==='Lien mystique'){ex+=`<div class="item">🔗 <b>Lien mystique :</b> ${o.target||'…'}${o.linkedItem?` [${o.linkedItem}]`:''} — ${o.nature||'…'}${o.power?` — intensité ${o.power}/10`:''}${o.ownership?`<br><span class="muted">${o.ownership}</span>`:''}${o.relationship?`<br><span class="muted">${o.relationship.type||'Relation à déterminer'} • ${o.relationship.status||'statut à déterminer'}${o.relationship.targetId?` • cible : ${o.relationship.targetId}${o.relationship.targetName?` — ${o.relationship.targetName}`:''}`:''}</span>`:''}</div>`}else if(o.kind==='Transformation'&&o.ref){let t=o.ref;ex+=`<div class="item">🧬 <b>Transformation :</b> ${t.type}${t.level?` — niveau ${t.level}/10`:''}${t.stats?.length?` — ${t.stats.join(' + ')} +${t.bonus}`:''}${t.trait?` — ${t.trait}`:''}</div>`}else if(o.kind==='Éveil'&&o.ref){let a=o.ref;ex+=`<div class="item">🌟 <b>Éveil :</b> niveau ${a.level}/10 — ${a.primary||'…'} +${a.primaryBonus}${a.secondary?` — ${a.secondary} +${a.secondaryBonus}`:''}${a.evolution?` — ${a.evolution}`:''}</div>`}else if(o.kind==='Enfant'){ex+=`<div class="item">👶 <b>Enfant :</b> ${o.childId||o.status||'À générer'}${o.otherParentId?` — autre parent : ${o.otherParentId}`:''}${o.eligibleSeason?` — éligible garanti S${o.eligibleSeason}`:''}</div>`}else if(o.kind==='Métier légendaire'){ex+=`<div class="item">🏆 <b>Métier légendaire :</b> ${o.name||'…'}${o.ability?` — ${o.ability}`:''}</div>`}else if(o.kind==='Extra légendaire'){ex+=`<div class="item">🌠 <b>Extra légendaire :</b> ${o.manifestation}${o.detail?` — ${o.detail}`:''}${o.ability?` — ${o.ability}`:''}${o.power?` — puissance ${o.power}/10`:''}${o.mastery?` — maîtrise ${o.mastery}/10`:''}${o.blessing?` — bénédiction : ${o.blessing} ${o.intensity||'…'}/10`:''}</div>`}else ex+=`<div class="item">🎁 ${o.kind}${o.form?` — ${o.form}, ${o.effect}, puissance ${o.power}/10`:o.manifestation?` — ${o.manifestation}`:''}</div>`});state.blessings.forEach(b=>ex+=`<div class="item">✨ <b>${b.name}</b> ${b.intensity}/10 <span class="muted">(${b.source})</span></div>`);state.curses.forEach(c=>ex+=`<div class="item">☠️ <b>${c.name}</b> ${c.intensity}/10 <span class="muted">(${c.source})</span></div>`);extra.innerHTML=ex;appearance.innerHTML=state.appearance.age?`${state.appearance.age} • ${state.appearance.body||'…'} • ${state.appearance.c1||'…'} + ${state.appearance.c2||'…'} • ${state.appearance.sign||'…'}`:'—';document.getElementById('log').innerHTML=state.logs.map(x=>`<div><span class="tag">${x.cat}</span>${x.val}</div>`).join('')};renderRoster()
+spinBtn.onclick=()=>{
+  if(index>=queue.length){
+    auto=false;autoBtn.textContent='Auto : OFF';
+    reset();
+    spinBtn.disabled=false;
+    spinBtn.textContent='Commencer';
+    resetBtn.textContent='Réinitialiser';
+    taskTitle.textContent='Prêt';
+    count.textContent='0 roue';
+    result.innerHTML='Clique sur « Commencer »<small>Nouveau personnage prêt à être généré.</small>';
+    return;
+  }
+  next()
+};autoBtn.onclick=()=>{auto=!auto;autoBtn.textContent=`Auto : ${auto?'ON':'OFF'}`;if(auto&&!spinning)next()};resetBtn.onclick=()=>{auto=false;autoBtn.textContent='Auto : OFF';spinBtn.disabled=false;spinBtn.textContent='Commencer';resetBtn.textContent='Réinitialiser';taskTitle.textContent='Prêt';count.textContent='0 roue';result.innerHTML='Clique sur « Commencer »<small>Les sous-roues seront ajoutées automatiquement selon les résultats.</small>';reset()};exportBtn.onclick=()=>{saveCurrentCharacter();let a=document.createElement('a'),blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});a.href=URL.createObjectURL(blob);a.download=`${state.id}_V18.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};wheelTabBtn.onclick=()=>showTab('wheel');
+listTabBtn.onclick=()=>{closeCharacterDetail();showTab('list')};
+genealogyTabBtn.onclick=()=>showTab('genealogy');
+prevCharBtn.onclick=()=>previousCharacter();
+nextCharBtn.onclick=()=>advanceCharacter();
+const resolveChildrenBtn=document.getElementById('resolveChildrenBtn');
+const selectDescBtn=document.getElementById('selectDescBtn');
+const exportUniverseBtn=document.getElementById('exportUniverseBtn');
+if(resolveChildrenBtn)resolveChildrenBtn.onclick=resolveBirthEvents;
+if(selectDescBtn)selectDescBtn.onclick=selectDescendantsForNextSeason;
+if(exportUniverseBtn)exportUniverseBtn.onclick=exportUniverse;
+if(!loadCharacterById(currentCharacterId())) reset();
+renderRoster();
+showTab('wheel');
+
+
+renderGenealogy();
+
+
+const __weaponUiObserver=new MutationObserver(()=>enforceNoWeaponDisplay());
+__weaponUiObserver.observe(document.body,{subtree:true,childList:true});
+setTimeout(enforceNoWeaponDisplay,0);
+
+
+
+</script></body></html>
