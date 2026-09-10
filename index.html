@@ -500,6 +500,44 @@ function loadRoster(){
   }catch(e){return {}}
 }
 function saveRoster(roster){localStorage.setItem(STORAGE_ROSTER,JSON.stringify(roster))}
+
+// Sécurise le curseur de saison contre un ancien double passage (ex. S1-064 -> S3-001).
+// Les descendants ne comptent pas comme des personnages déjà générés : avec 64 personnages de S1
+// et aucun personnage de S2, le prochain curseur canonique est donc S2-001.
+let seasonCursorReconciled=false;
+function reconcileSeasonCursor(){
+  const roster=loadRoster();
+  const parsed=Object.keys(roster).map(parseCharacterCode).filter(p=>Number.isFinite(p.season)&&Number.isFinite(p.number));
+  if(!parsed.length){
+    if(seasonNumber>1 && characterNumber===1){
+      seasonNumber=1;
+      localStorage.setItem(STORAGE_SEASON,'1');
+      seasonCursorReconciled=true;
+    }
+    return;
+  }
+  const highestSeason=Math.max(...parsed.map(p=>p.season));
+  const highestNums=parsed.filter(p=>p.season===highestSeason).map(p=>p.number);
+  const highestNumber=Math.max(...highestNums);
+  const maxAllowedSeason=highestSeason+1;
+  // On ne corrige automatiquement qu'un saut évident au-delà de la saison qui suit
+  // la dernière saison réellement présente dans le roster.
+  if(seasonNumber>maxAllowedSeason){
+    seasonNumber=maxAllowedSeason;
+    characterNumber=1;
+    localStorage.setItem(STORAGE_SEASON,String(seasonNumber));
+    localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
+    seasonCursorReconciled=true;
+  }
+  // Cas historique : une saison complète doit mener exactement à la suivante, jamais en sauter une.
+  if(highestNumber>=CHARACTERS_PER_SEASON && seasonNumber===highestSeason && characterNumber>CHARACTERS_PER_SEASON){
+    seasonNumber=highestSeason+1;
+    characterNumber=1;
+    localStorage.setItem(STORAGE_SEASON,String(seasonNumber));
+    localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
+    seasonCursorReconciled=true;
+  }
+}
 function ensureGenealogyShape(s){
   if(!s.genealogy) s.genealogy={parents:[],children:[],generation:1,lineage:[],partnerLinks:[]};
   if(!Array.isArray(s.genealogy.parents)) s.genealogy.parents=[];
@@ -532,6 +570,8 @@ function saveCurrentCharacter(){
   if(typeof queueCloudCharacterSave==='function') queueCloudCharacterSave(state);
   if(typeof queueCloudGameStateSave==='function') queueCloudGameStateSave();
 }
+reconcileSeasonCursor();
+
 function blankCharacterState(id){
   return {alienBiology:null,id:id||currentCharacterId(),name:'',title:'',raceParts:[],race:'',gender:'',size:'',arch:'',archParts:[],slayerTarget:null,job:'',history:[],extra:'',extraDetail:[],extraStatMods:[],relationships:[],genealogy:{parents:[],children:[],generation:1,lineage:[],partnerLinks:[]},personality:'',stats:{},powers:[],weapons:[],weakness:'',blessings:[],curses:[],appearance:{},transformation:null,awakening:null,chi:null,prodigeMods:[],logs:[]};
 }
@@ -2428,7 +2468,17 @@ async function initCloud(){
   if(!window.supabase){cloudStatus('☁️ Supabase indisponible','error');return}
   cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
   const {data}=await cloudClient.auth.getSession();cloudUser=data.session?.user||null;
-  if(cloudUser){try{await cloudRefreshGames()}catch(e){cloudSyncError(e)}}cloudUpdateTopStatus();
+  if(cloudUser){
+    try{
+      await cloudRefreshGames();
+      if(seasonCursorReconciled && cloudCurrentGame){
+        await cloudSaveGameState();
+        seasonCursorReconciled=false;
+        await cloudRefreshGames();
+      }
+    }catch(e){cloudSyncError(e)}
+  }
+  cloudUpdateTopStatus();
   cloudClient.auth.onAuthStateChange(async(_event,session)=>{cloudUser=session?.user||null;if(cloudUser){try{await cloudRefreshGames()}catch(e){cloudSyncError(e)}}else{cloudGames=[];cloudCurrentGame=null}cloudUpdateTopStatus();renderCloudModal()});
 }
 document.getElementById('cloudAccountBtn').onclick=openCloudModal;
