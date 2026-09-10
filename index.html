@@ -103,6 +103,37 @@
   font-size:17px
 }
 
+/* Navigation du registre */
+.season-roster-group{
+  border:1px solid rgba(198,161,91,.18);
+  border-radius:12px;
+  overflow:hidden;
+  background:rgba(10,13,18,.18);
+}
+.season-roster-group>summary{
+  list-style:none;cursor:pointer;user-select:none;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:11px 13px;color:var(--df-gold2,#d3b06a);
+  font-family:Georgia,'Times New Roman',serif;font-weight:800;font-size:18px;
+}
+.season-roster-group>summary::-webkit-details-marker{display:none}
+.season-roster-group>summary::after{content:'▾';font-family:system-ui,sans-serif;font-size:15px;transition:transform .15s ease}
+.season-roster-group:not([open])>summary::after{transform:rotate(-90deg)}
+.season-roster-group .season-roster-list{padding:0 9px 10px}
+.season-roster-count{font:600 12px system-ui,sans-serif;color:var(--muted);margin-left:auto}
+.compact-roster-kind{
+  margin-left:auto;flex:0 0 auto;font-size:11px;font-weight:800;
+  color:#d7b9ef;background:#3a2849;border:1px solid #684b7e;border-radius:999px;padding:3px 7px
+}
+.compact-roster-row.descendant-row{cursor:default;border-style:dashed}
+.compact-roster-row.descendant-row:hover{transform:none;box-shadow:none}
+.detail-nav{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:0 0 10px}
+.detail-nav .detail-nav-side{display:flex;gap:8px;flex-wrap:wrap}
+.detail-nav button{width:auto}
+.page-jump-controls{position:fixed;right:14px;bottom:16px;z-index:40;display:flex;flex-direction:column;gap:8px}
+.page-jump-controls button{width:44px;height:44px;padding:0;border-radius:50%;font-size:20px;box-shadow:0 6px 20px #0008}
+@media(max-width:600px){.page-jump-controls{right:10px;bottom:12px}.page-jump-controls button{width:40px;height:40px}}
+
 
 .roster-export-bar{
   display:flex;
@@ -129,6 +160,13 @@
 .cloud-game{display:flex;align-items:center;gap:10px;padding:11px;margin:8px 0;border:1px solid #40343c;border-radius:12px;background:#121116}.cloud-game-main{flex:1;min-width:0}.cloud-game-name{font-weight:800;color:#ead7b0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cloud-game-meta{font-size:12px;color:#998f8e}
 .cloud-message{margin-top:10px;padding:9px 11px;border-radius:9px;background:#16151a;border:1px solid #3f3740;color:#c9bfb6}.cloud-danger{background:linear-gradient(180deg,#4b171b,#270b0e)!important;border-color:#8c3339!important}.cloud-separator{height:1px;background:#3b3037;margin:16px 0}.cloud-close{float:right}.cloud-small{font-size:12px;color:#9f9590}.cloud-current{border-color:#8f6b35;box-shadow:0 0 0 1px rgba(198,161,91,.12)}
 @media(max-width:600px){.cloud-game{align-items:flex-start;flex-wrap:wrap}.cloud-game .cloud-game-main{flex-basis:100%}.cloud-row{flex-direction:column;align-items:stretch}.cloud-row button{width:100%}}
+
+/* Tournament tree + genealogy tree V18.28 */
+.tournament-sim-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.tournament-sim-controls select{min-width:190px;width:auto}
+.tournament-tree-wrap{position:relative;overflow:auto;padding:8px 4px 24px}.tournament-rounds{position:relative;display:flex;gap:72px;align-items:flex-start;min-width:max-content;overflow:visible;padding:8px 18px 28px}.tournament-round{width:250px;min-width:250px;position:relative;z-index:2}.tournament-round-body{display:flex;flex-direction:column}.tournament-match-slot{position:relative;display:flex;align-items:center;justify-content:center}.tournament-match{width:100%;margin:0}.tournament-connectors{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:visible}.tournament-connectors path{stroke:#6f5562;stroke-width:2;fill:none;opacity:.85;transition:stroke .25s,filter .25s,opacity .25s}.tournament-connectors path.winner-path{stroke:#ffd84d;stroke-width:3;opacity:1;filter:drop-shadow(0 0 4px #ffd84d);animation:winnerPathPulse 1.15s ease-in-out infinite alternate}@keyframes winnerPathPulse{from{stroke:#c99f19;filter:drop-shadow(0 0 2px #c99f19)}to{stroke:#fff07a;filter:drop-shadow(0 0 8px #ffd84d)}}
+.genealogy-tree-wrap{position:relative;overflow:auto;min-height:260px;padding:16px 10px 24px;border:1px solid #342a31;border-radius:12px;background:linear-gradient(180deg,rgba(8,8,11,.45),rgba(18,14,18,.55))}.genealogy-tree{position:relative;display:flex;gap:86px;align-items:flex-start;min-width:max-content;padding:10px 22px}.genealogy-generation{width:220px;min-width:220px;position:relative;z-index:2}.genealogy-generation h4{text-align:center;color:#d3b16d;margin:0 0 12px}.genealogy-generation-body{display:flex;flex-direction:column;gap:18px}.genealogy-node{padding:10px 11px;border:1px solid #513d49;border-radius:11px;background:linear-gradient(145deg,#1a171d,#100f13);box-shadow:0 7px 20px #0006}.genealogy-node.roster-node{cursor:pointer}.genealogy-node.roster-node:hover{border-color:#8f6b35}.genealogy-node .gn-name{font-weight:800;color:#ead7b0}.genealogy-node .gn-id{font-size:.76rem;color:#9f9590;margin-top:2px}.genealogy-node .gn-meta{font-size:.78rem;color:#bcb0aa;margin-top:5px}.genealogy-node.desc-node{border-left:3px solid #9a343b}.genealogy-node.npc-node{border-left:3px solid #5c4664}.genealogy-node.placeholder-node{opacity:.62;border-style:dashed}.genealogy-connectors{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:visible}.genealogy-connectors path{stroke:#7f625f;stroke-width:2;fill:none;opacity:.78}.genealogy-tree-empty{padding:34px;text-align:center;color:var(--muted)}
+@media(max-width:720px){.tournament-round{width:220px;min-width:220px}.tournament-rounds{gap:58px}.genealogy-generation{width:190px;min-width:190px}.genealogy-tree{gap:64px}}
+
 </style>
 <style id="darkFantasyV181">
 :root{
@@ -187,7 +225,141 @@ canvas{filter:saturate(.72) brightness(.82) contrast(1.12);drop-shadow(0 0 18px 
 @media(max-width:720px){.genealogy-stats{grid-template-columns:repeat(2,1fr)}.genealogy-grid{grid-template-columns:1fr}}
 </style>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style id="darkFantasyV200">
+:root{
+  --bg:#07070a; --panel:#121015; --soft:#1c171d; --line:#4a373d;
+  --text:#eee3d4; --muted:#a5978f; --gold:#d6b36a; --green:#86b47b;
+  --df-bg:#07070a; --df-panel:#111015; --df-panel2:#19151b;
+  --df-border:#57413f; --df-gold:#d6b36a; --df-gold2:#9d713a;
+  --df-blood:#6f1820; --df-blood2:#a9343b; --df-text:#eee3d4;
+  --df-muted:#a5978f; --df-violet:#3d2946;
+  --df-ink:#09080b; --df-parchment:#d9c69a; --df-copper:#8d5a3a;
+}
+html,body{
+  min-height:100%;
+  background:
+    radial-gradient(circle at 12% -4%,rgba(113,22,31,.24),transparent 31%),
+    radial-gradient(circle at 88% 6%,rgba(71,39,82,.19),transparent 28%),
+    radial-gradient(circle at 50% 115%,rgba(109,78,39,.12),transparent 34%),
+    linear-gradient(180deg,#050507 0%,#0a080c 50%,#060608 100%) !important;
+  color:var(--df-text)!important;
+  font-family:"EB Garamond",Georgia,"Times New Roman",serif!important;
+  font-size:16px;
+}
+body:before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.22;
+  background-image:
+    radial-gradient(circle at 25% 25%,rgba(255,255,255,.035) 0 1px,transparent 1.3px),
+    radial-gradient(circle at 75% 65%,rgba(255,255,255,.02) 0 1px,transparent 1.2px),
+    linear-gradient(rgba(255,255,255,.012) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.009) 1px,transparent 1px);
+  background-size:67px 67px,91px 91px,38px 38px,38px 38px;
+  mix-blend-mode:screen;
+}
+header{
+  background:linear-gradient(180deg,rgba(12,9,13,.97),rgba(8,7,10,.93))!important;
+  border-bottom:1px solid #624237!important;
+  box-shadow:0 8px 28px rgba(0,0,0,.48),0 1px 0 rgba(214,179,106,.08)!important;
+}
+h1,h2,h3,h4,.title,.roster-name,.lineage-title strong,.genealogy-stat b,
+.tournament-round h3,.cloud-card h2,.cloud-card h3{
+  font-family:"Cinzel",Georgia,"Times New Roman",serif!important;
+  letter-spacing:.045em;
+}
+h1,.title{color:#ead3a0!important;text-shadow:0 0 18px rgba(169,52,59,.20),0 1px 0 #000}
+h2,h3,h4{color:#d7bc7b}
+.muted{color:var(--df-muted)!important}
+.panel,.card,.wheel-card,.result-card,.roster-card,.detail-card,.cloud-card,.genealogy-section{
+  position:relative;
+  background:linear-gradient(145deg,rgba(24,19,24,.985),rgba(11,9,13,.995))!important;
+  border:1px solid #5b423f!important;
+  box-shadow:0 18px 44px rgba(0,0,0,.50),inset 0 1px rgba(255,231,185,.025)!important;
+}
+.panel:before,.card:before,.roster-card:before,.detail-card:before,.genealogy-section:before{
+  content:"";position:absolute;inset:5px;border:1px solid rgba(214,179,106,.055);border-radius:inherit;pointer-events:none
+}
+.section{border-bottom-color:#3b2d31!important}
+.section h3{color:#bda575!important;font-family:"Cinzel",serif!important;font-size:11px;letter-spacing:.14em}
+.pill,.tag,.badge{
+  background:linear-gradient(180deg,#2b1a20,#171116)!important;
+  border:1px solid #69454a!important;color:#dcbf7f!important;
+  font-family:"Cinzel",serif!important;font-size:11px;letter-spacing:.05em
+}
+button,.btn{
+  font-family:"Cinzel",Georgia,serif!important;
+  letter-spacing:.035em;
+  background:linear-gradient(180deg,#7b252d 0%,#50151c 52%,#351015 100%)!important;
+  border:1px solid #a34349!important;color:#f0dfc5!important;
+  border-radius:8px!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.09),inset 0 -1px rgba(0,0,0,.5),0 5px 14px rgba(0,0,0,.35)!important;
+  text-shadow:0 1px 0 #000;
+}
+button:hover,.btn:hover{filter:brightness(1.18);box-shadow:0 0 0 1px rgba(214,179,106,.14),0 7px 18px rgba(0,0,0,.45)!important}
+button.secondary,.secondary{
+  background:linear-gradient(180deg,#2b242d,#171319)!important;
+  border-color:#68535b!important;color:#dfd1c0!important;
+}
+.tab-btn{
+  font-family:"Cinzel",serif!important;background:linear-gradient(180deg,#141116,#0d0b0e)!important;
+  border-color:#413139!important;color:#a99b97!important;border-radius:7px!important
+}
+.tab-btn.active{
+  background:linear-gradient(180deg,#4a1820,#241016)!important;
+  color:#efd39f!important;border-color:#9b6a3d!important;
+  box-shadow:inset 0 -2px #b48a4e,0 0 14px rgba(154,52,59,.15)!important
+}
+input,select,textarea{
+  font-family:"EB Garamond",Georgia,serif!important;font-size:16px!important;
+  background:#0c0a0d!important;color:#eadfce!important;border:1px solid #59434a!important;
+  border-radius:7px!important;box-shadow:inset 0 2px 8px rgba(0,0,0,.35)
+}
+input:focus,select:focus,textarea:focus{outline:1px solid #a77b45!important;border-color:#a77b45!important}
+.stat{
+  background:linear-gradient(180deg,#21191f,#161116)!important;
+  border:1px solid #45343a;border-radius:7px!important
+}
+.log{background:#0a080b!important;border-color:#45343a!important}
+.note{background:linear-gradient(180deg,rgba(46,34,35,.8),rgba(29,22,27,.88))!important;border-color:#604449!important;color:#d8c7b7!important}
+.wheelwrap:after{
+  content:"";position:absolute;width:min(76vw,540px);height:min(76vw,540px);max-width:540px;max-height:540px;border-radius:50%;
+  border:1px solid rgba(214,179,106,.25);box-shadow:0 0 28px rgba(132,35,43,.15),inset 0 0 24px rgba(214,179,106,.06);pointer-events:none
+}
+.pointer{border-top-color:#d7b766!important;filter:drop-shadow(0 0 5px rgba(215,183,102,.5)) drop-shadow(0 3px 2px #000)!important}
+.result{font-family:"Cinzel",serif!important;color:#e7cca0;text-shadow:0 1px 0 #000}
+canvas{filter:saturate(.82) brightness(.88) contrast(1.08) drop-shadow(0 0 18px rgba(112,25,31,.18))!important}
+.roster-card,.lineage-card,.genealogy-node,.tournament-match{
+  background:linear-gradient(145deg,#1b161b,#0e0b0f)!important;border-color:#523c40!important;
+}
+.roster-card:hover,.genealogy-node.roster-node:hover{border-color:#a37742!important;box-shadow:0 0 18px rgba(214,179,106,.09),0 12px 30px rgba(0,0,0,.42)!important}
+.season-roster-group>summary{
+  font-family:"Cinzel",serif!important;color:#d8bd83!important;background:linear-gradient(180deg,#1b1519,#100d10)!important;
+  border:1px solid #4c393d!important;border-radius:8px!important
+}
+.tournament-tree-wrap,.genealogy-tree-wrap{
+  background:
+    radial-gradient(circle at 50% 0,rgba(120,73,34,.07),transparent 36%),
+    linear-gradient(180deg,rgba(9,7,10,.76),rgba(15,11,14,.9))!important;
+  border-color:#4f393c!important;
+}
+.tournament-round h3,.genealogy-generation h4{color:#d4b36d!important;text-shadow:0 1px #000}
+.tournament-connectors path{stroke:#76534b!important}.tournament-connectors path.winner-path{stroke:#f1d86f!important;filter:drop-shadow(0 0 5px #d7b34c)!important}
+.genealogy-connectors path{stroke:#8a6556!important}
+.genealogy-node.desc-node{border-left-color:#a33b40!important}.genealogy-node.npc-node{border-left-color:#6b4f73!important}
+.genealogy-node .gn-name{font-family:"Cinzel",serif!important;color:#e5c990!important}
+.cloud-bar{background:rgba(9,7,10,.92)!important;border-color:#4c373b!important}
+.cloud-status{font-family:"Cinzel",serif!important;letter-spacing:.03em}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-track{background:#09070a}
+::-webkit-scrollbar-thumb{background:linear-gradient(#5b3d32,#2b2024);border:2px solid #09070a;border-radius:20px}
+::-webkit-scrollbar-thumb:hover{background:linear-gradient(#7c563d,#39272b)}
+::selection{background:#6d2630;color:#f4e4c8}
+@media(max-width:720px){html,body{font-size:15px}.panel{border-radius:12px!important}.wheelwrap:after{width:min(92vw,478px);height:min(92vw,478px)}}
+</style>
 </head><body><header><div><h1>🎰 Roue de la Fortune — V18.27 Cloud</h1><div class="muted">Chaque donnée aléatoire affichée provient de la roue que tu vois tourner.</div></div><div class="pill" id="charId">S1-001</div></header>
 <div class="cloud-bar">
   <span id="cloudStatus" class="cloud-status">☁️ Mode local</span>
@@ -246,6 +418,14 @@ canvas{filter:saturate(.72) brightness(.82) contrast(1.12);drop-shadow(0 0 18px 
     <div id="genealogyStats" class="genealogy-stats"></div>
     <div id="descendantSummary" class="note">Aucun descendant enregistré.</div>
     <div class="genealogy-section">
+      <h3>🌳 Arbre généalogique</h3>
+      <div class="muted" style="margin-bottom:10px">Lecture de gauche à droite : générations anciennes → descendants.</div>
+      <div class="genealogy-tree-wrap" id="genealogyTreeWrap">
+        <svg id="genealogyConnectors" class="genealogy-connectors" aria-hidden="true"></svg>
+        <div id="genealogyTree" class="genealogy-tree"></div>
+      </div>
+    </div>
+    <div class="genealogy-section">
       <h3>🕯️ Naissances en attente</h3>
       <div id="pendingBirths" class="genealogy-grid"></div>
     </div>
@@ -266,13 +446,27 @@ canvas{filter:saturate(.72) brightness(.82) contrast(1.12);drop-shadow(0 0 18px 
       <div class="top"><div><div class="title">⚔️ Tournoi des 64</div><div class="muted">Tableau à élimination directe de la saison. Le tirage est sauvegardé dans la partie active (et localement en secours).</div></div><div class="pill" id="tournamentSeasonLabel">S1</div></div>
       <div class="tournament-toolbar">
         <button class="secondary" id="createTournamentBtn">🎲 Créer / refaire le tirage</button>
+        <div class="tournament-sim-controls">
+          <select id="tournamentSimMode" aria-label="Mode de simulation">
+            <option value="round">Phase en cours</option>
+            <option value="all">Tournoi entier</option>
+          </select>
+          <button class="secondary" id="simulateTournamentBtn">▶️ Simuler</button>
+        </div>
         <button class="secondary" id="resetTournamentBtn">🗑️ Réinitialiser le tournoi</button>
       </div>
       <div id="tournamentStatus" class="note">Le tournoi sera disponible dès que la saison contient 64 personnages.</div>
     </div>
-    <div id="tournamentRounds" class="tournament-rounds"></div>
+    <div class="tournament-tree-wrap" id="tournamentTreeWrap">
+      <svg id="tournamentConnectors" class="tournament-connectors" aria-hidden="true"></svg>
+      <div id="tournamentRounds" class="tournament-rounds"></div>
+    </div>
   </div>
 </section>
+<div class="page-jump-controls" aria-label="Navigation rapide dans la page">
+  <button type="button" class="secondary" id="jumpTopBtn" title="Aller en haut de la page" aria-label="Aller en haut de la page">↑</button>
+  <button type="button" class="secondary" id="jumpBottomBtn" title="Aller en bas de la page" aria-label="Aller en bas de la page">↓</button>
+</div>
 <script>
 const spinBtn=document.getElementById('spinBtn');
 const autoBtn=document.getElementById('autoBtn');
@@ -900,6 +1094,16 @@ function repairMysticExistingTarget(id){
   if(typeof cloudSyncAllData==='function') cloudSyncAllData().catch(e=>console.warn('Sync lien mystique',e));
   openCharacterDetail(id);
 }
+function sortedRosterIds(){
+  return Object.keys(loadRoster()).filter(id=>/^S\d+-\d+$/.test(id)).sort((a,b)=>{
+    const ma=a.match(/^S(\d+)-(\d+)$/),mb=b.match(/^S(\d+)-(\d+)$/);
+    return Number(ma[1])-Number(mb[1]) || Number(ma[2])-Number(mb[2]);
+  });
+}
+function openAdjacentCharacter(id,delta){
+  const ids=sortedRosterIds(),pos=ids.indexOf(id),next=ids[pos+delta];
+  if(next) openCharacterDetail(next);
+}
 function openCharacterDetail(id){
   setTimeout(()=>refreshIllustrationFor(id),0);
   setTimeout(()=>{
@@ -923,7 +1127,16 @@ function openCharacterDetail(id){
     const d=s.stats?.[k+'_detail'], br=d?.breakdown?.map(b=>`${b.source} ${b.value>=0?'+':''}${b.value}`).join(' • ')||'';
     return `<div class="detail-row"><b>${k}</b> : ${s.stats?.[k]??'—'}${d?` <span class="muted">(jet ${d.base}${br?' • '+br:''})</span>`:''}</div>`;
   }).join('');
-  characterDetail.innerHTML=`${illustrationControlsHtml(id)}<button class="secondary detail-back" id="detailBackBtn">← Retour à la liste</button>
+  const navIds=sortedRosterIds(), navPos=navIds.indexOf(id);
+  const prevId=navPos>0?navIds[navPos-1]:null, nextId=navPos>=0&&navPos<navIds.length-1?navIds[navPos+1]:null;
+  characterDetail.innerHTML=`${illustrationControlsHtml(id)}
+  <div class="detail-nav">
+    <div class="detail-nav-side"><button class="secondary detail-back" id="detailBackBtn">← Retour à la liste</button></div>
+    <div class="detail-nav-side">
+      <button class="secondary" id="detailPrevBtn" ${prevId?'':'disabled'}>← Précédent</button>
+      <button class="secondary" id="detailNextBtn" ${nextId?'':'disabled'}>Suivant →</button>
+    </div>
+  </div>
   <div class="detail-sheet">
     <div class="detail-title">${s.name||'Sans nom'}</div><div class="muted">${id} • ${s.title||'Sans titre'}</div>
     <div class="detail-grid">
@@ -956,6 +1169,9 @@ function openCharacterDetail(id){
   characterDetail.classList.add('active');
   rosterList.style.display='none';
   document.getElementById('detailBackBtn').onclick=closeCharacterDetail;
+  const detailPrevBtn=document.getElementById('detailPrevBtn'), detailNextBtn=document.getElementById('detailNextBtn');
+  if(detailPrevBtn&&prevId) detailPrevBtn.onclick=()=>openCharacterDetail(prevId);
+  if(detailNextBtn&&nextId) detailNextBtn.onclick=()=>openCharacterDetail(nextId);
   characterDetail.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function closeCharacterDetail(){
@@ -1314,6 +1530,39 @@ function exportUniverse(){
 }
 
 
+
+function genealogyEntityMap(){
+  const roster=loadRoster(), d=descendants(), n=npcs(), map={};
+  Object.values(roster).forEach(x=>{if(!x?.id)return;map[x.id]={...x,_kind:'roster',_parents:[...(x.genealogy?.parents||[])]}});
+  Object.values(n).forEach(x=>{if(!x?.id)return;map[x.id]={...x,_kind:'npc',_parents:[...(x.genealogy?.parents||[])]}});
+  Object.values(d).forEach(x=>{if(!x?.id)return;map[x.id]={...x,_kind:'desc',_parents:[...(x.parentIds||x.genealogy?.parents||[])]}});
+  // Placeholder nodes keep links visible when an old parent ID exists but the full record is absent.
+  Object.values(map).forEach(x=>(x._parents||[]).forEach(pid=>{if(pid&&!map[pid])map[pid]={id:pid,name:'Parent non chargé',_kind:'placeholder',_parents:[],genealogy:{generation:Math.max(1,(x.genealogy?.generation||2)-1)}}}));
+  return map;
+}
+function genealogyGenerationOf(x,map,seen=new Set()){
+  const stored=Number(x?.genealogy?.generation);
+  if(Number.isFinite(stored)&&stored>0)return stored;
+  if(!x||seen.has(x.id))return 1;seen.add(x.id);
+  const ps=(x._parents||[]).map(id=>map[id]).filter(Boolean);if(!ps.length)return 1;
+  return Math.max(...ps.map(p=>genealogyGenerationOf(p,map,new Set(seen))))+1;
+}
+function renderGenealogyTree(){
+  const root=document.getElementById('genealogyTree'),wrap=document.getElementById('genealogyTreeWrap');if(!root||!wrap)return;
+  const map=genealogyEntityMap(), linked=new Set();
+  Object.values(map).forEach(x=>{if((x._parents||[]).length){linked.add(x.id);x._parents.forEach(p=>linked.add(p))}if((x.genealogy?.children||[]).length){linked.add(x.id);x.genealogy.children.forEach(c=>linked.add(c))}});
+  const nodes=Object.values(map).filter(x=>linked.has(x.id));
+  if(!nodes.length){root.innerHTML='<div class="genealogy-tree-empty">Aucun lien familial à afficher pour le moment.</div>';drawGenealogyConnectors();return}
+  const groups={};nodes.forEach(x=>{const g=genealogyGenerationOf(x,map);(groups[g]??=[]).push(x)});
+  root.innerHTML='';Object.keys(groups).map(Number).sort((a,b)=>a-b).forEach(g=>{const col=document.createElement('div');col.className='genealogy-generation';col.innerHTML=`<h4>Génération ${g}</h4><div class="genealogy-generation-body"></div>`;const body=col.lastElementChild;groups[g].sort((a,b)=>(a.id||'').localeCompare(b.id||'')).forEach(x=>{const node=document.createElement('div');node.className=`genealogy-node ${x._kind==='roster'?'roster-node':x._kind==='desc'?'desc-node':x._kind==='npc'?'npc-node':'placeholder-node'}`;node.dataset.genealogyId=x.id;node.innerHTML=`<div class="gn-name">${x._kind==='desc'?'👶 ':x._kind==='npc'?'🧑 ':'⚔️ '}${x.name||'Sans nom'}</div><div class="gn-id">${x.id}</div><div class="gn-meta">${x.race||x.status||'—'}</div>`;if(x._kind==='roster')node.onclick=()=>{showTab('list');openCharacterDetail(x.id)};body.appendChild(node)});root.appendChild(col)});
+  requestAnimationFrame(()=>requestAnimationFrame(drawGenealogyConnectors));
+}
+function drawGenealogyConnectors(){
+  const wrap=document.getElementById('genealogyTreeWrap'),svg=document.getElementById('genealogyConnectors');if(!wrap||!svg)return;const map=genealogyEntityMap(),wr=wrap.getBoundingClientRect();
+  svg.setAttribute('width',wrap.scrollWidth);svg.setAttribute('height',wrap.scrollHeight);svg.setAttribute('viewBox',`0 0 ${wrap.scrollWidth} ${wrap.scrollHeight}`);svg.innerHTML='';
+  Object.values(map).forEach(ch=>{const child=wrap.querySelector(`[data-genealogy-id="${CSS.escape(ch.id)}"]`);if(!child)return;(ch._parents||[]).forEach(pid=>{const par=wrap.querySelector(`[data-genealogy-id="${CSS.escape(pid)}"]`);if(!par)return;const a=par.getBoundingClientRect(),b=child.getBoundingClientRect(),x1=a.right-wr.left+wrap.scrollLeft,y1=a.top+a.height/2-wr.top+wrap.scrollTop,x2=b.left-wr.left+wrap.scrollLeft,y2=b.top+b.height/2-wr.top+wrap.scrollTop,m=(x1+x2)/2;const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',`M ${x1} ${y1} H ${m} V ${y2} H ${x2}`);if(t.winners?.[`${ri}-${mi}`])path.classList.add('winner-path');svg.appendChild(path)})});
+}
+
 function renderGenealogy(){
   const roster=loadRoster(), d=descendants(), n=npcs();
   const ds=Object.values(d).sort((a,b)=>a.id.localeCompare(b.id));
@@ -1363,6 +1612,7 @@ function renderGenealogy(){
         <b>Enfants</b><span>${x.genealogy?.children?.join(', ')||'—'}</span>
       </div>
     </div>`).join(''):'<div class="muted">Aucun PNJ familial enregistré.</div>';
+  renderGenealogyTree();
 }
 
 
@@ -1727,12 +1977,12 @@ function renderRoster(){
 
   if(rosterCount) rosterCount.textContent=ids.length+' personnage'+(ids.length>1?'s':'');
 
-  const dstore=descendants(), dlist=Object.values(dstore).sort((a,b)=>a.id.localeCompare(b.id));
+  const dstore=descendants(), dlist=Object.values(dstore).sort((a,b)=>String(a.id).localeCompare(String(b.id)));
   const nstore=npcs(), selected=dlist.filter(x=>x.selectedForSeason===seasonNumber+1).length;
   const summary=document.getElementById('descendantSummary');
   if(summary) summary.innerHTML=`👶 <b>${dlist.length} descendant${dlist.length>1?'s':''}</b> enregistré${dlist.length>1?'s':''} • 🧑 ${Object.keys(nstore).length} PNJ • 🎟️ ${selected} sélectionné${selected>1?'s':''} pour S${seasonNumber+1}`;
 
-  if(!ids.length){
+  if(!ids.length && !dlist.some(x=>Number.isFinite(Number(x.selectedForSeason)))){
     rosterList.innerHTML='<div class="roster-empty">Aucun personnage sauvegardé.</div>';
     renderGenealogy();
     return;
@@ -1742,16 +1992,37 @@ function renderRoster(){
   for(const id of ids){
     const m=id.match(/^S(\d+)-(\d+)$/);
     const season=m?Number(m[1]):0;
-    (groups[season]??=[]).push(id);
+    (groups[season]??={fighters:[],descendants:[]}).fighters.push(id);
+  }
+
+  // Les descendants sélectionnés pour une saison apparaissent aussi dans son menu.
+  // Leur code Sx-yyy est ici un identifiant d'affichage/réservation : leurs données de combattant
+  // restent gérées séparément tant qu'ils ne sont pas transformés en fiche complète.
+  const meta=universeMeta();
+  const selectedBySeason=meta?.selectedBySeason||{};
+  for(const x of dlist){
+    const target=Number(x?.selectedForSeason);
+    if(!Number.isFinite(target)||target<=0) continue;
+    (groups[target]??={fighters:[],descendants:[]}).descendants.push(x);
+  }
+  for(const [seasonStr,g] of Object.entries(groups)){
+    const season=Number(seasonStr);
+    const preferred=Array.isArray(selectedBySeason[season])?selectedBySeason[season]:[];
+    g.descendants.sort((a,b)=>{
+      const ia=preferred.indexOf(a.id),ib=preferred.indexOf(b.id);
+      if(ia>=0||ib>=0) return (ia<0?9999:ia)-(ib<0?9999:ib);
+      return String(a.id).localeCompare(String(b.id));
+    });
   }
 
   const rosterExportBar=`<div class="roster-export-bar">
     <button type="button" class="smallbtn" id="exportAllCharactersBtn">💾 Exporter toute la liste en JSON</button>
   </div>`;
 
-  rosterList.innerHTML=rosterExportBar+Object.keys(groups).map(Number).sort((a,b)=>a-b).map(season=>{
+  const seasonHtml=Object.keys(groups).map(Number).sort((a,b)=>a-b).map(season=>{
+    const g=groups[season];
     const label=season>0?`S${season}`:'Autres';
-    const rows=groups[season].map(id=>{
+    const fighterRows=g.fighters.map(id=>{
       const s=roster[id]||{};
       return `<div class="compact-roster-row ${id===currentCharacterId()?'current':''}" data-roster-id="${id}">
         ${illustrationThumbHtml(id)}
@@ -1762,11 +2033,32 @@ function renderRoster(){
         </div>
       </div>`;
     }).join('');
-    return `<section class="season-roster-group">
-      <div class="season-roster-title">${label} —</div>
-      <div class="season-roster-list">${rows}</div>
-    </section>`;
+    const usedNumbers=new Set(g.fighters.map(id=>Number(id.match(/-(\d+)$/)?.[1])).filter(Number.isFinite));
+    let slot=1;
+    const descendantRows=g.descendants.map(x=>{
+      while(usedNumbers.has(slot)) slot++;
+      const displayId=`S${season}-${String(slot).padStart(3,'0')}`;
+      usedNumbers.add(slot++);
+      const icon=x.gender==='Femme'?'👧':x.gender==='Homme'?'👦':'👶';
+      return `<div class="compact-roster-row descendant-row" data-descendant-id="${x.id}" title="${x.status||'Descendant'}">
+        <span class="illustration-thumb-wrap"><span class="illustration-thumb-placeholder" style="display:inline-flex">${icon}</span></span>
+        <div class="compact-roster-main">
+          <span class="compact-roster-id">${displayId}</span>
+          <span class="compact-roster-separator">—</span>
+          <span class="compact-roster-name">${x.name||'Sans nom'}</span>
+        </div>
+        <span class="compact-roster-kind">Descendant</span>
+      </div>`;
+    }).join('');
+    const total=g.fighters.length+g.descendants.length;
+    const open=season===seasonNumber?' open':'';
+    return `<details class="season-roster-group"${open}>
+      <summary><span>${label}</span><span class="season-roster-count">${total} entrée${total>1?'s':''}</span></summary>
+      <div class="season-roster-list">${fighterRows}${descendantRows}</div>
+    </details>`;
   }).join('');
+
+  rosterList.innerHTML=rosterExportBar+seasonHtml;
 
   const exportAllBtn=document.getElementById('exportAllCharactersBtn');
   if(exportAllBtn) exportAllBtn.onclick=(ev)=>{
@@ -1778,11 +2070,23 @@ function renderRoster(){
     const id=el.getAttribute('data-roster-id');
     openCharacterDetail(id);
   });
+  rosterList.querySelectorAll('[data-descendant-id]').forEach(el=>el.onclick=()=>{
+    const did=el.getAttribute('data-descendant-id');
+    showTab('genealogy');
+    setTimeout(()=>{
+      const card=[...document.querySelectorAll('#descendantList .lineage-card')].find(c=>c.textContent.includes(did));
+      if(card) card.scrollIntoView({behavior:'smooth',block:'center'});
+    },0);
+  });
   setTimeout(hydrateIllustrationThumbs,0);
 }
 
 let state,queue,index,spinning=false,auto=false,rotation=0,spinNumber=0; const cvs=document.getElementById('wheel'),ctx=cvs.getContext('2d');
 function valNum(s){return parseInt(s,10)} function log(cat,val){state.logs.push({cat,val});saveCurrentCharacter();render()}
+
+const jumpTopBtn=document.getElementById('jumpTopBtn'),jumpBottomBtn=document.getElementById('jumpBottomBtn');
+if(jumpTopBtn)jumpTopBtn.onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
+if(jumpBottomBtn)jumpBottomBtn.onclick=()=>window.scrollTo({top:document.documentElement.scrollHeight,behavior:'smooth'});
 
 
 function alienStatModifierFor(label){
@@ -2321,26 +2625,40 @@ function fighterValue(c,ctx){
   if(ctx.terrain==='Zone aquatique' && String(c?.race||'').match(/Requin|Baleine|Poulpe|Kraken|Serpent de mer|Léviathan/i))v+=5;
   return v;
 }
-function simulateTournamentBattle(ri,mi){
-  const t=loadTournament(),roster=loadRoster();if(!t)return;
-  t.battles??={};t.deaths??=[];
-  const round=t.rounds[ri]||[],a=round[mi*2],b=round[mi*2+1];if(!a||!b)return;
-  const key=`${ri}-${mi}`;if(t.winners[key]&&!confirm('Ce combat a déjà été résolu. Le simuler à nouveau remplacera son résultat et effacera la progression des tours suivants. Continuer ?'))return;
+function resolveTournamentBattleInto(t,ri,mi,roster,{replace=false}={}){
+  t.battles??={};t.deaths??=[];t.winners??={};
+  const round=t.rounds[ri]||[],a=round[mi*2],b=round[mi*2+1];if(!a||!b)return false;
+  const key=`${ri}-${mi}`;if(t.winners[key]&&!replace)return false;
   const terrain=TOURNAMENT_TERRAINS[Math.floor(Math.random()*TOURNAMENT_TERRAINS.length)],d=TOURNAMENT_DISTANCES[Math.floor(Math.random()*TOURNAMENT_DISTANCES.length)];
   const ctx={terrain,distanceLabel:d[0],distance:d[1],knowledgeA:TOURNAMENT_KNOWLEDGE[Math.floor(Math.random()*3)],knowledgeB:TOURNAMENT_KNOWLEDGE[Math.floor(Math.random()*3)]};
   let va=fighterValue(roster[a],ctx),vb=fighterValue(roster[b],ctx);
   if(ctx.knowledgeA==='Informations partielles')va+=1.5;else if(ctx.knowledgeA==='Bonne connaissance de l’adversaire')va+=3;
   if(ctx.knowledgeB==='Informations partielles')vb+=1.5;else if(ctx.knowledgeB==='Bonne connaissance de l’adversaire')vb+=3;
-  const diff=va-vb,probA=Math.max(.1,Math.min(.9,1/(1+Math.exp(-diff/10))));
-  const roll=Math.random(),winner=roll<probA?a:b,loser=winner===a?b:a;
-  const lr=Number(roster[loser]?.stats?.['Résilience'])||0, deathChance=Math.max(.01,Math.min(.18,.10-lr*.006+Math.abs(diff)*.002));
-  const died=Math.random()<deathChance;
+  const diff=va-vb,probA=Math.max(.1,Math.min(.9,1/(1+Math.exp(-diff/10)))),roll=Math.random(),winner=roll<probA?a:b,loser=winner===a?b:a;
+  const lr=Number(roster[loser]?.stats?.['Résilience'])||0,deathChance=Math.max(.01,Math.min(.18,.10-lr*.006+Math.abs(diff)*.002)),died=Math.random()<deathChance;
   t.battles[key]={a,b,winner,loser,terrain,distanceLabel:d[0],distance:d[1],knowledgeA:ctx.knowledgeA,knowledgeB:ctx.knowledgeB,probA:+probA.toFixed(4),roll:+roll.toFixed(4),death:died?loser:null,at:new Date().toISOString()};
-  if(died&&!t.deaths.includes(loser))t.deaths.push(loser);
-  t.winners[key]=winner;
-  // Any changed result invalidates later rounds/results.
-  t.rounds=t.rounds.slice(0,ri+1);Object.keys(t.winners).filter(k=>+k.split('-')[0]>ri).forEach(k=>delete t.winners[k]);Object.keys(t.battles).filter(k=>+k.split('-')[0]>ri).forEach(k=>delete t.battles[k]);
-  advanceTournamentIfRoundComplete(t,ri);saveTournament(t);renderTournament();
+  if(died&&!t.deaths.includes(loser))t.deaths.push(loser);t.winners[key]=winner;return true;
+}
+function simulateTournamentBattle(ri,mi){
+  const t=loadTournament(),roster=loadRoster();if(!t)return;const key=`${ri}-${mi}`;
+  if(t.winners?.[key]&&!confirm('Ce combat a déjà été résolu. Le simuler à nouveau remplacera son résultat et effacera la progression des tours suivants. Continuer ?'))return;
+  if(t.winners?.[key]){
+    delete t.winners[key];delete t.battles?.[key];
+    t.rounds=t.rounds.slice(0,ri+1);
+    Object.keys(t.winners).filter(k=>+k.split('-')[0]>ri).forEach(k=>delete t.winners[k]);
+    Object.keys(t.battles||{}).filter(k=>+k.split('-')[0]>ri).forEach(k=>delete t.battles[k]);
+  }
+  resolveTournamentBattleInto(t,ri,mi,roster,{replace:true});advanceTournamentIfRoundComplete(t,ri);saveTournament(t);renderTournament();
+}
+function currentIncompleteTournamentRound(t){
+  for(let ri=0;ri<t.rounds.length;ri++){const round=t.rounds[ri]||[],matches=Math.floor(round.length/2);if(round.length<=1)continue;for(let mi=0;mi<matches;mi++)if(!t.winners?.[`${ri}-${mi}`])return ri}
+  return -1;
+}
+function simulateTournamentBatch(mode='round'){
+  const t=loadTournament(),roster=loadRoster();if(!t){alert('Crée d’abord le tirage du tournoi.');return}
+  let simulated=0,safety=0;
+  while(safety++<12){const ri=currentIncompleteTournamentRound(t);if(ri<0)break;const round=t.rounds[ri]||[],matches=Math.floor(round.length/2);for(let mi=0;mi<matches;mi++){const key=`${ri}-${mi}`;if(t.winners?.[key])continue;if(resolveTournamentBattleInto(t,ri,mi,roster))simulated++}advanceTournamentIfRoundComplete(t,ri);if(mode==='round')break}
+  if(!simulated){alert('Aucun combat non résolu à simuler.');return}saveTournament(t);renderTournament();
 }
 function advanceTournamentIfRoundComplete(t,roundIndex){
   const round=t.rounds[roundIndex]||[],matches=Math.ceil(round.length/2),all=[];for(let i=0;i<matches;i++){const w=t.winners[`${roundIndex}-${i}`];if(!w)return;all.push(w)}
@@ -2353,15 +2671,21 @@ function chooseTournamentWinner(roundIndex,matchIndex,id){
   Object.keys(t.winners).filter(k=>+k.split('-')[0]>roundIndex).forEach(k=>delete t.winners[k]);Object.keys(t.battles).filter(k=>+k.split('-')[0]>roundIndex).forEach(k=>delete t.battles[k]);advanceTournamentIfRoundComplete(t,roundIndex);saveTournament(t);renderTournament();
 }
 async function tournamentPortrait(el,id){try{const f=await getIllustration(id);if(!f)return;const url=URL.createObjectURL(f),img=document.createElement('img');img.src=url;img.onload=()=>URL.revokeObjectURL(url);el.replaceChildren(img)}catch(e){}}
+function drawTournamentConnectors(){
+  const wrap=document.getElementById('tournamentTreeWrap'),svg=document.getElementById('tournamentConnectors');if(!wrap||!svg)return;const wr=wrap.getBoundingClientRect();svg.setAttribute('width',wrap.scrollWidth);svg.setAttribute('height',wrap.scrollHeight);svg.setAttribute('viewBox',`0 0 ${wrap.scrollWidth} ${wrap.scrollHeight}`);svg.innerHTML='';
+  const t=loadTournament();if(!t)return;
+  for(let ri=0;ri<t.rounds.length-1;ri++){const round=t.rounds[ri]||[];for(let mi=0;mi<Math.floor(round.length/2);mi++){const from=wrap.querySelector(`[data-match-key="${ri}-${mi}"]`),to=wrap.querySelector(`[data-match-key="${ri+1}-${Math.floor(mi/2)}"]`);if(!from||!to)continue;const a=from.getBoundingClientRect(),b=to.getBoundingClientRect(),x1=a.right-wr.left+wrap.scrollLeft,y1=a.top+a.height/2-wr.top+wrap.scrollTop,x2=b.left-wr.left+wrap.scrollLeft,y2=b.top+b.height/2-wr.top+wrap.scrollTop,m=(x1+x2)/2;const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',`M ${x1} ${y1} H ${m} V ${y2} H ${x2}`);if(t.winners?.[`${ri}-${mi}`])path.classList.add('winner-path');svg.appendChild(path)}}
+}
 function renderTournament(){
   const root=document.getElementById('tournamentRounds'),status=document.getElementById('tournamentStatus'),lab=document.getElementById('tournamentSeasonLabel');if(!root)return;
   const t=loadTournament(),roster=loadRoster(),season=t?.season||tournamentSeason();lab.textContent=`S${season}`;
-  if(!t){const n=Object.keys(roster).filter(id=>id.startsWith(`S${season}-`)).length;status.textContent=n>=64?'64 personnages disponibles : tu peux créer le tirage du tournoi.':`S${season} : ${n}/64 personnages.`;root.innerHTML='<div class="tournament-empty">Aucun tournoi créé.</div>';return}
+  if(!t){const n=Object.keys(roster).filter(id=>id.startsWith(`S${season}-`)).length;status.textContent=n>=64?'64 personnages disponibles : tu peux créer le tirage du tournoi.':`S${season} : ${n}/64 personnages.`;root.innerHTML='<div class="tournament-empty">Aucun tournoi créé.</div>';drawTournamentConnectors();return}
   t.battles??={};t.deaths??=[];const first=t.rounds[0]||[];status.textContent=`S${t.season} • ${first.length} combattants • combats et progression sauvegardés automatiquement.`;root.innerHTML='';
-  t.rounds.forEach((round,ri)=>{const col=document.createElement('div');col.className='tournament-round';col.innerHTML=`<h3>${tournamentRoundName(ri)}</h3>`;for(let mi=0;mi<Math.ceil(round.length/2);mi++){const key=`${ri}-${mi}`,battle=t.battles[key],box=document.createElement('div');box.className='tournament-match';[round[mi*2],round[mi*2+1]].filter(Boolean).forEach(id=>{const c=roster[id]||{},win=t.winners[key]===id,row=document.createElement('div');row.className='tournament-fighter'+(win?' winner':'')+(t.deaths.includes(id)?' battle-dead':'');row.innerHTML=`<span class="ph">⚔️</span><span><b>${id}</b><br>${c.name||'Sans nom'}</span>`;row.onclick=()=>chooseTournamentWinner(ri,mi,id);box.appendChild(row);tournamentPortrait(row.querySelector('.ph'),id)});
+  t.rounds.forEach((round,ri)=>{const col=document.createElement('div');col.className='tournament-round';col.innerHTML=`<h3>${tournamentRoundName(ri)}</h3><div class="tournament-round-body"></div>`;const body=col.lastElementChild,slotHeight=Math.max(118,118*Math.pow(2,ri));for(let mi=0;mi<Math.ceil(round.length/2);mi++){const key=`${ri}-${mi}`,battle=t.battles[key],slot=document.createElement('div');slot.className='tournament-match-slot';slot.style.height=`${slotHeight}px`;const box=document.createElement('div');box.className='tournament-match';box.dataset.matchKey=key;[round[mi*2],round[mi*2+1]].filter(Boolean).forEach(id=>{const c=roster[id]||{},win=t.winners[key]===id,row=document.createElement('div');row.className='tournament-fighter'+(win?' winner':'')+(t.deaths.includes(id)?' battle-dead':'');row.innerHTML=`<span class="ph">⚔️</span><span><b>${id}</b><br>${c.name||'Sans nom'}</span>`;row.onclick=()=>chooseTournamentWinner(ri,mi,id);box.appendChild(row);tournamentPortrait(row.querySelector('.ph'),id)});
     if(round[mi*2]&&round[mi*2+1]){const actions=document.createElement('div');actions.className='tournament-actions';actions.innerHTML=`<button type="button" class="smallbtn">🎲 ${battle?'Rejouer':'Simuler'} le combat</button>`;actions.firstChild.onclick=()=>simulateTournamentBattle(ri,mi);box.appendChild(actions)}
-    if(battle){const rep=document.createElement('div');rep.className='battle-report';const pa=Math.round(battle.probA*100),pb=100-pa,wc=roster[battle.winner]||{};rep.innerHTML=`<b>${battle.terrain}</b> • ${battle.distanceLabel} (${battle.distance} m)<br>Infos : ${battle.a} — ${battle.knowledgeA} / ${battle.b} — ${battle.knowledgeB}<div class="battle-chance">Chances estimées avant tirage : ${battle.a} ${pa}% • ${battle.b} ${pb}%</div>🏆 <b>${battle.winner} — ${wc.name||'Sans nom'}</b>${battle.death?`<br>☠️ ${battle.death} est mort pendant le combat.`:''}`;box.appendChild(rep)}col.appendChild(box)}root.appendChild(col)});
+    if(battle){const rep=document.createElement('div');rep.className='battle-report';const pa=Math.round(battle.probA*100),pb=100-pa,wc=roster[battle.winner]||{};rep.innerHTML=`<b>${battle.terrain}</b> • ${battle.distanceLabel} (${battle.distance} m)<br>Infos : ${battle.a} — ${battle.knowledgeA} / ${battle.b} — ${battle.knowledgeB}<div class="battle-chance">Chances estimées avant tirage : ${battle.a} ${pa}% • ${battle.b} ${pb}%</div>🏆 <b>${battle.winner} — ${wc.name||'Sans nom'}</b>${battle.death?`<br>☠️ ${battle.death} est mort pendant le combat.`:''}`;box.appendChild(rep)}slot.appendChild(box);body.appendChild(slot)}root.appendChild(col)});
   const last=t.rounds[t.rounds.length-1];if(last?.length===1){status.innerHTML=`🏆 Champion de S${t.season} : <b>${last[0]} — ${(roster[last[0]]||{}).name||'Sans nom'}</b>${t.deaths.length?` • ☠️ ${t.deaths.length} mort${t.deaths.length>1?'s':''}`:''}`}
+  requestAnimationFrame(()=>requestAnimationFrame(drawTournamentConnectors));
 }
 
 wheelTabBtn.onclick=()=>showTab('wheel');
@@ -2369,6 +2693,7 @@ listTabBtn.onclick=()=>{closeCharacterDetail();showTab('list')};
 genealogyTabBtn.onclick=()=>showTab('genealogy');
 tournamentTabBtn.onclick=()=>showTab('tournament');
 document.getElementById('createTournamentBtn').onclick=createTournament;
+document.getElementById('simulateTournamentBtn').onclick=()=>simulateTournamentBatch(document.getElementById('tournamentSimMode')?.value||'round');
 document.getElementById('resetTournamentBtn').onclick=()=>{if(loadTournament()&&confirm('Effacer toute la progression du tournoi ?')){const oldT=loadTournament();localStorage.removeItem(TOURNAMENT_KEY);if(typeof cloudDeleteTournament==='function')cloudDeleteTournament(oldT?.season);renderTournament()}};
 prevCharBtn.onclick=()=>previousCharacter();
 nextCharBtn.onclick=()=>advanceCharacter();
@@ -2575,4 +2900,5 @@ setTimeout(enforceNoWeaponDisplay,0);
 
 
 
+window.addEventListener('resize',()=>{if(document.getElementById('tournamentTab')?.classList.contains('active'))drawTournamentConnectors();if(document.getElementById('genealogyTab')?.classList.contains('active'))drawGenealogyConnectors()});
 </script></body></html>
