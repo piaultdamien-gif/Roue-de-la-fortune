@@ -501,38 +501,50 @@ function loadRoster(){
 }
 function saveRoster(roster){localStorage.setItem(STORAGE_ROSTER,JSON.stringify(roster))}
 
-// Sécurise le curseur de saison contre un ancien double passage (ex. S1-064 -> S3-001).
-// Les descendants ne comptent pas comme des personnages déjà générés : avec 64 personnages de S1
-// et aucun personnage de S2, le prochain curseur canonique est donc S2-001.
+// Réconcilie le curseur avec les personnages RÉELLEMENT terminés.
+// Important : des brouillons fantômes S2/S3 créés par un ancien bug ne doivent jamais
+// faire avancer la saison. Les descendants sont stockés à part et ne comptent pas ici.
 let seasonCursorReconciled=false;
 function reconcileSeasonCursor(){
   const roster=loadRoster();
-  const parsed=Object.keys(roster).map(parseCharacterCode).filter(p=>Number.isFinite(p.season)&&Number.isFinite(p.number));
+  const completed=Object.values(roster||{}).filter(c=>{
+    if(!c?.id) return false;
+    try{return isCharacterGenerationComplete(c)}catch(e){return !!c._generationComplete}
+  });
+  const parsed=completed.map(c=>parseCharacterCode(c.id)).filter(p=>Number.isFinite(p.season)&&Number.isFinite(p.number));
+
+  // Aucun combattant terminé : on reste en S1-001. Un brouillon futur ne suffit pas à changer cela.
   if(!parsed.length){
-    if(seasonNumber>1 && characterNumber===1){
-      seasonNumber=1;
+    if(seasonNumber!==1 || characterNumber!==1){
+      seasonNumber=1;characterNumber=1;
       localStorage.setItem(STORAGE_SEASON,'1');
+      localStorage.setItem(STORAGE_CURRENT,'1');
       seasonCursorReconciled=true;
     }
     return;
   }
-  const highestSeason=Math.max(...parsed.map(p=>p.season));
-  const highestNums=parsed.filter(p=>p.season===highestSeason).map(p=>p.number);
-  const highestNumber=Math.max(...highestNums);
-  const maxAllowedSeason=highestSeason+1;
-  // On ne corrige automatiquement qu'un saut évident au-delà de la saison qui suit
-  // la dernière saison réellement présente dans le roster.
-  if(seasonNumber>maxAllowedSeason){
-    seasonNumber=maxAllowedSeason;
-    characterNumber=1;
-    localStorage.setItem(STORAGE_SEASON,String(seasonNumber));
-    localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
-    seasonCursorReconciled=true;
+
+  // On cherche la première saison qui n'est pas encore complète (64 combattants terminés).
+  // Tant que S1 est complète, on autorise S2 ; tant que S2 n'est pas complète, jamais S3, etc.
+  const counts={};
+  for(const p of parsed){
+    if(p.number>=1 && p.number<=CHARACTERS_PER_SEASON) counts[p.season]=(counts[p.season]||0)+1;
   }
-  // Cas historique : une saison complète doit mener exactement à la suivante, jamais en sauter une.
-  if(highestNumber>=CHARACTERS_PER_SEASON && seasonNumber===highestSeason && characterNumber>CHARACTERS_PER_SEASON){
-    seasonNumber=highestSeason+1;
-    characterNumber=1;
+  let canonicalSeason=1;
+  while((counts[canonicalSeason]||0)>=CHARACTERS_PER_SEASON) canonicalSeason++;
+
+  // Dans la saison courante, le prochain numéro canonique est le premier emplacement non terminé.
+  const used=new Set(parsed.filter(p=>p.season===canonicalSeason).map(p=>p.number));
+  let canonicalNumber=1;
+  while(canonicalNumber<=CHARACTERS_PER_SEASON && used.has(canonicalNumber)) canonicalNumber++;
+  if(canonicalNumber>CHARACTERS_PER_SEASON){canonicalSeason++;canonicalNumber=1}
+
+  // Ne corrige automatiquement que les curseurs placés APRÈS le prochain emplacement canonique.
+  // Cela préserve la navigation volontaire vers d'anciens personnages.
+  const cursorAhead=seasonNumber>canonicalSeason || (seasonNumber===canonicalSeason && characterNumber>canonicalNumber);
+  if(cursorAhead){
+    seasonNumber=canonicalSeason;
+    characterNumber=canonicalNumber;
     localStorage.setItem(STORAGE_SEASON,String(seasonNumber));
     localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
     seasonCursorReconciled=true;
@@ -633,7 +645,13 @@ function newCharacterAtCurrentId(){
   reset();
   taskTitle.textContent='Prêt';
   count.textContent='0 roue';
-  result.innerHTML='Clique sur « Commencer »<small>Nouveau personnage : '+currentCharacterId()+'.</small>';
+  if(seasonNumber>1 && !tournamentChampionForSeason(seasonNumber-1)){
+    taskTitle.textContent='Saison verrouillée — tournoi à terminer ⚔️';
+    spinBtn.textContent='⚔️ Voir le tournoi';
+    result.innerHTML=`Impossible de commencer ${currentCharacterId()}<small>Le tournoi de S${seasonNumber-1} doit avoir un champion avant toute création en S${seasonNumber}.</small>`;
+  }else{
+    result.innerHTML='Clique sur « Commencer »<small>Nouveau personnage : '+currentCharacterId()+'.</small>';
+  }
 }
 function goToCharacterNumber(n){
   if(n<1) return;
@@ -729,10 +747,37 @@ function blockSeasonAdvanceForBirths(){
   renderGenealogy();
   return true;
 }
+function tournamentChampionForSeason(season){
+  try{
+    const t=JSON.parse(localStorage.getItem('roue_tournament_v18')||'null');
+    if(!t || Number(t.season)!==Number(season)) return null;
+    const first=Array.isArray(t.rounds?.[0])?t.rounds[0]:[];
+    const last=Array.isArray(t.rounds?.[t.rounds.length-1])?t.rounds[t.rounds.length-1]:[];
+    if(first.length<CHARACTERS_PER_SEASON || last.length!==1) return null;
+    return last[0]||null;
+  }catch(e){return null}
+}
+function blockSeasonAdvanceForTournament(season=seasonNumber){
+  if(tournamentChampionForSeason(season)) return false;
+  alert(`S${season} est terminée, mais aucun champion n'est encore défini.\n\nTermine le tournoi de S${season} avant de pouvoir créer un personnage de S${season+1}.`);
+  showTab('tournament');
+  renderTournament();
+  return true;
+}
+function blockGenerationIfPreviousTournamentIncomplete(){
+  if(seasonNumber<=1) return false;
+  const previousSeason=seasonNumber-1;
+  if(tournamentChampionForSeason(previousSeason)) return false;
+  alert(`Impossible de créer ${currentCharacterId()} : le tournoi de S${previousSeason} n'a pas encore de champion.\n\nTermine d'abord le tournoi de S${previousSeason}.`);
+  showTab('tournament');
+  renderTournament();
+  return true;
+}
 function advanceCharacter(){
   if(characterNumber>=CHARACTERS_PER_SEASON){
     saveCurrentCharacter();
     if(blockSeasonAdvanceForBirths()) return;
+    if(blockSeasonAdvanceForTournament(seasonNumber)) return;
     seasonNumber++;
     characterNumber=1;
     localStorage.setItem(STORAGE_SEASON,String(seasonNumber));
@@ -2164,10 +2209,14 @@ function finishGeneration(){
   if(characterNumber>=CHARACTERS_PER_SEASON){
     const pending=pendingBirthEventsForSeason(seasonNumber);
     if(pending.length){
-      result.innerHTML=`<span class="ok">${state.id} est terminé et sauvegardé automatiquement</span><small>🍼 Saison S${seasonNumber} terminée. Résous ${pending.length} naissance${pending.length>1?'s':''} avant de passer à S${seasonNumber+1}.</small>`;
+      result.innerHTML=`<span class="ok">${state.id} est terminé et sauvegardé automatiquement</span><small>🍼 Saison S${seasonNumber} terminée. Résous ${pending.length} naissance${pending.length>1?'s':''}. Le tournoi devra aussi avoir un champion avant de passer à S${seasonNumber+1}.</small>`;
       spinBtn.textContent='👶 Résoudre les naissances';
+    }else if(!tournamentChampionForSeason(seasonNumber)){
+      result.innerHTML=`<span class="ok">${state.id} est terminé et sauvegardé automatiquement</span><small>⚔️ Naissances résolues. Termine maintenant le tournoi de S${seasonNumber} et définis son champion avant de passer à S${seasonNumber+1}.</small>`;
+      spinBtn.textContent='⚔️ Terminer le tournoi';
     }else{
-      result.innerHTML=`<span class="ok">${state.id} est terminé et sauvegardé automatiquement</span><small>✅ Naissances résolues. Tu peux passer à S${seasonNumber+1}.</small>`;
+      const champ=tournamentChampionForSeason(seasonNumber);
+      result.innerHTML=`<span class="ok">${state.id} est terminé et sauvegardé automatiquement</span><small>🏆 Champion de S${seasonNumber} : ${champ}. Tu peux passer à S${seasonNumber+1}.</small>`;
       spinBtn.textContent=`Passer à S${seasonNumber+1}`;
     }
   }else{
@@ -2178,7 +2227,7 @@ function finishGeneration(){
   resetBtn.textContent='Réinitialiser';
   return true;
 }
-async function next(){if(spinning)return;if(index>=queue.length){finishGeneration();return}let t=queue[index],opts=t.options();if(opts.length===1){let r=opts[0].label;result.innerHTML=`${r}<small>${t.title} — attribution automatique</small>`;state.logs.push({cat:t.title,val:r});t.apply(r);index++;saveCurrentCharacter();render();if(finishGeneration())return;return next()}taskTitle.textContent=t.title;count.textContent=`Roue ${spinNumber+1} • ${index+1}/${queue.length} étapes actuelles`;drawWheel(opts);let r=await spin(opts);spinNumber++;result.innerHTML=`${wheelDisplayLabel(r)}<small>${t.title}</small>`;state.logs.push({cat:t.title,val:r});t.apply(r);index++;saveCurrentCharacter();render();if(finishGeneration())return;spinBtn.textContent='Tourner la roue';if(auto)setTimeout(next,280)}
+async function next(){if(spinning)return;if(blockGenerationIfPreviousTournamentIncomplete())return;if(index>=queue.length){finishGeneration();return}let t=queue[index],opts=t.options();if(opts.length===1){let r=opts[0].label;result.innerHTML=`${r}<small>${t.title} — attribution automatique</small>`;state.logs.push({cat:t.title,val:r});t.apply(r);index++;saveCurrentCharacter();render();if(finishGeneration())return;return next()}taskTitle.textContent=t.title;count.textContent=`Roue ${spinNumber+1} • ${index+1}/${queue.length} étapes actuelles`;drawWheel(opts);let r=await spin(opts);spinNumber++;result.innerHTML=`${wheelDisplayLabel(r)}<small>${t.title}</small>`;state.logs.push({cat:t.title,val:r});t.apply(r);index++;saveCurrentCharacter();render();if(finishGeneration())return;spinBtn.textContent='Tourner la roue';if(auto)setTimeout(next,280)}
 function fmtMods(map,parts){let out=[];for(const p of parts){let k=raceKey(p),v=map[k];if(v)out.push(`${p} ${v>0?'+':''}${v}`)}return out.join(' • ')||'aucun'}
 function raceBonusText(){let stat=[];for(const p of state.raceParts){let m=mods[raceKey(p)]||beastMods[beastAnimal(p)];if(m){let xs=statNames.map((st,i)=>m[i]?`${st} ${m[i]>0?'+':''}${m[i]}`:null).filter(Boolean);if(xs.length)stat.push(`${p}: ${xs.join(', ')}`)}}let pm=fmtMods(pmr,state.raceParts),wm=fmtMods(wmr,state.raceParts);
 if(state.race==='Extraterrestre'&&state.alienBiology){
@@ -2195,6 +2244,7 @@ function archBonusText(){let stat=activeArchs().map(a=>{let m=amods[a];if(!m)ret
 function masteryBreakdown(kind){let bits=[];for(const p of state.raceParts){let v=(kind==='power'?pmr[raceKey(p)]:wmr[raceKey(p)])||0;if(v)bits.push(`${p} ${v>0?'+':''}${v}`)}for(const a of activeArchs()){let v=(kind==='power'?pma[a]:wma[a])||0;if(v)bits.push(`${a} ${v>0?'+':''}${v}`)}if(state.race==='Extraterrestre'){let v=alienStatModifierFor(kind==='power'?'Pouvoir':'Arme');if(v)bits.push(`Adaptation extraterrestre ${v>0?'+':''}${v}`)}return bits.join(' • ')||'aucun bonus'}
 function render(){charId.textContent=currentCharacterId();identity.innerHTML=[['Nom',state.name?`<b>${state.name}</b>`:'—'],['Titre',state.title||'—'],['Race',state.race],['Bonus de race',raceBonusText()],['Genre',state.gender],['Taille',state.size],['Archétype',state.arch],['Invocation',activeArchs().includes('Invocateur')?summonerSummaryHtml():'—'],['Cible du Slayer',activeArchs().includes('Slayer')?(state.slayerTarget||'À déterminer'):'—'],['Bonus archétype',archBonusText()+(activeArchs().includes('Slayer')&&state.slayerTarget?`<br><span class="muted">Spécial Slayer : +2 Combat contre ${state.slayerTarget}</span>`:'')],['Métier',state.job],['Histoire',state.history.join(' + ')],['Personnalité',state.personality]].map(([k,v])=>`<b>${k}</b><span>${v||'—'}</span>`).join('');stats.innerHTML=['Combat','Force','Intelligence','Résilience','Vitesse'].map(k=>{let d=state.stats[k+'_detail'];let br=d?.breakdown?.length?d.breakdown.map(b=>`${b.source} ${b.value>=0?'+':''}${b.value}`).join(' • '):'aucun modificateur';return`<div class="stat" style="display:block"><div style="display:flex;justify-content:space-between"><span>${k}</span><strong>${state.stats[k]??'—'}${Number.isFinite(state.stats[k])?` — ${rankLabel(state.stats[k],'stat')}`:''}</strong></div>${d?`<small class="muted">Jet ${d.base} • ${br} → ${state.stats[k]}</small>`:''}</div>`}).join('');document.getElementById('powers').innerHTML=state.chi?`<div class="item">🥋 <b>Chi</b> — Rang ${state.chi.rank}/10 : ${state.chi.label}</div>`:(state.powers.length?state.powers.map(p=>`<div class="item">✨ <b>${p.name}</b>${p.awakenedLate?' <span class="muted">(éveillé tardivement)</span>':''} — Maîtrise ${p.mastery??'…'}${Number.isFinite(p.mastery)?` — ${rankLabel(p.mastery,'mastery')}`:''}${Number.isFinite(p.masteryBase)?` <span class="muted">(jet ${p.masteryBase}; ${masteryBreakdown('power')} → ${p.mastery})</span>`:(p.mastery!==null?` <span class="muted">(${masteryBreakdown('power')})</span>`:'')}</div>`).join(''):'—');document.getElementById('weapons').innerHTML=state.weapons.length?state.weapons.map(w=>`<div class="item">🗡️ <b>${w.name}</b>${w.conscious?' 🧠 <span class="muted">(consciente)</span>':''}${w.mysticLink?' 🔗':''}${w.mastery!==null?` — Maîtrise ${w.mastery}${Number.isFinite(Number(w.mastery))?` — ${rankLabel(Number(w.mastery),'mastery')}`:''}${Number.isFinite(w.masteryBase)?` (jet ${w.masteryBase}; ${masteryBreakdown('weapon')} → ${w.mastery})`:''}`:''}${Number.isFinite(w.enchantmentCount)?` — ${w.enchantmentCount} enchantement${w.enchantmentCount>1?'s':''}`:''}${w.ench.length?` — ✨ ${w.ench.join(', ')}`:''}</div>`).join(''):'—';weakness.textContent=(state.weakness||'—').replace(/(— \d+)\/10$/,m=>{let n=parseInt(m.match(/\d+/)[0]);return `${m} — ${rankLabel(n,'weakness')}`});let ex=`<div><b>Extra :</b> ${state.extra||'—'}</div>`;state.extraDetail.forEach(o=>{if(o.kind==='Familier'){ex+=`<div class="item">🐾 <b>Familier :</b> ${o.type||'…'}${o.power?` — puissance ${o.power}/10`:''}${o.abilities?.length?` — capacités : ${o.abilities.join(', ')}`:''}</div>`}else if(o.kind==='Monture'){ex+=`<div class="item">🐎 <b>Monture :</b> ${o.type||'…'}${o.power?` — puissance ${o.power}/10`:''}${o.scale?` — ${o.scale}`:''}${o.abilities?.length?` — capacités : ${o.abilities.join(', ')}`:''}</div>`}else if(o.kind==='Compagnon artificiel'){ex+=`<div class="item">🤖 <b>Compagnon artificiel :</b> ${o.type||'…'}${o.power?` — puissance ${o.power}/10`:''}${o.abilities?.length?` — capacités : ${o.abilities.join(', ')}`:''}</div>`}else if(o.kind==='Familier légendaire'){ex+=`<div class="item">🐉 <b>${o.mythic?'Familier mythique':'Familier légendaire'} :</b> ${o.name||'…'}${o.type?` (${o.type})`:''}${o.power?` — puissance ${o.power}/10`:''}${o.abilities?.length?` — capacités : ${o.abilities.join(', ')}`:''}</div>`}else if(o.kind==='Technique secrète'){ex+=`<div class="item">🥋 <b>Technique secrète :</b> ${o.name||'…'}${o.mastery?` — maîtrise ${o.mastery}/10`:''}</div>`}else if(o.kind==='Armure spéciale'){ex+=`<div class="item">🛡️ <b>Armure spéciale :</b> ${o.type||'…'} — ${o.effect||'…'}${o.power?` — puissance ${o.power}/10`:''}</div>`}else if(o.kind==='Lien mystique'){ex+=`<div class="item">🔗 <b>Lien mystique :</b> ${o.target||'…'}${o.linkedItem?` [${o.linkedItem}]`:''} — ${o.nature||'…'}${o.power?` — intensité ${o.power}/10`:''}${o.ownership?`<br><span class="muted">${o.ownership}</span>`:''}${o.relationship?`<br><span class="muted">${o.relationship.type||'Relation à déterminer'} • ${o.relationship.status||'statut à déterminer'}${(o.relationship.targetId||o.targetId)?` • cible : ${o.relationship.targetId||o.targetId}${(o.relationship.targetName||o.targetName)?` — ${o.relationship.targetName||o.targetName}`:''}`:''}</span>`:''}</div>`}else if(o.kind==='Transformation'&&o.ref){let t=o.ref;ex+=`<div class="item">🧬 <b>Transformation :</b> ${t.type}${t.level?` — niveau ${t.level}/10`:''}${t.stats?.length?` — ${t.stats.join(' + ')} +${t.bonus}`:''}${t.trait?` — ${t.trait}`:''}</div>`}else if(o.kind==='Éveil'&&o.ref){let a=o.ref;ex+=`<div class="item">🌟 <b>Éveil :</b> niveau ${a.level}/10 — ${a.primary||'…'} +${a.primaryBonus}${a.secondary?` — ${a.secondary} +${a.secondaryBonus}`:''}${a.evolution?` — ${a.evolution}`:''}</div>`}else if(o.kind==='Enfant'){let kids=birthEventChildIds(o);ex+=`<div class="item">👶 <b>Enfant :</b> ${kids.length?kids.join(', '):(o.status||'À générer')}${o.otherParentId?` — autre parent : ${o.otherParentId}`:''}${o.eligibleSeason?` — éligible garanti S${o.eligibleSeason}`:''}</div>`}else if(o.source==='Histoire'){let parts=[o.result,o.effect,o.method,o.entity,o.component,o.detail,o.stat?(o.stat+' '+(o.value>0?'+':'')+o.value):null,o.weakness?(o.weakness+(o.gravity?' — '+o.gravity+'/10':'')):null,o.power?(o.power+(o.mastery!=null?' — maîtrise '+o.mastery:'')):null,o.form?(o.form+(o.nature?' • '+o.nature:'')):null].filter(Boolean);ex+=`<div class="item">📖 <b>${o.kind} :</b> ${parts.join(' • ')||'—'}</div>`}else if(o.kind==='Métier légendaire'){ex+=`<div class="item">🏆 <b>Métier légendaire :</b> ${o.name||'…'}${o.ability?` — ${o.ability}`:''}</div>`}else if(o.kind==='Extra légendaire'){ex+=`<div class="item">🌠 <b>Extra légendaire :</b> ${o.manifestation}${o.detail?` — ${o.detail}`:''}${o.ability?` — ${o.ability}`:''}${o.power?` — puissance ${o.power}/10`:''}${o.mastery?` — maîtrise ${o.mastery}/10`:''}${o.blessing?` — bénédiction : ${o.blessing} ${o.intensity||'…'}/10`:''}</div>`}else ex+=`<div class="item">🎁 ${o.kind}${o.form?` — ${o.form}, ${o.effect}, puissance ${o.power}/10`:o.manifestation?` — ${o.manifestation}`:''}</div>`});state.blessings.forEach(b=>ex+=`<div class="item">✨ <b>${b.name}</b> ${b.intensity}/10 — ${rankLabel(b.intensity,'intensity')} <span class="muted">(${b.source})</span></div>`);state.curses.forEach(c=>ex+=`<div class="item">☠️ <b>${c.name}</b> ${c.intensity}/10 — ${rankLabel(c.intensity,'intensity')} <span class="muted">(${c.source})</span></div>`);extra.innerHTML=ex;appearance.innerHTML=state.appearance.age?`${state.appearance.age} • ${state.appearance.body||'…'} • ${state.appearance.c1||'…'} + ${state.appearance.c2||'…'} • ${state.appearance.sign||'…'}`:'—';document.getElementById('log').innerHTML=state.logs.map(x=>`<div><span class="tag">${x.cat}</span>${x.val}</div>`).join('')};renderRoster()
 spinBtn.onclick=()=>{
+  if(blockGenerationIfPreviousTournamentIncomplete()) return;
   if(index>=queue.length){
     auto=false;autoBtn.textContent='Auto : OFF';
     if(characterNumber>=CHARACTERS_PER_SEASON){
