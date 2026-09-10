@@ -885,25 +885,43 @@ function characterHasPossessesChildExtra(p){
   if(Array.isArray(p.logs)&&p.logs.some(x=>isPossessChild(x?.val)||isPossessChild(x?.label)||isPossessChild(x?.result))) return true;
   try{return isPossessChild(JSON.stringify({extra:p.extra,extras:p.extras,logs:p.logs,extraDetail:p.extraDetail}))}catch(e){return false}
 }
+function emergencyBackupUniverse(){
+  try{return JSON.parse(localStorage.getItem(CLOUD_BACKUP_KEY)||'null')}catch(e){return null}
+}
+function recoverDescendantsFromEmergencyBackup(descStore,ids){
+  if(!ids?.length)return 0;
+  const backup=emergencyBackupUniverse();
+  const old=backup?.descendants||{};
+  let restored=0;
+  for(const id of ids){
+    if(!descStore[id]&&old[id]){descStore[id]=old[id];restored++}
+  }
+  if(restored)saveStore(STORAGE_DESC,descStore);
+  return restored;
+}
 function repairMissingBirthEvents(roster=loadRoster(),descStore=descendants()){
   let changed=false;
   const repaired=[];
-  const descValues=Object.values(descStore||{}).filter(Boolean);
-  const descIds=new Set(descValues.map(d=>d.id).filter(Boolean));
   for(const p of Object.values(roster||{})){
     if(!p||!characterHasPossessesChildExtra(p)) continue;
     p.extraDetail=Array.isArray(p.extraDetail)?p.extraDetail:[];
     ensureGenealogyShape(p);
     const birthSeason=characterSeasonFromId(p,seasonNumber);
-    const existingKids=descValues.filter(d=>Array.isArray(d?.parentIds)&&d.parentIds.includes(p.id)).map(d=>d.id).filter(Boolean);
     let ev=p.extraDetail.find(x=>x?.kind==='Enfant');
     if(!ev){
       ev={kind:'Enfant',otherParentId:null,origin:null};
       p.extraDetail.push(ev);
       changed=true;
     }
-    const validReferenced=birthEventChildIds(ev).filter(id=>descIds.has(id));
-    const realKids=[...new Set([...validReferenced,...existingKids])];
+    const referenced=[...new Set(birthEventChildIds(ev))];
+    // Si une ancienne synchro cloud a perdu temporairement la table descendants,
+    // on tente d'abord de restaurer les enfants depuis la sauvegarde locale d'urgence.
+    recoverDescendantsFromEmergencyBackup(descStore,referenced);
+    const descValues=Object.values(descStore||{}).filter(Boolean);
+    const existingKids=descValues.filter(d=>Array.isArray(d?.parentIds)&&d.parentIds.includes(p.id)).map(d=>d.id).filter(Boolean);
+    // IMPORTANT : un childId déjà enregistré signifie que la naissance a été résolue.
+    // On ne le supprime jamais uniquement parce que sa fiche descendant manque momentanément.
+    const realKids=[...new Set([...referenced,...existingKids])];
     const before=JSON.stringify({status:ev.status,birthEventId:ev.birthEventId,childIds:ev.childIds,childId:ev.childId,birthSeason:ev.birthSeason,eligibleSeason:ev.eligibleSeason});
     ev.birthEventId=ev.birthEventId||`BIRTH-${p.id}`;
     ev.childIds=realKids;
@@ -1424,7 +1442,7 @@ function createChild(pa,pb,origin,event,meta,descStore){
   let child={id,name:childName(),status:`Descendant — en attente S${event.eligibleSeason}`,birthSeason:event.birthSeason,eligibleSeason:event.eligibleSeason,selectedForSeason:null,origin,parentIds:[pa.id,...(pb?[pb.id]:[])],gender:rpick(['Homme','Femme','Autre / indéterminé']),race:raceInfo.race,raceParts:raceInfo.parts,racialTraits:raceTraitsFor(raceInfo.race,raceInfo.parts),inheritedPowers:inheritPowers(pa,pb),mutations:inheritedMut,appearance:inheritedAppearance(pa,pb,raceInfo.race),genealogy:{parents:[pa.id,...(pb?[pb.id]:[])],children:[],siblings:[],generation,lineage:mergedLineage(pa,pb),partnerLinks:[]},fighterDataGenerated:false};
   descStore[id]=child;return child;
 }
-function resolveBirthEvents(){
+async function resolveBirthEvents(){
   saveCurrentCharacter();
   const roster=loadRoster(), descStore=descendants(), npcStore=npcs(), meta=universeMeta();
   repairMissingBirthEvents(roster,descStore);
@@ -1473,7 +1491,12 @@ function resolveBirthEvents(){
     roster[pa.id]=pa;
   }
   saveRoster(roster);saveStore(STORAGE_DESC,descStore);saveStore(STORAGE_NPCS,npcStore);saveStore(STORAGE_META,meta);
-  if(typeof cloudSyncAllData==='function') cloudSyncAllData().catch(e=>console.warn('Sync naissances',e));
+  // Sauvegarde locale immédiatement après la naissance : elle permet une restauration
+  // même si l'onglet est fermé ou rechargé pendant la synchronisation Supabase.
+  if(typeof saveEmergencyLocalBackup==='function')saveEmergencyLocalBackup();
+  if(typeof cloudSyncAllData==='function'){
+    try{await cloudSyncAllData()}catch(e){console.warn('Sync naissances',e)}
+  }
   renderRoster();renderGenealogy();
   const suffix=skippedIncomplete?`\n\n${skippedIncomplete} personnage${skippedIncomplete>1?'s':''} encore en cours de génération n${skippedIncomplete>1?'ont':'a'} pas été traité${skippedIncomplete>1?'s':''}.`:'';
   const seasons=Object.keys(resolvedByBirthSeason).map(Number).sort((a,b)=>a-b);
@@ -2835,11 +2858,23 @@ function queueCloudGameStateSave(){if(!cloudReady())return;clearTimeout(__cloudG
 async function cloudSaveGameState(){if(!cloudReady())return;const {error}=await cloudClient.from('games').update({current_season:seasonNumber,current_character_number:characterNumber,universe_meta:universeMeta()}).eq('id',cloudCurrentGame.id);if(error)throw error}
 function queueCloudUniverseSync(){if(!cloudReady())return;clearTimeout(__cloudUniverseTimer);__cloudUniverseTimer=setTimeout(()=>cloudSyncGenealogy().catch(cloudSyncError),1400)}
 async function cloudSyncGenealogy(){
-  if(!cloudReady())return;const gid=cloudCurrentGame.id,d=descendants(),n=npcs();
-  let q=await cloudClient.from('descendants').delete().eq('game_id',gid);if(q.error)throw q.error;
-  const drows=Object.values(d).filter(Boolean).map(x=>({game_id:gid,descendant_code:x.id||null,season:x.eligibleSeason||x.birthSeason||null,data:x}));if(drows.length){q=await cloudClient.from('descendants').insert(drows);if(q.error)throw q.error}
-  q=await cloudClient.from('npcs').delete().eq('game_id',gid);if(q.error)throw q.error;
-  const nrows=Object.values(n).filter(Boolean).map(x=>({game_id:gid,npc_code:x.id||null,data:x}));if(nrows.length){q=await cloudClient.from('npcs').insert(nrows);if(q.error)throw q.error}
+  if(!cloudReady())return;
+  const gid=cloudCurrentGame.id,d=descendants(),n=npcs();
+  // Ne jamais faire DELETE ALL puis INSERT : un rechargement entre les deux pouvait
+  // laisser la partie cloud sans descendants. On écrit d'abord, puis on supprime les entrées obsolètes.
+  const drows=Object.values(d).filter(Boolean).map(x=>({game_id:gid,descendant_code:x.id||null,season:x.eligibleSeason||x.birthSeason||null,data:x}));
+  if(drows.length){const q=await cloudClient.from('descendants').upsert(drows,{onConflict:'game_id,descendant_code'});if(q.error)throw q.error}
+  const remoteD=await cloudClient.from('descendants').select('descendant_code').eq('game_id',gid);if(remoteD.error)throw remoteD.error;
+  const keepD=new Set(drows.map(r=>r.descendant_code).filter(Boolean));
+  const staleD=(remoteD.data||[]).map(r=>r.descendant_code).filter(code=>code&&!keepD.has(code));
+  for(const code of staleD){const q=await cloudClient.from('descendants').delete().eq('game_id',gid).eq('descendant_code',code);if(q.error)throw q.error}
+
+  const nrows=Object.values(n).filter(Boolean).map(x=>({game_id:gid,npc_code:x.id||null,data:x}));
+  if(nrows.length){const q=await cloudClient.from('npcs').upsert(nrows,{onConflict:'game_id,npc_code'});if(q.error)throw q.error}
+  const remoteN=await cloudClient.from('npcs').select('npc_code').eq('game_id',gid);if(remoteN.error)throw remoteN.error;
+  const keepN=new Set(nrows.map(r=>r.npc_code).filter(Boolean));
+  const staleN=(remoteN.data||[]).map(r=>r.npc_code).filter(code=>code&&!keepN.has(code));
+  for(const code of staleN){const q=await cloudClient.from('npcs').delete().eq('game_id',gid).eq('npc_code',code);if(q.error)throw q.error}
   await cloudSaveGameState();cloudUpdateTopStatus();
 }
 function queueCloudTournamentSave(t){if(!cloudReady()||!t)return;const copy=JSON.parse(JSON.stringify(t));clearTimeout(__cloudTournamentTimer);__cloudTournamentTimer=setTimeout(()=>cloudSaveTournament(copy).catch(cloudSyncError),900)}
