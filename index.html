@@ -522,6 +522,7 @@ function loadCharacterById(id){
     spinBtn.textContent=index===0?'Commencer':'Continuer';
     taskTitle.textContent=index<queue.length?'Reprise — '+queue[index].title:'Reprise';
     result.innerHTML='Progression restaurée<small>Prochaine roue : '+(queue[index]?.title||'fin')+'.</small>';
+    if(index<queue.length){try{const resumeOpts=queue[index].options();if(Array.isArray(resumeOpts)&&resumeOpts.length>1)drawWheel(resumeOpts,rotation)}catch(e){console.warn('Impossible d’afficher la roue restaurée',e)}}
   }
   count.textContent=`${state.logs.length} tirages`;
   render();
