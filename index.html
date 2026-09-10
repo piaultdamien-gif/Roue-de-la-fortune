@@ -1652,23 +1652,45 @@ function drawGenealogyConnectors(){
     const parentEls=fam.parents.map(pid=>wrap.querySelector(`[data-genealogy-id="${CSS.escape(pid)}"]`)).filter(Boolean);
     const childEls=fam.children.map(cid=>wrap.querySelector(`[data-genealogy-id="${CSS.escape(cid)}"]`)).filter(Boolean);
     if(!parentEls.length||!childEls.length)return;
-    const pPts=parentEls.map(el=>{const r=el.getBoundingClientRect();return{x:r.right-wr.left+wrap.scrollLeft,y:r.top+r.height/2-wr.top+wrap.scrollTop}});
-    const cPts=childEls.map(el=>{const r=el.getBoundingClientRect();return{x:r.left-wr.left+wrap.scrollLeft,y:r.top+r.height/2-wr.top+wrap.scrollTop}});
-    const maxPX=Math.max(...pPts.map(p=>p.x)), minCX=Math.min(...cPts.map(c=>c.x));
-    const hubX=maxPX+(minCX-maxPX)*0.5;
-    const parentMidY=pPts.reduce((a,p)=>a+p.y,0)/pPts.length;
-    const childMinY=Math.min(...cPts.map(c=>c.y)), childMaxY=Math.max(...cPts.map(c=>c.y));
-    const childHubY=(childMinY+childMaxY)/2;
 
-    // Chaque parent rejoint le petit hub familial.
-    pPts.forEach(p=>addGenealogyPath(`M ${p.x} ${p.y} H ${hubX} V ${parentMidY}`));
-    // Si deux parents : petite barre verticale entre eux, uniquement pour cette famille.
-    if(pPts.length>1){const ys=pPts.map(p=>p.y);addGenealogyPath(`M ${hubX} ${Math.min(...ys)} V ${Math.max(...ys)}`)}
-    // Liaison du couple vers le centre de sa fratrie.
-    addGenealogyPath(`M ${hubX} ${parentMidY} V ${childHubY}`);
-    // Une branche horizontale indépendante vers chaque enfant.
-    cPts.forEach(c=>addGenealogyPath(`M ${hubX} ${c.y} H ${c.x}`));
-    if(cPts.length>1)addGenealogyPath(`M ${hubX} ${childMinY} V ${childMaxY}`);
+    const pPts=parentEls.map(el=>{
+      const r=el.getBoundingClientRect();
+      return{x:r.right-wr.left+wrap.scrollLeft,y:r.top+r.height/2-wr.top+wrap.scrollTop};
+    });
+    const cPts=childEls.map(el=>{
+      const r=el.getBoundingClientRect();
+      return{x:r.left-wr.left+wrap.scrollLeft,y:r.top+r.height/2-wr.top+wrap.scrollTop};
+    });
+
+    const maxPX=Math.max(...pPts.map(p=>p.x));
+    const minCX=Math.min(...cPts.map(c=>c.x));
+    const gap=Math.max(70,minCX-maxPX);
+    // Deux points distincts : d'abord les parents fusionnent, ensuite seulement la ligne se divise vers les enfants.
+    const joinX=maxPX+gap*0.30;
+    const splitX=maxPX+gap*0.72;
+    const parentYs=pPts.map(p=>p.y);
+    const parentJoinY=(Math.min(...parentYs)+Math.max(...parentYs))/2;
+    const childYs=cPts.map(c=>c.y);
+
+    // 1) Les parents rejoignent d'abord un SEUL point familial.
+    pPts.forEach(p=>addGenealogyPath(`M ${p.x} ${p.y} H ${joinX}`));
+    if(pPts.length>1){
+      addGenealogyPath(`M ${joinX} ${Math.min(...parentYs)} V ${Math.max(...parentYs)}`);
+    }
+
+    // 2) À partir du milieu du couple, une seule ligne avance vers les descendants.
+    addGenealogyPath(`M ${joinX} ${parentJoinY} H ${splitX}`);
+
+    // 3) Cette ligne se sépare seulement au niveau des enfants.
+    if(cPts.length===1){
+      const c=cPts[0];
+      addGenealogyPath(`M ${splitX} ${parentJoinY} V ${c.y} H ${c.x}`);
+    }else{
+      const branchMinY=Math.min(parentJoinY,...childYs);
+      const branchMaxY=Math.max(parentJoinY,...childYs);
+      addGenealogyPath(`M ${splitX} ${branchMinY} V ${branchMaxY}`);
+      cPts.forEach(c=>addGenealogyPath(`M ${splitX} ${c.y} H ${c.x}`));
+    }
   });
 }
 function addGenealogyPath(d){
