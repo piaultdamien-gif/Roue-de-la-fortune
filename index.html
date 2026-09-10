@@ -114,6 +114,9 @@
 }
 
 .summoner-box{margin-top:10px;border-color:rgba(126,92,170,.45)}
+
+/* Tournament V18.25 */
+.tournament-shell{max-width:1500px;margin:auto;padding:0 18px 28px}.tournament-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.tournament-rounds{display:flex;gap:14px;overflow-x:auto;padding:8px 0 18px;align-items:flex-start}.tournament-round{min-width:240px;flex:1}.tournament-round h3{text-align:center;color:var(--gold,#d9b56d)}.tournament-match{border:1px solid var(--line);background:#11161e;border-radius:10px;padding:8px;margin:8px 0}.tournament-fighter{display:flex;align-items:center;gap:8px;padding:7px;border-radius:7px;cursor:pointer}.tournament-fighter:hover{background:#24202a}.tournament-fighter.winner{outline:1px solid #b88a4a;background:#2a2119}.tournament-fighter img{width:38px;height:38px;border-radius:50%;object-fit:cover;background:#222}.tournament-fighter .ph{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#222}.tournament-empty{padding:22px;text-align:center;color:var(--muted)}.tournament-actions{display:flex;gap:6px;margin-top:7px}.tournament-actions button{flex:1;padding:7px}.battle-report{margin-top:7px;padding:8px;border-top:1px solid var(--line);font-size:.88rem;line-height:1.35}.battle-report b{color:var(--gold,#d9b56d)}.battle-dead{opacity:.62;text-decoration:line-through}.battle-chance{font-size:.8rem;color:var(--muted);margin-top:3px}
 </style>
 <style id="darkFantasyV181">
 :root{
@@ -177,6 +180,7 @@ canvas{filter:saturate(.72) brightness(.82) contrast(1.12);drop-shadow(0 0 18px 
   <button id="wheelTabBtn" class="tabbtn active">🎰 Roue</button>
   <button id="listTabBtn" class="tabbtn">📋 Liste des personnages</button>
 <button id="genealogyTabBtn" class="tabbtn">🌳 Descendants & lignées</button>
+<button id="tournamentTabBtn" class="tabbtn">⚔️ Tournoi</button>
 </div>
 <div id="wheelTab" class="tabpage active">
 <div class="layout"><section class="panel left"><div class="top"><div class="title" id="taskTitle">Prêt</div><div class="pill" id="count">0 roue</div></div><div class="wheelwrap"><div class="pointer"></div><canvas id="wheel" width="760" height="760"></canvas></div><div class="result" id="result">Clique sur « Commencer »<small>Les sous-roues seront ajoutées automatiquement selon les résultats.</small></div><div class="controls"><button id="spinBtn">Commencer</button><button class="secondary" id="autoBtn">Auto : OFF</button><button class="secondary" id="resetBtn">Réinitialiser</button><button class="secondary" id="exportBtn">Exporter JSON</button><button class="secondary" id="prevCharBtn">← Précédent</button><button class="secondary" id="nextCharBtn">Suivant →</button></div><div class="note">✓ V18.25 : système complet de descendants, PNJ parents, génétique raciale, mutations héréditaires et sélection des 16 descendants.</div></section>
@@ -230,6 +234,20 @@ canvas{filter:saturate(.72) brightness(.82) contrast(1.12);drop-shadow(0 0 18px 
       <h3>🧑 PNJ liés aux lignées</h3>
       <div id="npcLineageList" class="genealogy-grid"></div>
     </div>
+  </div>
+</section>
+
+<section id="tournamentTab" class="tabpage">
+  <div class="tournament-shell">
+    <div class="panel">
+      <div class="top"><div><div class="title">⚔️ Tournoi des 64</div><div class="muted">Tableau à élimination directe de la saison. Le tirage est sauvegardé sur cet appareil.</div></div><div class="pill" id="tournamentSeasonLabel">S1</div></div>
+      <div class="tournament-toolbar">
+        <button class="secondary" id="createTournamentBtn">🎲 Créer / refaire le tirage</button>
+        <button class="secondary" id="resetTournamentBtn">🗑️ Réinitialiser le tournoi</button>
+      </div>
+      <div id="tournamentStatus" class="note">Le tournoi sera disponible dès que la saison contient 64 personnages.</div>
+    </div>
+    <div id="tournamentRounds" class="tournament-rounds"></div>
   </div>
 </section>
 <script>
@@ -423,7 +441,10 @@ const mysticUniqueTargets=['Le dernier rêve d’un monde mort','Une étoile con
 const mysticLinkNatures=['Partage des blessures','Partage d’énergie','Perception mutuelle','Communication mentale','Localisation mutuelle','Transfert de vitalité','Amplification à proximité','Protection réciproque','Invocation temporaire','Échange de position','Partage partiel des pouvoirs','Résistance commune','Émotions partagées','Destins liés','Lien de survie','Transmission de souvenirs','Résonance magique','Ancrage spirituel','Dette mystique','Effet unique'];
 const mysticUniqueEffects=['Les blessures deviennent des souvenirs échangeables','Le lien se renforce lorsque les deux êtres sont séparés','L’un peut emprunter brièvement l’ombre de l’autre','Une attaque reçue peut parfois être transformée en énergie pour l’autre','Le lien permet de traverser brièvement les rêves de l’autre','La mort de l’un déclenche une manifestation inconnue chez l’autre','Leurs positions peuvent se superposer un instant','Le lien conserve une copie d’un instant vécu ensemble','Leur puissance fluctue selon leur distance','Le lien attire périodiquement des anomalies surnaturelles'];
 
-let seasonNumber=1;
+const CHARACTERS_PER_SEASON=64;
+const STORAGE_SEASON='roue_seasonNumber_v18';
+let seasonNumber=parseInt(localStorage.getItem(STORAGE_SEASON)||'1',10);
+if(!Number.isFinite(seasonNumber)||seasonNumber<1) seasonNumber=1;
 const STORAGE_ROSTER='roue_roster_v16';
 const STORAGE_CURRENT='roue_characterNumber_v16';
 const STORAGE_DESC='roue_descendants_v18';
@@ -431,6 +452,13 @@ const STORAGE_NPCS='roue_npcs_v18';
 const STORAGE_META='roue_universe_meta_v18';
 let characterNumber=parseInt(localStorage.getItem(STORAGE_CURRENT)||'1',10);
 if(!Number.isFinite(characterNumber)||characterNumber<1) characterNumber=1;
+// Migration des anciennes versions : S1-065 devient automatiquement S2-001, etc.
+if(characterNumber>CHARACTERS_PER_SEASON){
+  seasonNumber += Math.floor((characterNumber-1)/CHARACTERS_PER_SEASON);
+  characterNumber = ((characterNumber-1)%CHARACTERS_PER_SEASON)+1;
+  localStorage.setItem(STORAGE_SEASON,String(seasonNumber));
+  localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
+}
 
 function currentCharacterId(){return `S${seasonNumber}-${String(characterNumber).padStart(3,'0')}`}
 
@@ -543,10 +571,28 @@ function goToCharacterNumber(n){
   if(!loadCharacterById(currentCharacterId())) newCharacterAtCurrentId();
 }
 function previousCharacter(){
-  if(characterNumber<=1) return;
+  if(characterNumber<=1){
+    if(seasonNumber<=1) return;
+    saveCurrentCharacter();
+    seasonNumber--;
+    characterNumber=CHARACTERS_PER_SEASON;
+    localStorage.setItem(STORAGE_SEASON,String(seasonNumber));
+    localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
+    if(!loadCharacterById(currentCharacterId())) newCharacterAtCurrentId();
+    return;
+  }
   goToCharacterNumber(characterNumber-1);
 }
 function advanceCharacter(){
+  if(characterNumber>=CHARACTERS_PER_SEASON){
+    saveCurrentCharacter();
+    seasonNumber++;
+    characterNumber=1;
+    localStorage.setItem(STORAGE_SEASON,String(seasonNumber));
+    localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
+    if(!loadCharacterById(currentCharacterId())) newCharacterAtCurrentId();
+    return;
+  }
   goToCharacterNumber(characterNumber+1);
 }
 function relationSummary(s){
@@ -569,17 +615,21 @@ function showTab(which){
   const isWheel=which==='wheel';
   const isList=which==='list';
   const isGenealogy=which==='genealogy';
+  const isTournament=which==='tournament';
 
   wheelTab.classList.toggle('active',isWheel);
   listTab.classList.toggle('active',isList);
   genealogyTab.classList.toggle('active',isGenealogy);
+  tournamentTab.classList.toggle('active',isTournament);
 
   wheelTabBtn.classList.toggle('active',isWheel);
   listTabBtn.classList.toggle('active',isList);
   genealogyTabBtn.classList.toggle('active',isGenealogy);
+  tournamentTabBtn.classList.toggle('active',isTournament);
 
   if(isList) renderRoster();
   if(isGenealogy) renderGenealogy();
+  if(isTournament) renderTournament();
 }
 
 function needsMysticExistingTargetRepair(s){
@@ -1841,9 +1891,92 @@ spinBtn.onclick=()=>{
     return;
   }
   next()
-};autoBtn.onclick=()=>{auto=!auto;autoBtn.textContent=`Auto : ${auto?'ON':'OFF'}`;if(auto&&!spinning)next()};resetBtn.onclick=()=>{auto=false;autoBtn.textContent='Auto : OFF';spinBtn.disabled=false;spinBtn.textContent='Commencer';resetBtn.textContent='Réinitialiser';taskTitle.textContent='Prêt';count.textContent='0 roue';result.innerHTML='Clique sur « Commencer »<small>Les sous-roues seront ajoutées automatiquement selon les résultats.</small>';reset()};exportBtn.onclick=()=>{saveCurrentCharacter();let a=document.createElement('a'),blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});a.href=URL.createObjectURL(blob);a.download=`${state.id}_V18.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};wheelTabBtn.onclick=()=>showTab('wheel');
+};autoBtn.onclick=()=>{auto=!auto;autoBtn.textContent=`Auto : ${auto?'ON':'OFF'}`;if(auto&&!spinning)next()};resetBtn.onclick=()=>{auto=false;autoBtn.textContent='Auto : OFF';spinBtn.disabled=false;spinBtn.textContent='Commencer';resetBtn.textContent='Réinitialiser';taskTitle.textContent='Prêt';count.textContent='0 roue';result.innerHTML='Clique sur « Commencer »<small>Les sous-roues seront ajoutées automatiquement selon les résultats.</small>';reset()};exportBtn.onclick=()=>{saveCurrentCharacter();let a=document.createElement('a'),blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});a.href=URL.createObjectURL(blob);a.download=`${state.id}_V18.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};const TOURNAMENT_KEY='roue_tournament_v18';
+const TOURNAMENT_TERRAINS=['Plaine ouverte','Forêt dense','Ruines','Ville','Montagne','Marais','Désert','Caverne','Arène fermée','Zone aquatique'];
+const TOURNAMENT_DISTANCES=[['Corps à corps',2],['Courte distance',8],['Distance moyenne',25],['Longue distance',60]];
+const TOURNAMENT_KNOWLEDGE=['Aucune information','Informations partielles','Bonne connaissance de l’adversaire'];
+function tournamentSeason(){
+  const roster=loadRoster(), seasons={};
+  Object.keys(roster).forEach(id=>{const m=id.match(/^S(\d+)-(\d+)$/);if(m)(seasons[+m[1]]??=[]).push(id)});
+  const complete=Object.keys(seasons).map(Number).filter(n=>seasons[n].length>=64).sort((a,b)=>b-a);
+  return complete[0]||1;
+}
+function loadTournament(){try{return JSON.parse(localStorage.getItem(TOURNAMENT_KEY)||'null')}catch(e){return null}}
+function saveTournament(t){localStorage.setItem(TOURNAMENT_KEY,JSON.stringify(t))}
+function shuffleTournament(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function createTournament(){
+  const season=tournamentSeason(), roster=loadRoster();
+  const ids=Object.keys(roster).filter(id=>id.startsWith(`S${season}-`)).sort((a,b)=>Number(a.split('-')[1])-Number(b.split('-')[1])).slice(0,64);
+  if(ids.length<64){alert(`La saison S${season} ne contient que ${ids.length}/64 personnages.`);return}
+  const old=loadTournament();
+  if(old&&!confirm('Un tournoi existe déjà. Refaire le tirage effacera sa progression. Continuer ?'))return;
+  const t={version:'V18.25',season,createdAt:new Date().toISOString(),rounds:[shuffleTournament(ids)],winners:{},battles:{},deaths:[]};
+  saveTournament(t);renderTournament();
+}
+function tournamentRoundName(i){return ['32es de finale','16es de finale','8es de finale','Quarts de finale','Demi-finales','Finale'][i]||`Tour ${i+1}`}
+function fighterValue(c,ctx){
+  const st=c?.stats||{}, combat=Number(st.Combat)||0, force=Number(st.Force)||0, intel=Number(st.Intelligence)||0, res=Number(st['Résilience'])||0, vit=Number(st['Vitesse'])||0;
+  const powers=(c?.powers||[]).map(p=>Number(p.mastery)||0); if(c?.chi?.rank)powers.push(Number(c.chi.rank)||0);
+  const weapons=(c?.weapons||[]).map(w=>Number(w.mastery)||0);
+  const p=powers.length?Math.max(...powers):0,w=weapons.length?Math.max(...weapons):0;
+  let v=combat*2.2+force*1.15+intel*1.15+res*1.45+vit*1.35+p*1.7+w*1.25;
+  const arch=String(c?.arch||'');
+  if(ctx.distance>=25){if(/Tireur|Mage|Sorcier/.test(arch))v+=4;if(/Assassin|Berserker|Artiste martial/.test(arch))v-=2}
+  if(ctx.distance<=8){if(/Artiste martial|Berserker|Guerrier|Assassin/.test(arch))v+=3;if(/Tireur/.test(arch))v-=2}
+  if(ctx.terrain==='Forêt dense'||ctx.terrain==='Ruines'){if(/Chasseur|Éclaireur|Assassin|Trickster/.test(arch))v+=2}
+  if(ctx.terrain==='Plaine ouverte'){if(/Tireur|Commandant/.test(arch))v+=2}
+  if(ctx.terrain==='Zone aquatique' && String(c?.race||'').match(/Requin|Baleine|Poulpe|Kraken|Serpent de mer|Léviathan/i))v+=5;
+  return v;
+}
+function simulateTournamentBattle(ri,mi){
+  const t=loadTournament(),roster=loadRoster();if(!t)return;
+  t.battles??={};t.deaths??=[];
+  const round=t.rounds[ri]||[],a=round[mi*2],b=round[mi*2+1];if(!a||!b)return;
+  const key=`${ri}-${mi}`;if(t.winners[key]&&!confirm('Ce combat a déjà été résolu. Le simuler à nouveau remplacera son résultat et effacera la progression des tours suivants. Continuer ?'))return;
+  const terrain=TOURNAMENT_TERRAINS[Math.floor(Math.random()*TOURNAMENT_TERRAINS.length)],d=TOURNAMENT_DISTANCES[Math.floor(Math.random()*TOURNAMENT_DISTANCES.length)];
+  const ctx={terrain,distanceLabel:d[0],distance:d[1],knowledgeA:TOURNAMENT_KNOWLEDGE[Math.floor(Math.random()*3)],knowledgeB:TOURNAMENT_KNOWLEDGE[Math.floor(Math.random()*3)]};
+  let va=fighterValue(roster[a],ctx),vb=fighterValue(roster[b],ctx);
+  if(ctx.knowledgeA==='Informations partielles')va+=1.5;else if(ctx.knowledgeA==='Bonne connaissance de l’adversaire')va+=3;
+  if(ctx.knowledgeB==='Informations partielles')vb+=1.5;else if(ctx.knowledgeB==='Bonne connaissance de l’adversaire')vb+=3;
+  const diff=va-vb,probA=Math.max(.1,Math.min(.9,1/(1+Math.exp(-diff/10))));
+  const roll=Math.random(),winner=roll<probA?a:b,loser=winner===a?b:a;
+  const lr=Number(roster[loser]?.stats?.['Résilience'])||0, deathChance=Math.max(.01,Math.min(.18,.10-lr*.006+Math.abs(diff)*.002));
+  const died=Math.random()<deathChance;
+  t.battles[key]={a,b,winner,loser,terrain,distanceLabel:d[0],distance:d[1],knowledgeA:ctx.knowledgeA,knowledgeB:ctx.knowledgeB,probA:+probA.toFixed(4),roll:+roll.toFixed(4),death:died?loser:null,at:new Date().toISOString()};
+  if(died&&!t.deaths.includes(loser))t.deaths.push(loser);
+  t.winners[key]=winner;
+  // Any changed result invalidates later rounds/results.
+  t.rounds=t.rounds.slice(0,ri+1);Object.keys(t.winners).filter(k=>+k.split('-')[0]>ri).forEach(k=>delete t.winners[k]);Object.keys(t.battles).filter(k=>+k.split('-')[0]>ri).forEach(k=>delete t.battles[k]);
+  advanceTournamentIfRoundComplete(t,ri);saveTournament(t);renderTournament();
+}
+function advanceTournamentIfRoundComplete(t,roundIndex){
+  const round=t.rounds[roundIndex]||[],matches=Math.ceil(round.length/2),all=[];for(let i=0;i<matches;i++){const w=t.winners[`${roundIndex}-${i}`];if(!w)return;all.push(w)}
+  if(round.length>1)t.rounds[roundIndex+1]=all;
+}
+function chooseTournamentWinner(roundIndex,matchIndex,id){
+  const t=loadTournament();if(!t)return;const round=t.rounds[roundIndex]||[],a=round[matchIndex*2],b=round[matchIndex*2+1];if(id!==a&&id!==b)return;
+  if(!confirm('Forcer manuellement ce personnage comme vainqueur ?'))return;
+  t.winners[`${roundIndex}-${matchIndex}`]=id;t.battles??={};delete t.battles[`${roundIndex}-${matchIndex}`];t.rounds=t.rounds.slice(0,roundIndex+1);
+  Object.keys(t.winners).filter(k=>+k.split('-')[0]>roundIndex).forEach(k=>delete t.winners[k]);Object.keys(t.battles).filter(k=>+k.split('-')[0]>roundIndex).forEach(k=>delete t.battles[k]);advanceTournamentIfRoundComplete(t,roundIndex);saveTournament(t);renderTournament();
+}
+async function tournamentPortrait(el,id){try{const f=await getIllustration(id);if(!f)return;const url=URL.createObjectURL(f),img=document.createElement('img');img.src=url;img.onload=()=>URL.revokeObjectURL(url);el.replaceChildren(img)}catch(e){}}
+function renderTournament(){
+  const root=document.getElementById('tournamentRounds'),status=document.getElementById('tournamentStatus'),lab=document.getElementById('tournamentSeasonLabel');if(!root)return;
+  const t=loadTournament(),roster=loadRoster(),season=t?.season||tournamentSeason();lab.textContent=`S${season}`;
+  if(!t){const n=Object.keys(roster).filter(id=>id.startsWith(`S${season}-`)).length;status.textContent=n>=64?'64 personnages disponibles : tu peux créer le tirage du tournoi.':`S${season} : ${n}/64 personnages.`;root.innerHTML='<div class="tournament-empty">Aucun tournoi créé.</div>';return}
+  t.battles??={};t.deaths??=[];const first=t.rounds[0]||[];status.textContent=`S${t.season} • ${first.length} combattants • combats et progression sauvegardés automatiquement.`;root.innerHTML='';
+  t.rounds.forEach((round,ri)=>{const col=document.createElement('div');col.className='tournament-round';col.innerHTML=`<h3>${tournamentRoundName(ri)}</h3>`;for(let mi=0;mi<Math.ceil(round.length/2);mi++){const key=`${ri}-${mi}`,battle=t.battles[key],box=document.createElement('div');box.className='tournament-match';[round[mi*2],round[mi*2+1]].filter(Boolean).forEach(id=>{const c=roster[id]||{},win=t.winners[key]===id,row=document.createElement('div');row.className='tournament-fighter'+(win?' winner':'')+(t.deaths.includes(id)?' battle-dead':'');row.innerHTML=`<span class="ph">⚔️</span><span><b>${id}</b><br>${c.name||'Sans nom'}</span>`;row.onclick=()=>chooseTournamentWinner(ri,mi,id);box.appendChild(row);tournamentPortrait(row.querySelector('.ph'),id)});
+    if(round[mi*2]&&round[mi*2+1]){const actions=document.createElement('div');actions.className='tournament-actions';actions.innerHTML=`<button type="button" class="smallbtn">🎲 ${battle?'Rejouer':'Simuler'} le combat</button>`;actions.firstChild.onclick=()=>simulateTournamentBattle(ri,mi);box.appendChild(actions)}
+    if(battle){const rep=document.createElement('div');rep.className='battle-report';const pa=Math.round(battle.probA*100),pb=100-pa,wc=roster[battle.winner]||{};rep.innerHTML=`<b>${battle.terrain}</b> • ${battle.distanceLabel} (${battle.distance} m)<br>Infos : ${battle.a} — ${battle.knowledgeA} / ${battle.b} — ${battle.knowledgeB}<div class="battle-chance">Chances estimées avant tirage : ${battle.a} ${pa}% • ${battle.b} ${pb}%</div>🏆 <b>${battle.winner} — ${wc.name||'Sans nom'}</b>${battle.death?`<br>☠️ ${battle.death} est mort pendant le combat.`:''}`;box.appendChild(rep)}col.appendChild(box)}root.appendChild(col)});
+  const last=t.rounds[t.rounds.length-1];if(last?.length===1){status.innerHTML=`🏆 Champion de S${t.season} : <b>${last[0]} — ${(roster[last[0]]||{}).name||'Sans nom'}</b>${t.deaths.length?` • ☠️ ${t.deaths.length} mort${t.deaths.length>1?'s':''}`:''}`}
+}
+
+wheelTabBtn.onclick=()=>showTab('wheel');
 listTabBtn.onclick=()=>{closeCharacterDetail();showTab('list')};
 genealogyTabBtn.onclick=()=>showTab('genealogy');
+tournamentTabBtn.onclick=()=>showTab('tournament');
+document.getElementById('createTournamentBtn').onclick=createTournament;
+document.getElementById('resetTournamentBtn').onclick=()=>{if(loadTournament()&&confirm('Effacer toute la progression du tournoi ?')){localStorage.removeItem(TOURNAMENT_KEY);renderTournament()}};
 prevCharBtn.onclick=()=>previousCharacter();
 nextCharBtn.onclick=()=>advanceCharacter();
 const resolveChildrenBtn=document.getElementById('resolveChildrenBtn');
