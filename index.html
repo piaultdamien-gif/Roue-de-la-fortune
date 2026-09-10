@@ -739,6 +739,21 @@ function pendingBirthEventsForSeason(season=seasonNumber){
   }
   return pending;
 }
+function pendingBirthEventsDue(upToSeason=seasonNumber){
+  const roster=loadRoster();
+  repairMissingBirthEvents(roster,descendants());
+  const pending=[];
+  for(const p of Object.values(roster)){
+    if(!isCharacterGenerationComplete(p)) continue;
+    for(const ev of (p?.extraDetail||[])){
+      if(ev?.kind!=='Enfant'||birthEventChildIds(ev).length) continue;
+      ev.birthSeason=Number(ev.birthSeason||characterSeasonFromId(p,upToSeason));
+      ev.eligibleSeason=Number(ev.eligibleSeason||ev.birthSeason+1);
+      if(ev.birthSeason<=Number(upToSeason)) pending.push({parent:p,event:ev});
+    }
+  }
+  return pending.sort((a,b)=>(a.event.birthSeason-b.event.birthSeason)||String(a.parent.id).localeCompare(String(b.parent.id)));
+}
 function blockSeasonAdvanceForBirths(){
   const pending=pendingBirthEventsForSeason(seasonNumber);
   if(!pending.length) return false;
@@ -1298,12 +1313,14 @@ function renderGenealogy(){
   const roster=loadRoster(), d=descendants(), n=npcs();
   const ds=Object.values(d).sort((a,b)=>a.id.localeCompare(b.id));
   const ns=Object.values(n).sort((a,b)=>a.id.localeCompare(b.id));
-  const pending=pendingBirthEventsForSeason(seasonNumber);
+  // Afficher aussi les naissances en retard des saisons précédentes.
+  // Exemple : un événement obtenu en S1 reste une naissance S1 même si on est déjà en S2.
+  const pending=pendingBirthEventsDue(seasonNumber);
   const target=seasonNumber+1, selected=ds.filter(x=>x.selectedForSeason===target).length;
   const stats=document.getElementById('genealogyStats');
   if(stats)stats.innerHTML=`
     <div class="genealogy-stat"><b>${ds.length}</b><span>Descendants</span></div>
-    <div class="genealogy-stat"><b>${pending.length}</b><span>Naissances en attente</span></div>
+    <div class="genealogy-stat"><b>${pending.length}</b><span>Naissances à résoudre</span></div>
     <div class="genealogy-stat"><b>${ns.length}</b><span>PNJ familiaux</span></div>
     <div class="genealogy-stat"><b>${selected}</b><span>Sélectionnés pour S${target}</span></div>`;
   const summary=document.getElementById('descendantSummary');
@@ -1315,7 +1332,7 @@ function renderGenealogy(){
     <div class="lineage-card pending-birth">
       <div class="lineage-title"><strong>Naissance liée à ${parent.name||parent.id}</strong><span class="tag">${parent.id}</span></div>
       <div class="lineage-meta"><b>Saison</b><span>S${event.birthSeason} → éligible S${event.eligibleSeason}</span><b>Statut</b><span>${event.status||'En attente'}</span></div>
-    </div>`).join(''):'<div class="muted">Aucune naissance en attente.</div>';
+    </div>`).join(''):'<div class="muted">Aucune naissance à résoudre jusqu’à la saison actuelle.</div>';
   const dl=document.getElementById('descendantList');
   if(dl)dl.innerHTML=ds.length?ds.map(x=>`
     <div class="lineage-card ${x.selectedForSeason===target?'selected':''}">
@@ -2474,6 +2491,9 @@ async function cloudLoadGameToLocal(id){
   localStorage.setItem(STORAGE_META,JSON.stringify(gr.data?.universe_meta||{nextDesc:1,nextNpc:1,selectedBySeason:{}}));
   localStorage.setItem(STORAGE_SEASON,String(gr.data?.current_season||1));localStorage.setItem(STORAGE_CURRENT,String(gr.data?.current_character_number||1));
   if(tr.data?.[0]?.data)localStorage.setItem(TOURNAMENT_KEY,JSON.stringify(tr.data[0].data));
+  // Migration rétroactive : recréer les événements Enfant manquants dans les anciennes sauvegardes.
+  const repairedBirths=repairMissingBirthEvents(loadRoster(),descendants());
+  if(repairedBirths.changed && typeof cloudSyncAllData==='function') setTimeout(()=>cloudSyncAllData().catch(cloudSyncError),250);
 }
 function queueCloudCharacterSave(character){if(!cloudReady()||!character?.id)return;const copy=JSON.parse(JSON.stringify(character));clearTimeout(__cloudCharacterTimers.get(character.id));__cloudCharacterTimers.set(character.id,setTimeout(()=>cloudSaveCharacter(copy).catch(cloudSyncError),900))}
 async function cloudSaveCharacter(character){
