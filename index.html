@@ -117,6 +117,18 @@
 
 /* Tournament V18.25 */
 .tournament-shell{max-width:1500px;margin:auto;padding:0 18px 28px}.tournament-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.tournament-rounds{display:flex;gap:14px;overflow-x:auto;padding:8px 0 18px;align-items:flex-start}.tournament-round{min-width:240px;flex:1}.tournament-round h3{text-align:center;color:var(--gold,#d9b56d)}.tournament-match{border:1px solid var(--line);background:#11161e;border-radius:10px;padding:8px;margin:8px 0}.tournament-fighter{display:flex;align-items:center;gap:8px;padding:7px;border-radius:7px;cursor:pointer}.tournament-fighter:hover{background:#24202a}.tournament-fighter.winner{outline:1px solid #b88a4a;background:#2a2119}.tournament-fighter img{width:38px;height:38px;border-radius:50%;object-fit:cover;background:#222}.tournament-fighter .ph{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#222}.tournament-empty{padding:22px;text-align:center;color:var(--muted)}.tournament-actions{display:flex;gap:6px;margin-top:7px}.tournament-actions button{flex:1;padding:7px}.battle-report{margin-top:7px;padding:8px;border-top:1px solid var(--line);font-size:.88rem;line-height:1.35}.battle-report b{color:var(--gold,#d9b56d)}.battle-dead{opacity:.62;text-decoration:line-through}.battle-chance{font-size:.8rem;color:var(--muted);margin-top:3px}
+
+/* Supabase Cloud V18.26 */
+.cloud-bar{max-width:1500px;margin:10px auto 0;padding:0 18px;display:flex;justify-content:flex-end;gap:8px;align-items:center;flex-wrap:wrap}
+.cloud-status{background:#121116;border:1px solid #4b3845;border-radius:999px;padding:7px 11px;color:#b9afa8;font-size:12px}
+.cloud-status.online{color:#cfe5d0;border-color:#355f42}.cloud-status.syncing{color:#e4cf9e;border-color:#7c6235}.cloud-status.error{color:#f0b5b5;border-color:#8d3434}
+.cloud-modal{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.78);display:none;align-items:flex-start;justify-content:center;padding:7vh 14px 30px;overflow:auto}
+.cloud-modal.active{display:flex}.cloud-card{width:min(720px,100%);background:linear-gradient(145deg,#1b171d,#0d0c10);border:1px solid #5a414b;border-radius:18px;padding:18px;box-shadow:0 24px 80px #000b}
+.cloud-card h2{margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;color:#ead7b0}.cloud-card h3{font-family:Georgia,'Times New Roman',serif;color:#d9c18f}.cloud-form{display:grid;gap:9px;margin-top:14px}.cloud-form input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid #4a3c46}
+.cloud-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.cloud-row>*{flex:1}.cloud-row button{flex:0 0 auto}
+.cloud-game{display:flex;align-items:center;gap:10px;padding:11px;margin:8px 0;border:1px solid #40343c;border-radius:12px;background:#121116}.cloud-game-main{flex:1;min-width:0}.cloud-game-name{font-weight:800;color:#ead7b0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cloud-game-meta{font-size:12px;color:#998f8e}
+.cloud-message{margin-top:10px;padding:9px 11px;border-radius:9px;background:#16151a;border:1px solid #3f3740;color:#c9bfb6}.cloud-danger{background:linear-gradient(180deg,#4b171b,#270b0e)!important;border-color:#8c3339!important}.cloud-separator{height:1px;background:#3b3037;margin:16px 0}.cloud-close{float:right}.cloud-small{font-size:12px;color:#9f9590}.cloud-current{border-color:#8f6b35;box-shadow:0 0 0 1px rgba(198,161,91,.12)}
+@media(max-width:600px){.cloud-game{align-items:flex-start;flex-wrap:wrap}.cloud-game .cloud-game-main{flex-basis:100%}.cloud-row{flex-direction:column;align-items:stretch}.cloud-row button{width:100%}}
 </style>
 <style id="darkFantasyV181">
 :root{
@@ -175,7 +187,18 @@ canvas{filter:saturate(.72) brightness(.82) contrast(1.12);drop-shadow(0 0 18px 
 @media(max-width:720px){.genealogy-stats{grid-template-columns:repeat(2,1fr)}.genealogy-grid{grid-template-columns:1fr}}
 </style>
 
-</head><body><header><div><h1>🎰 Roue de la Fortune — V18.25</h1><div class="muted">Chaque donnée aléatoire affichée provient de la roue que tu vois tourner.</div></div><div class="pill" id="charId">S1-001</div></header>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head><body><header><div><h1>🎰 Roue de la Fortune — V18.26 Cloud</h1><div class="muted">Chaque donnée aléatoire affichée provient de la roue que tu vois tourner.</div></div><div class="pill" id="charId">S1-001</div></header>
+<div class="cloud-bar">
+  <span id="cloudStatus" class="cloud-status">☁️ Mode local</span>
+  <button type="button" class="secondary" id="cloudAccountBtn">☁️ Connexion</button>
+</div>
+<div id="cloudModal" class="cloud-modal" aria-hidden="true">
+  <div class="cloud-card">
+    <button type="button" class="secondary cloud-close" id="cloudCloseBtn">✕</button>
+    <div id="cloudModalContent"></div>
+  </div>
+</div>
 <div class="tabs">
   <button id="wheelTabBtn" class="tabbtn active">🎰 Roue</button>
   <button id="listTabBtn" class="tabbtn">📋 Liste des personnages</button>
@@ -240,7 +263,7 @@ canvas{filter:saturate(.72) brightness(.82) contrast(1.12);drop-shadow(0 0 18px 
 <section id="tournamentTab" class="tabpage">
   <div class="tournament-shell">
     <div class="panel">
-      <div class="top"><div><div class="title">⚔️ Tournoi des 64</div><div class="muted">Tableau à élimination directe de la saison. Le tirage est sauvegardé sur cet appareil.</div></div><div class="pill" id="tournamentSeasonLabel">S1</div></div>
+      <div class="top"><div><div class="title">⚔️ Tournoi des 64</div><div class="muted">Tableau à élimination directe de la saison. Le tirage est sauvegardé dans la partie active (et localement en secours).</div></div><div class="pill" id="tournamentSeasonLabel">S1</div></div>
       <div class="tournament-toolbar">
         <button class="secondary" id="createTournamentBtn">🎲 Créer / refaire le tirage</button>
         <button class="secondary" id="resetTournamentBtn">🗑️ Réinitialiser le tournoi</button>
@@ -499,6 +522,8 @@ function saveCurrentCharacter(){
   roster[state.id]=JSON.parse(JSON.stringify(state));
   saveRoster(roster);
   renderRoster();
+  if(typeof queueCloudCharacterSave==='function') queueCloudCharacterSave(state);
+  if(typeof queueCloudGameStateSave==='function') queueCloudGameStateSave();
 }
 function blankCharacterState(id){
   return {alienBiology:null,id:id||currentCharacterId(),name:'',title:'',raceParts:[],race:'',gender:'',size:'',arch:'',archParts:[],slayerTarget:null,job:'',history:[],extra:'',extraDetail:[],extraStatMods:[],relationships:[],genealogy:{parents:[],children:[],generation:1,lineage:[],partnerLinks:[]},personality:'',stats:{},powers:[],weapons:[],weakness:'',blessings:[],curses:[],appearance:{},transformation:null,awakening:null,chi:null,prodigeMods:[],logs:[]};
@@ -815,7 +840,7 @@ const CHILD_NAME_START=['Ael','Ny','Ka','Va','Iri','Ze','Or','Tha','Ly','Sa','My
 const CHILD_NAME_MID=['ra','li','en','or','ae','yn','is','va','eth','io','ar','un'];
 const CHILD_NAME_END=['n','a','is','or','el','yx','ia','en','os','ar','eth','i'];
 function loadStore(key,fallback){try{const x=JSON.parse(localStorage.getItem(key)||'null');return x??fallback}catch(e){return fallback}}
-function saveStore(key,v){localStorage.setItem(key,JSON.stringify(v))}
+function saveStore(key,v){localStorage.setItem(key,JSON.stringify(v)); if(typeof queueCloudUniverseSync==='function') queueCloudUniverseSync()}
 function descendants(){return loadStore(STORAGE_DESC,{})}
 function npcs(){return loadStore(STORAGE_NPCS,{})}
 function universeMeta(){return loadStore(STORAGE_META,{nextDesc:1,nextNpc:1,selectedBySeason:{}})}
@@ -1171,27 +1196,41 @@ async function saveIllustration(characterId,file){
   return new Promise((resolve,reject)=>{
     const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');
     tx.objectStore(ILLUSTRATION_STORE).put(file,characterId);
-    tx.oncomplete=()=>resolve(true);
+    tx.oncomplete=()=>{resolve(true); if(typeof cloudUploadIllustration==='function') cloudUploadIllustration(characterId,file)};
     tx.onerror=()=>reject(tx.error);
   });
 }
 
 async function getIllustration(characterId){
   const db=await openIllustrationDB();
-  return new Promise((resolve,reject)=>{
+  const local=await new Promise((resolve,reject)=>{
     const tx=db.transaction(ILLUSTRATION_STORE,'readonly');
     const req=tx.objectStore(ILLUSTRATION_STORE).get(characterId);
     req.onsuccess=()=>resolve(req.result||null);
     req.onerror=()=>reject(req.error);
   });
+  if(local) return local;
+  if(typeof cloudDownloadIllustration==='function'){
+    try{
+      const remote=await cloudDownloadIllustration(characterId);
+      if(remote){
+        await new Promise((resolve,reject)=>{
+          const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');
+          tx.objectStore(ILLUSTRATION_STORE).put(remote,characterId);
+          tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error);
+        });
+        return remote;
+      }
+    }catch(e){console.warn('Illustration cloud indisponible',characterId,e)}
+  }
+  return null;
 }
-
 async function deleteIllustration(characterId){
   const db=await openIllustrationDB();
   return new Promise((resolve,reject)=>{
     const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');
     tx.objectStore(ILLUSTRATION_STORE).delete(characterId);
-    tx.oncomplete=()=>resolve(true);
+    tx.oncomplete=()=>{resolve(true); if(typeof cloudDeleteIllustration==='function') cloudDeleteIllustration(characterId)};
     tx.onerror=()=>reject(tx.error);
   });
 }
@@ -1360,6 +1399,8 @@ Cette action retire le personnage de la liste et efface ses références locales
   }catch(e){}
 
   deleteIllustration(id).catch(()=>{});
+  if(typeof cloudDeleteCharacter==='function') cloudDeleteCharacter(id);
+  if(typeof queueCloudUniverseSync==='function') queueCloudUniverseSync();
   closeCharacterDetail();
   renderRoster();
   renderGenealogy();
@@ -1427,6 +1468,7 @@ function importCharactersFromFiles(files){
     characterNumber=Math.max(stored,minimumNext);
     localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
     renderRoster();
+    if(typeof cloudSyncAllData==='function') cloudSyncAllData().catch(e=>console.warn('Sync import',e));
     alert(`${valid.length} personnage${valid.length>1?'s':''} importé${valid.length>1?'s':''} avec succès.\n\nProchain ID : ${currentCharacterId()}\n\nLes illustrations ne sont pas contenues dans ces JSON.`);
   }).catch(err=>alert(`Import impossible : ${err.message||err}`));
 }
@@ -1842,7 +1884,7 @@ if(l.target==='Un artefact ancien'){let art=state.extraDetail.find(o=>o!==l&&(o.
 })])}else if(x==='Consommable rare'){let d={kind:'Consommable rare',manifestation:null};state.extraDetail.push(d);insert([task('Consommable rare — Nature',EQ(rareConsumables),u=>d.manifestation=u)])}else if(x==='Sens extraordinaire'){let d={kind:'Sens extraordinaire',manifestation:null};state.extraDetail.push(d);insert([task('Sens extraordinaire — Nature',EQ(extraordinarySenses),u=>d.manifestation=u)])}else if(x==='Aura dominante'){let d={kind:'Aura dominante',manifestation:null};state.extraDetail.push(d);insert([task('Aura dominante — Nature',EQ(dominantAuras),u=>d.manifestation=u),task('Aura dominante — Intensité',centered,u=>d.power=valNum(u))])}else if(x==='Mutation'){let d={kind:'Mutation',manifestation:null};state.extraDetail.push(d);insert([task('Mutation — Nature',EQ(mutations),u=>d.manifestation=u)])}else if(x==='Double'){let d={kind:'Double',manifestation:null,power:null};state.extraDetail.push(d);insert([task('Double — Type',EQ(doubles),u=>{d.manifestation=u;if(u==='Double unique')insert([task('Double unique — Manifestation',EQ(doubleUnique),z=>d.manifestation=z)])}),task('Double — Puissance',[10,20,30,40,50,60,70,80,90,100].map(n=>W(n+' %')),u=>d.power=parseInt(u))])}else if(x==='Possède un enfant'){
   let c={kind:'Enfant',status:'Naissance en attente de résolution',birthEventId:`BIRTH-${state.id}`,childIds:[],otherParentId:null,origin:null,birthSeason:seasonNumber,eligibleSeason:seasonNumber+1};
   state.extraDetail.push(c);
-}else if(x==='Extra improbable')insert([task('Extra improbable — Manifestation',EQ(improbableExtras),u=>state.extraDetail.push({kind:'Extra improbable',manifestation:u}))]);else if(x==='Extra légendaire')addLegendaryExtra()}),task('Personnalité',EQ(personalities),x=>{state.personality=x;if(x==='Personnalité unique')insert([task('Personnalité unique — manifestation',EQ(uniquePersonalities),u=>state.personality=u)])}),...['Combat','Force','Intelligence','Résilience','Vitesse'].map((stat,si)=>task(`Stat — ${stat}`,centered,x=>{let base=valNum(x),m=modSum()[si];state.stats[stat]=Math.max(0,base+m);state.stats[stat+'_detail']={base,mod:m,breakdown:statBreakdown(si)}})),task('Pouvoir / Chi',()=>activeArchs().includes('Artiste martial')?[W('Chi')]:EQ(activeArchs().includes('Sorcier')?chaos:powers),x=>{if(activeArchs().includes('Artiste martial')){insert([task('Chi — Rang',()=>centered().map(o=>W(`${valNum(o.label)} — ${chiRanks[valNum(o.label)-1]}`,o.w)),m=>{let n=valNum(m);state.chi={rank:n,label:chiRanks[n-1]};if(n===9){state.raceParts.push('Ascension Demi-dieu');applyAscensionMods('Demi-dieu')}else if(n===10){state.raceParts.push('Martial God');applyAscensionMods('Divinité')}})]);return;}let p={name:x,mastery:null};state.powers.push(p);let follow=[];if(x==='Pouvoir unique')follow.push(task('Pouvoir principal — Manifestation unique',EQ(uniquePowers),u=>p.name=u));follow.push(task('Pouvoir principal — Maîtrise',centered,m=>{p.masteryBase=valNum(m);p.masteryMod=masteryMod('power');p.mastery=Math.max(0,p.masteryBase+p.masteryMod);if(activeArchs().includes('Mage'))addPower('Pouvoir de Mage',false);if(state._extraPower){state._extraPower=false;addPower('Deuxième pouvoir (Extra)',false)}}));insert(follow)}),
+}else if(x==='Extra improbable')insert([task('Extra improbable — Manifestation',EQ(improbableExtras),u=>state.extraDetail.push({kind:'Extra improbable',manifestation:u}))]);else if(x==='Extra légendaire')addLegendaryExtra()}),task('Personnalité',EQ(personalities),x=>{state.personality=x;if(x==='Personnalité unique')insert([task('Personnalité unique — manifestation',EQ(uniquePersonalities),u=>state.personality=u)])}),...['Combat','Force','Intelligence','Résilience','Vitesse'].map((stat,si)=>task(`Stat — ${stat}`,centered,x=>{let base=valNum(x),m=modSum()[si];state.stats[stat]=Math.max(0,base+m);state.stats[stat+'_detail']={base,mod:m,breakdown:statBreakdown(si)}})),task('Pouvoir / Chi',()=>activeArchs().includes('Artiste martial')?[W('Chi')]:EQ(activeArchs().includes('Sorcier')?chaos:powers),x=>{if(activeArchs().includes('Artiste martial')){insert([task('Chi — Rang',()=>centered.map(o=>W(`${valNum(o.label)} — ${chiRanks[valNum(o.label)-1]}`,o.weight)),m=>{let n=valNum(m);state.chi={rank:n,label:chiRanks[n-1]};if(n===9){state.raceParts.push('Ascension Demi-dieu');applyAscensionMods('Demi-dieu')}else if(n===10){state.raceParts.push('Martial God');applyAscensionMods('Divinité')}})]);return;}let p={name:x,mastery:null};state.powers.push(p);let follow=[];if(x==='Pouvoir unique')follow.push(task('Pouvoir principal — Manifestation unique',EQ(uniquePowers),u=>p.name=u));follow.push(task('Pouvoir principal — Maîtrise',centered,m=>{p.masteryBase=valNum(m);p.masteryMod=masteryMod('power');p.mastery=Math.max(0,p.masteryBase+p.masteryMod);if(activeArchs().includes('Mage'))addPower('Pouvoir de Mage',false);if(state._extraPower){state._extraPower=false;addPower('Deuxième pouvoir (Extra)',false)}}));insert(follow)}),
 task('Arme principale',()=>activeArchs().includes('Artiste martial')?martialWeaponOptions():weaponOptions(activeArchs().includes('Tireur')),x=>{let w={name:x,mastery:null,ench:[]};state.weapons.push(w);let follow=[];if(x==='Arme unique')follow.push(task('Arme principale — Manifestation unique',EQ(uniqueWeapons),u=>w.name=u));if(x==='Arme improvisée')follow.push(task('Arme principale — Objet improvisé',EQ(improvisedWeapons),u=>w.name=`Arme improvisée — ${u}`));let afterMainWeapon=()=>{if(activeArchs().includes('Berserker'))addWeapon('Deuxième arme du Berserker');if(state._extraWeapon){state._extraWeapon=false;addWeapon('Deuxième arme (Extra)')}};if(x==='Aucune arme'){w.mastery='—';w.enchantmentCount=0;afterMainWeapon()}else{follow.push(task('Arme principale — Maîtrise',centered,m=>{w.masteryBase=valNum(m);w.masteryMod=masteryMod('weapon');w.mastery=Math.max(0,w.masteryBase+w.masteryMod);let n=(w.mastery>=8?2:(w.mastery>=5?1:0));w.directEnchantBonus=activeArchs().includes('Tireur')?1:0;n+=w.directEnchantBonus;w.enchantmentCount=n;insert(enchantTasks(w,'Arme principale',n));afterMainWeapon()}))}insert(follow)}),task('Type de faiblesse',weaknessTypeOptions,x=>{if(x==='Aucune faiblesse')state.weakness='Aucune faiblesse';else if(x==='Faiblesse improbable')insert([task('Faiblesse improbable',EQ(improbableWeak),w=>{state._weak=w}),task('Gravité de la faiblesse',centered,g=>{state.weakness=`Improbable : ${state._weak} — ${valNum(g)}/10`;delete state._weak})]);else insert([task('Faiblesse classique',EQ(classicalWeak),w=>state._weak=w),task('Gravité de la faiblesse',centered,g=>{state.weakness=`${state._weak} — ${valNum(g)}/10`;delete state._weak})])}),task('Âge apparent',[W('Très jeune adulte',10),W('Jeune adulte',25),W('Adulte',35),W('Mature',20),W('Âgé',10)],x=>state.appearance.age=x),task('Corpulence',EQ(bodies),x=>state.appearance.body=x),task('Couleur dominante 1',EQ(colors),x=>{state.appearance.c1=x;if(x==='Couleur unique')insert([task('Couleur dominante 1 — Couleur unique',EQ(uniqueColors),u=>state.appearance.c1=u)])}),task('Couleur dominante 2',()=>EQ(colors.filter(c=>c!==state.appearance.c1)),x=>{state.appearance.c2=x;if(x==='Couleur unique')insert([task('Couleur dominante 2 — Couleur unique',EQ(uniqueColors.filter(c=>c!==state.appearance.c1)),u=>state.appearance.c2=u)])}),task('Signe distinctif',EQ(signs),x=>{state.appearance.sign=x;if(x==='Signe unique')insert([task('Signe unique — manifestation',EQ(['Œil supplémentaire','Halo fracturé','Veines lumineuses','Ombre indépendante','Corne asymétrique','Runes mouvantes','Main cristalline','Cheveux flottant sans vent','Cicatrice en forme de constellation','Tatouage vivant','Peau irisée','Reflet absent','Voix visible comme de la brume','Couronne d’étincelles','Marque impossible']),u=>state.appearance.sign=u)])}),task('Prénom — Structure',EQ(['Court','Long']),x=>{state._nameParts=[];let set=namingSets[namingStyle()]||namingSets.Default;let ts=[task('Prénom — Début',EQ(set.start),v=>state._nameParts.push(v))];if(x==='Long')ts.push(task('Prénom — Milieu',EQ(set.mid),v=>state._nameParts.push(v)));ts.push(task('Prénom — Fin',EQ(set.end),v=>{state._nameParts.push(v);let raw=state._nameParts.join('');state.name=raw.charAt(0).toUpperCase()+raw.slice(1);delete state._nameParts}));insert(ts)}),task('Titre',titleOptions,x=>state.title=x)];}
 function weightedPick(opts){let total=opts.reduce((s,o)=>s+o.weight,0),r=Math.random()*total;for(let i=0;i<opts.length;i++){r-=opts[i].weight;if(r<0)return i}return opts.length-1}
 function drawWheel(opts,rot=rotation){ctx.clearRect(0,0,760,760);let cx=380,cy=380,R=325,total=opts.reduce((s,o)=>s+o.weight,0),a=-Math.PI/2;ctx.save();ctx.translate(cx,cy);ctx.rotate(rot);opts.forEach((o,i)=>{let span=2*Math.PI*o.weight/total,a1=a+span;ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,R,a,a1);ctx.closePath();ctx.fillStyle=`hsl(${(i*53+18)%360} 48% ${i%2?45:37}%)`;ctx.fill();ctx.strokeStyle='#10151e';ctx.lineWidth=2;ctx.stroke();if(span>.07){ctx.save();ctx.rotate(a+span/2);ctx.textAlign='right';ctx.fillStyle='#fff';ctx.font=`700 ${Math.max(10,Math.min(18,13+span*4))}px system-ui`;let t=o.label.length>27?o.label.slice(0,25)+'…':o.label;ctx.fillText(t,R-18,5);ctx.restore()}a=a1});ctx.beginPath();ctx.arc(0,0,66,0,Math.PI*2);ctx.fillStyle='#151a22';ctx.fill();ctx.strokeStyle='#ffd166';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='850 17px system-ui';ctx.fillText('ROUE',0,6);ctx.restore()}
@@ -1902,7 +1944,7 @@ function tournamentSeason(){
   return complete[0]||1;
 }
 function loadTournament(){try{return JSON.parse(localStorage.getItem(TOURNAMENT_KEY)||'null')}catch(e){return null}}
-function saveTournament(t){localStorage.setItem(TOURNAMENT_KEY,JSON.stringify(t))}
+function saveTournament(t){localStorage.setItem(TOURNAMENT_KEY,JSON.stringify(t)); if(typeof queueCloudTournamentSave==='function') queueCloudTournamentSave(t)}
 function shuffleTournament(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function createTournament(){
   const season=tournamentSeason(), roster=loadRoster();
@@ -1976,7 +2018,7 @@ listTabBtn.onclick=()=>{closeCharacterDetail();showTab('list')};
 genealogyTabBtn.onclick=()=>showTab('genealogy');
 tournamentTabBtn.onclick=()=>showTab('tournament');
 document.getElementById('createTournamentBtn').onclick=createTournament;
-document.getElementById('resetTournamentBtn').onclick=()=>{if(loadTournament()&&confirm('Effacer toute la progression du tournoi ?')){localStorage.removeItem(TOURNAMENT_KEY);renderTournament()}};
+document.getElementById('resetTournamentBtn').onclick=()=>{if(loadTournament()&&confirm('Effacer toute la progression du tournoi ?')){const oldT=loadTournament();localStorage.removeItem(TOURNAMENT_KEY);if(typeof cloudDeleteTournament==='function')cloudDeleteTournament(oldT?.season);renderTournament()}};
 prevCharBtn.onclick=()=>previousCharacter();
 nextCharBtn.onclick=()=>advanceCharacter();
 const resolveChildrenBtn=document.getElementById('resolveChildrenBtn');
@@ -1990,7 +2032,171 @@ if(importCharactersBtn&&importCharactersInput){
 const exportUniverseBtn=document.getElementById('exportUniverseBtn');
 if(resolveChildrenBtn)resolveChildrenBtn.onclick=resolveBirthEvents;
 if(selectDescBtn)selectDescBtn.onclick=selectDescendantsForNextSeason;
+
 if(exportUniverseBtn)exportUniverseBtn.onclick=exportUniverse;
+
+// ============================================================
+// SUPABASE CLOUD — comptes, parties et synchronisation
+// ============================================================
+const SUPABASE_URL='https://qeuqxvyrmrqvymrafvtv.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_cRbNvF-wSAkFrSUYq_Uc6g_sJ56grrF';
+const CLOUD_GAME_KEY='roue_cloud_game_id_v1';
+const CLOUD_LOADED_GAME_KEY='roue_cloud_loaded_game_id_v1';
+const CLOUD_BACKUP_KEY='roue_local_backup_before_cloud_v1';
+let cloudClient=null,cloudUser=null,cloudGames=[],cloudCurrentGame=null;
+let __cloudCharacterTimers=new Map(),__cloudUniverseTimer=null,__cloudGameTimer=null,__cloudTournamentTimer=null;
+let __cloudSyncBusy=false;
+
+function cloudReady(){return !!(cloudClient&&cloudUser&&cloudCurrentGame?.id)}
+function cloudStatus(text,kind=''){
+  const el=document.getElementById('cloudStatus');if(!el)return;
+  el.textContent=text;el.className='cloud-status'+(kind?' '+kind:'');
+}
+function cloudSetMessage(text){const e=document.getElementById('cloudMessage');if(e)e.textContent=text}
+function openCloudModal(){document.getElementById('cloudModal')?.classList.add('active');renderCloudModal()}
+function closeCloudModal(){document.getElementById('cloudModal')?.classList.remove('active')}
+function hasLocalUniverse(){return Object.keys(loadRoster()).length>0||Object.keys(descendants()).length>0||Object.keys(npcs()).length>0||!!loadTournament()}
+function localUniverseSnapshot(){return {at:new Date().toISOString(),season:seasonNumber,characterNumber,roster:loadRoster(),descendants:descendants(),npcs:npcs(),meta:universeMeta(),tournament:loadTournament()}}
+function saveEmergencyLocalBackup(){try{localStorage.setItem(CLOUD_BACKUP_KEY,JSON.stringify(localUniverseSnapshot()))}catch(e){console.warn('Backup local impossible',e)}}
+function clearLocalUniverse(){
+  [STORAGE_ROSTER,STORAGE_DESC,STORAGE_NPCS,STORAGE_META,TOURNAMENT_KEY].forEach(k=>localStorage.removeItem(k));
+  localStorage.setItem(STORAGE_SEASON,'1');localStorage.setItem(STORAGE_CURRENT,'1');
+}
+function parseCharacterCode(code){const m=String(code||'').match(/^S(\d+)-(\d+)$/);return m?{season:+m[1],number:+m[2]}:{season:1,number:1}}
+async function cloudRefreshGames(){
+  if(!cloudClient||!cloudUser)return [];
+  const {data,error}=await cloudClient.from('games').select('*').order('updated_at',{ascending:false});
+  if(error)throw error;cloudGames=data||[];
+  const currentId=localStorage.getItem(CLOUD_GAME_KEY);
+  cloudCurrentGame=cloudGames.find(g=>g.id===currentId)||null;
+  return cloudGames;
+}
+function renderCloudModal(){
+  const root=document.getElementById('cloudModalContent');if(!root)return;
+  if(!cloudUser){
+    root.innerHTML=`<h2>☁️ Roue de la Fortune — Compte</h2><div class="muted">Connecte-toi pour retrouver tes parties sur plusieurs appareils.</div>
+      <div class="cloud-form"><input id="cloudEmail" type="email" autocomplete="email" placeholder="Adresse e-mail"><input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Mot de passe (6 caractères minimum)">
+      <div class="cloud-row"><button id="cloudLoginBtn">Se connecter</button><button class="secondary" id="cloudSignupBtn">Créer un compte</button></div><div id="cloudMessage" class="cloud-message">Tes données locales ne sont pas supprimées.</div></div>`;
+    document.getElementById('cloudLoginBtn').onclick=cloudLogin;
+    document.getElementById('cloudSignupBtn').onclick=cloudSignup;
+    return;
+  }
+  const rows=cloudGames.map(g=>`<div class="cloud-game ${cloudCurrentGame?.id===g.id?'cloud-current':''}"><div class="cloud-game-main"><div class="cloud-game-name">${escapeHtml(g.name||'Partie')}</div><div class="cloud-game-meta">S${g.current_season||1} • modifiée ${new Date(g.updated_at).toLocaleString('fr-FR')}</div></div><button class="secondary" data-open-game="${g.id}">${cloudCurrentGame?.id===g.id?'Ouverte':'Ouvrir'}</button><button class="secondary" data-rename-game="${g.id}">✏️</button><button class="cloud-danger" data-delete-game="${g.id}">🗑️</button></div>`).join('');
+  root.innerHTML=`<h2>☁️ Mes parties</h2><div class="muted">Compte : ${escapeHtml(cloudUser.email||'')}</div><div class="cloud-separator"></div>${rows||'<div class="cloud-message">Aucune partie. Crée ta première partie.</div>'}<div class="cloud-row" style="margin-top:12px"><button id="cloudNewGameBtn">＋ Nouvelle partie</button>${cloudCurrentGame?'<button class="secondary" id="cloudSyncNowBtn">☁️ Synchroniser maintenant</button>':''}</div><div class="cloud-separator"></div><button class="secondary" id="cloudLogoutBtn">Se déconnecter</button><div id="cloudMessage" class="cloud-message">${cloudCurrentGame?'Partie active : '+escapeHtml(cloudCurrentGame.name):'Choisis une partie.'}</div>`;
+  root.querySelectorAll('[data-open-game]').forEach(b=>b.onclick=()=>cloudOpenGame(b.dataset.openGame));
+  root.querySelectorAll('[data-rename-game]').forEach(b=>b.onclick=()=>cloudRenameGame(b.dataset.renameGame));
+  root.querySelectorAll('[data-delete-game]').forEach(b=>b.onclick=()=>cloudDeleteGame(b.dataset.deleteGame));
+  document.getElementById('cloudNewGameBtn').onclick=cloudCreateGame;
+  if(document.getElementById('cloudSyncNowBtn'))document.getElementById('cloudSyncNowBtn').onclick=async()=>{cloudSetMessage('Synchronisation…');try{await cloudSyncAllData();cloudSetMessage('Synchronisation terminée ✓')}catch(e){cloudSetMessage('Erreur : '+(e.message||e))}};
+  document.getElementById('cloudLogoutBtn').onclick=cloudLogout;
+}
+function escapeHtml(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function cloudLogin(){
+  const email=document.getElementById('cloudEmail')?.value.trim(),password=document.getElementById('cloudPassword')?.value||'';
+  if(!email||!password){cloudSetMessage('Entre ton e-mail et ton mot de passe.');return}
+  cloudSetMessage('Connexion…');const {error}=await cloudClient.auth.signInWithPassword({email,password});if(error)cloudSetMessage('Connexion impossible : '+error.message);
+}
+async function cloudSignup(){
+  const email=document.getElementById('cloudEmail')?.value.trim(),password=document.getElementById('cloudPassword')?.value||'';
+  if(!email||password.length<6){cloudSetMessage('Entre un e-mail et un mot de passe d’au moins 6 caractères.');return}
+  cloudSetMessage('Création du compte…');
+  const {data,error}=await cloudClient.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
+  if(error){cloudSetMessage('Inscription impossible : '+error.message);return}
+  if(data.session)cloudSetMessage('Compte créé et connecté ✓');else cloudSetMessage('Compte créé. Vérifie ton e-mail si Supabase demande une confirmation.');
+}
+async function cloudLogout(){if(cloudReady())try{await cloudSyncAllData()}catch(e){} await cloudClient.auth.signOut();localStorage.removeItem(CLOUD_GAME_KEY);localStorage.removeItem(CLOUD_LOADED_GAME_KEY);cloudCurrentGame=null;closeCloudModal()}
+async function cloudCreateGame(){
+  const name=prompt('Nom de la nouvelle partie :','Ma partie');if(name===null)return;
+  const {data,error}=await cloudClient.from('games').insert({owner_id:cloudUser.id,name:(name.trim()||'Ma partie')}).select().single();
+  if(error){cloudSetMessage('Création impossible : '+error.message);return}await cloudRefreshGames();renderCloudModal();await cloudOpenGame(data.id,true);
+}
+async function cloudRenameGame(id){const g=cloudGames.find(x=>x.id===id);if(!g)return;const name=prompt('Nouveau nom :',g.name||'Partie');if(name===null||!name.trim())return;const {error}=await cloudClient.from('games').update({name:name.trim()}).eq('id',id);if(error){cloudSetMessage(error.message);return}await cloudRefreshGames();renderCloudModal();cloudUpdateTopStatus()}
+async function cloudDeleteGame(id){const g=cloudGames.find(x=>x.id===id);if(!g)return;if(!confirm(`Supprimer définitivement la partie « ${g.name} » et toutes ses données en ligne ?`))return;const {error}=await cloudClient.from('games').delete().eq('id',id);if(error){cloudSetMessage(error.message);return}if(cloudCurrentGame?.id===id){cloudCurrentGame=null;localStorage.removeItem(CLOUD_GAME_KEY);localStorage.removeItem(CLOUD_LOADED_GAME_KEY)}await cloudRefreshGames();renderCloudModal();cloudUpdateTopStatus()}
+async function cloudOpenGame(id,justCreated=false){
+  const g=cloudGames.find(x=>x.id===id);if(!g)return;
+  const loadedId=localStorage.getItem(CLOUD_LOADED_GAME_KEY);
+  if(cloudCurrentGame?.id&&loadedId===cloudCurrentGame.id&&cloudCurrentGame.id!==id){try{await cloudSyncAllData()}catch(e){if(!confirm('La sauvegarde de la partie actuelle vers le cloud a échoué. Changer quand même de partie ?'))return}}
+  // Première migration : protéger la partie locale existante et proposer de l'envoyer dans la nouvelle partie.
+  if(!loadedId&&hasLocalUniverse()){
+    saveEmergencyLocalBackup();
+    const n=Object.keys(loadRoster()).length;
+    if(confirm(`Une partie locale contenant ${n} personnage${n>1?'s':''} est présente sur cet appareil.\n\nL’importer dans « ${g.name} » ?\n\nOK = migrer la partie locale vers ce compte.\nAnnuler = charger la partie en ligne à la place.`)){
+      cloudCurrentGame=g;localStorage.setItem(CLOUD_GAME_KEY,id);localStorage.setItem(CLOUD_LOADED_GAME_KEY,id);
+      await cloudSyncAllData();cloudUpdateTopStatus();closeCloudModal();location.reload();return;
+    }
+  }
+  saveEmergencyLocalBackup();cloudCurrentGame=g;localStorage.setItem(CLOUD_GAME_KEY,id);
+  await cloudLoadGameToLocal(id);localStorage.setItem(CLOUD_LOADED_GAME_KEY,id);closeCloudModal();location.reload();
+}
+async function cloudLoadGameToLocal(id){
+  cloudStatus('☁️ Chargement…','syncing');
+  const [gr,cr,dr,nr,tr]=await Promise.all([
+    cloudClient.from('games').select('*').eq('id',id).single(),
+    cloudClient.from('characters').select('*').eq('game_id',id),
+    cloudClient.from('descendants').select('*').eq('game_id',id),
+    cloudClient.from('npcs').select('*').eq('game_id',id),
+    cloudClient.from('tournaments').select('*').eq('game_id',id).order('season',{ascending:false}).limit(1)
+  ]);
+  for(const r of [gr,cr,dr,nr,tr])if(r.error)throw r.error;
+  clearLocalUniverse();
+  const roster={};for(const r of cr.data||[]){const c=r.data||{};const code=r.character_code||c.id;if(code)roster[code]=c}saveRoster(roster);
+  const ds={};for(const r of dr.data||[]){const x=r.data||{};const code=r.descendant_code||x.id;if(code)ds[code]=x}localStorage.setItem(STORAGE_DESC,JSON.stringify(ds));
+  const ns={};for(const r of nr.data||[]){const x=r.data||{};const code=r.npc_code||x.id;if(code)ns[code]=x}localStorage.setItem(STORAGE_NPCS,JSON.stringify(ns));
+  localStorage.setItem(STORAGE_META,JSON.stringify(gr.data?.universe_meta||{nextDesc:1,nextNpc:1,selectedBySeason:{}}));
+  localStorage.setItem(STORAGE_SEASON,String(gr.data?.current_season||1));localStorage.setItem(STORAGE_CURRENT,String(gr.data?.current_character_number||1));
+  if(tr.data?.[0]?.data)localStorage.setItem(TOURNAMENT_KEY,JSON.stringify(tr.data[0].data));
+}
+function queueCloudCharacterSave(character){if(!cloudReady()||!character?.id)return;const copy=JSON.parse(JSON.stringify(character));clearTimeout(__cloudCharacterTimers.get(character.id));__cloudCharacterTimers.set(character.id,setTimeout(()=>cloudSaveCharacter(copy).catch(cloudSyncError),900))}
+async function cloudSaveCharacter(character){
+  if(!cloudReady()||!character?.id)return;cloudStatus(`☁️ ${cloudCurrentGame.name} • sauvegarde…`,'syncing');
+  const p=parseCharacterCode(character.id);const {error}=await cloudClient.from('characters').upsert({game_id:cloudCurrentGame.id,character_code:character.id,season:p.season,character_number:p.number,name:character.name||null,data:character},{onConflict:'game_id,character_code'});if(error)throw error;queueCloudGameStateSave();cloudUpdateTopStatus();
+}
+async function cloudDeleteCharacter(code){if(!cloudReady())return;const {error}=await cloudClient.from('characters').delete().eq('game_id',cloudCurrentGame.id).eq('character_code',code);if(error)cloudSyncError(error)}
+function queueCloudGameStateSave(){if(!cloudReady())return;clearTimeout(__cloudGameTimer);__cloudGameTimer=setTimeout(()=>cloudSaveGameState().catch(cloudSyncError),900)}
+async function cloudSaveGameState(){if(!cloudReady())return;const {error}=await cloudClient.from('games').update({current_season:seasonNumber,current_character_number:characterNumber,universe_meta:universeMeta()}).eq('id',cloudCurrentGame.id);if(error)throw error}
+function queueCloudUniverseSync(){if(!cloudReady())return;clearTimeout(__cloudUniverseTimer);__cloudUniverseTimer=setTimeout(()=>cloudSyncGenealogy().catch(cloudSyncError),1400)}
+async function cloudSyncGenealogy(){
+  if(!cloudReady())return;const gid=cloudCurrentGame.id,d=descendants(),n=npcs();
+  let q=await cloudClient.from('descendants').delete().eq('game_id',gid);if(q.error)throw q.error;
+  const drows=Object.values(d).filter(Boolean).map(x=>({game_id:gid,descendant_code:x.id||null,season:x.eligibleSeason||x.birthSeason||null,data:x}));if(drows.length){q=await cloudClient.from('descendants').insert(drows);if(q.error)throw q.error}
+  q=await cloudClient.from('npcs').delete().eq('game_id',gid);if(q.error)throw q.error;
+  const nrows=Object.values(n).filter(Boolean).map(x=>({game_id:gid,npc_code:x.id||null,data:x}));if(nrows.length){q=await cloudClient.from('npcs').insert(nrows);if(q.error)throw q.error}
+  await cloudSaveGameState();cloudUpdateTopStatus();
+}
+function queueCloudTournamentSave(t){if(!cloudReady()||!t)return;const copy=JSON.parse(JSON.stringify(t));clearTimeout(__cloudTournamentTimer);__cloudTournamentTimer=setTimeout(()=>cloudSaveTournament(copy).catch(cloudSyncError),900)}
+async function cloudSaveTournament(t){if(!cloudReady()||!t)return;const {error}=await cloudClient.from('tournaments').upsert({game_id:cloudCurrentGame.id,season:t.season||1,data:t},{onConflict:'game_id,season'});if(error)throw error;cloudUpdateTopStatus()}
+async function cloudDeleteTournament(season){if(!cloudReady()||!season)return;const {error}=await cloudClient.from('tournaments').delete().eq('game_id',cloudCurrentGame.id).eq('season',season);if(error)cloudSyncError(error)}
+async function cloudSyncAllData(){
+  if(!cloudReady()||__cloudSyncBusy)return;__cloudSyncBusy=true;cloudStatus(`☁️ ${cloudCurrentGame.name} • synchronisation…`,'syncing');
+  try{
+    const roster=loadRoster(),rows=Object.values(roster).filter(c=>c?.id).map(c=>{const p=parseCharacterCode(c.id);return{game_id:cloudCurrentGame.id,character_code:c.id,season:p.season,character_number:p.number,name:c.name||null,data:c}});
+    if(rows.length){const {error}=await cloudClient.from('characters').upsert(rows,{onConflict:'game_id,character_code'});if(error)throw error}
+    await cloudSyncGenealogy();const t=loadTournament();if(t)await cloudSaveTournament(t);await cloudSaveGameState();cloudUpdateTopStatus();
+  }finally{__cloudSyncBusy=false}
+}
+function cloudImagePath(characterId){return `${cloudUser.id}/${cloudCurrentGame.id}/${characterId}`}
+async function cloudUploadIllustration(characterId,file){if(!cloudReady()||!file)return;const {error}=await cloudClient.storage.from('character-images').upload(cloudImagePath(characterId),file,{upsert:true,contentType:file.type||'application/octet-stream'});if(error)cloudSyncError(error)}
+async function cloudDownloadIllustration(characterId){if(!cloudReady())return null;const {data,error}=await cloudClient.storage.from('character-images').download(cloudImagePath(characterId));if(error){if(String(error.message||'').toLowerCase().includes('not found'))return null;return null}return data||null}
+async function cloudDeleteIllustration(characterId){if(!cloudReady())return;const {error}=await cloudClient.storage.from('character-images').remove([cloudImagePath(characterId)]);if(error)cloudSyncError(error)}
+function cloudSyncError(e){console.error('Supabase sync',e);cloudStatus('☁️ Erreur de synchronisation','error')}
+function cloudUpdateTopStatus(){
+  const btn=document.getElementById('cloudAccountBtn');
+  if(!cloudUser){cloudStatus('☁️ Mode local');if(btn)btn.textContent='☁️ Connexion';return}
+  if(cloudCurrentGame){cloudStatus(`☁️ ${cloudCurrentGame.name} • synchronisé`,'online');if(btn)btn.textContent='☁️ Mes parties'}
+  else{cloudStatus('☁️ Connecté • aucune partie','online');if(btn)btn.textContent='☁️ Mes parties'}
+}
+async function initCloud(){
+  if(!window.supabase){cloudStatus('☁️ Supabase indisponible','error');return}
+  cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  const {data}=await cloudClient.auth.getSession();cloudUser=data.session?.user||null;
+  if(cloudUser){try{await cloudRefreshGames()}catch(e){cloudSyncError(e)}}cloudUpdateTopStatus();
+  cloudClient.auth.onAuthStateChange(async(_event,session)=>{cloudUser=session?.user||null;if(cloudUser){try{await cloudRefreshGames()}catch(e){cloudSyncError(e)}}else{cloudGames=[];cloudCurrentGame=null}cloudUpdateTopStatus();renderCloudModal()});
+}
+document.getElementById('cloudAccountBtn').onclick=openCloudModal;
+document.getElementById('cloudCloseBtn').onclick=closeCloudModal;
+document.getElementById('cloudModal').onclick=e=>{if(e.target.id==='cloudModal')closeCloudModal()};
+initCloud().catch(cloudSyncError);
+
 if(!loadCharacterById(currentCharacterId())) reset();
 renderRoster();
 showTab('wheel');
