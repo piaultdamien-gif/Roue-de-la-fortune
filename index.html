@@ -3010,12 +3010,41 @@ function imageStorageCharacterKey(characterId){return `${cloudCurrentGame.id}__$
 function cloudGeneratedImagePath(characterId){return `${cloudUser.id}/characters/${imageStorageCharacterKey(characterId)}/portrait.png`}
 function illustrationStatus(characterId,text){const el=document.querySelector(`[data-illustration-status-for="${characterId}"]`);if(el)el.textContent=text||''}
 function characterPortraitPrompt(c){
-  const stats=['Combat','Force','Intelligence','Résilience','Vitesse'].map(k=>`${k} ${c?.stats?.[k]??'inconnu'}`).join(', ');
-  const powers=c?.chi?`Chi: ${c.chi.label||c.chi.rank||''}`:(c?.powers||[]).map(p=>`${p.name}${Number.isFinite(p.mastery)?` (maîtrise ${p.mastery})`:''}`).join(', ')||'aucun pouvoir';
-  const weapons=(c?.weapons||[]).filter(w=>w?.name&&w.name!=='Aucune arme').map(w=>`${w.name}${Number.isFinite(Number(w.mastery))?` (maîtrise ${w.mastery})`:''}${Array.isArray(w.enchantments)&&w.enchantments.length?`, enchantements: ${w.enchantments.map(e=>e.name||e).join(', ')}`:''}`).join('; ')||'aucune arme';
   const app=c?.appearance||{};
-  const appearance=Object.entries(app).filter(([,v])=>v!==null&&v!==undefined&&v!=='').map(([k,v])=>`${k}: ${typeof v==='object'?JSON.stringify(v):v}`).join(', ')||'non précisée';
-  return `Full-body vertical dark fantasy character portrait, head to toe visible, centered composition, realistic anatomy, highly detailed cinematic fantasy concept art, dramatic lighting, no text, no UI, no frame. Character: ${c.name||c.id}. Race: ${c.race||'inconnue'}. Gender: ${c.gender||'inconnu'}. Height: ${c.size||'inconnue'}. Archetype: ${c.arch||'inconnu'}. Job: ${c.job||'inconnu'}. Personality: ${c.personality||'inconnue'}. Appearance: ${appearance}. Powers: ${powers}. Weapons: ${weapons}. Weakness: ${c.weakness||'aucune'}. Stats: ${stats}. Preserve all unusual racial, magical, weapon and appearance traits. Show the character alone in a fitting dark-fantasy environment.`;
+  const clean=v=>v===null||v===undefined||v===''?'unknown':String(v);
+  const powerText=c?.chi
+    ? `martial Chi, ${clean(c.chi.label||c.chi.rank)}`
+    : (c?.powers||[]).map(p=>`${p.name}${Number.isFinite(Number(p.mastery))?` at mastery ${p.mastery}/20`:''}`).join(', ')||'no supernatural power';
+  const weaponList=(c?.weapons||[]).filter(w=>w?.name&&w.name!=='Aucune arme');
+  const weaponText=weaponList.length
+    ? weaponList.map(w=>{const ench=(w.ench||w.enchantments||[]).map(e=>e?.name||e).filter(Boolean);return `${w.name}${Number.isFinite(Number(w.mastery))?` at mastery ${w.mastery}/20`:''}${ench.length?` infused with ${ench.join(', ')}`:''}`}).join('; ')
+    : 'NO WEAPON: do not give the character a sword, staff, dagger, bow, gun or other weapon';
+  const summon=c?.summon ? `This character is a SUMMONER. Their summoned race is ${clean(c.summon.race)}. Visually communicate summoning magic; one subordinate ${clean(c.summon.race)} summon may appear behind or beside the main character, clearly secondary and not confused with the protagonist.` : '';
+  const extra=(c?.extraDetail||[]).map(x=>`${x.kind||''}: ${x.name||''}${x.mastery?` (mastery ${x.mastery})`:''}`).filter(Boolean).join('; ');
+  const history=(c?.history||[]).join(', ');
+  const height=clean(c?.size);
+  const body=clean(app.body);
+  const age=clean(app.age);
+  const colors=[app.c1,app.c2].filter(Boolean).join(' and ')||'character-appropriate restrained colors';
+  const sign=app.sign?`Mandatory distinctive feature: ${app.sign}. Make this feature unmistakable, unique and visually important, not a generic ornament.`:'';
+  const stats=['Combat','Force','Intelligence','Résilience','Vitesse'].map(k=>`${k} ${c?.stats?.[k]??'?'}`).join(', ');
+  return `Create a premium vertical dark-fantasy character concept-art portrait for a persistent tournament universe. Full body from head to feet, centered, 2:3 composition, sophisticated AAA fantasy key art, intricate materials and costume design, rich micro-detail, dramatic cinematic chiaroscuro, atmospheric depth, sharp focal character, believable anatomy, expressive face, distinctive silhouette. The result must feel like a specifically designed named character, NEVER a generic fantasy NPC.
+
+IDENTITY: ${clean(c.name||c.id)}, ${clean(c.gender)}, race ${clean(c.race)}. EXACT HEIGHT: ${height}. Archetype: ${clean(c.arch)}. Occupation: ${clean(c.job)}. Personality: ${clean(c.personality)}. Apparent age: ${age}. Body type: ${body}. Dominant palette: ${colors}.
+
+CRITICAL PHYSICAL DIRECTION: Respect the stated height and body type literally. If unusually short or tall, make the proportions and environmental scale clearly communicate it. "Corpulent" means broad/heavy/stocky with visible body mass, NOT a shredded bodybuilder. Do not beautify or normalize unusual traits. Race must be immediately recognizable while remaining original and sophisticated.
+
+MAGIC / ABILITIES: ${powerText}. ${extra?`Special ability: ${extra}.`:''} Show powers through elegant, physically integrated visual effects rather than a generic glowing aura. ${summon}
+
+EQUIPMENT: ${weaponText}.
+${sign}
+${history?`BACKGROUND LORE CUES: ${history}. Translate these into subtle visual storytelling only when relevant; do not add text or symbols with writing.`:''}
+
+VISUAL STORYTELLING: Pose, facial expression, clothing, equipment and environment must communicate ${clean(c.personality)} and the role of ${clean(c.job)} / ${clean(c.arch)}. Avoid defaulting to a muscular armored warrior when those roles do not call for one. Use layered fabrics, crafted accessories, race-specific details and asymmetrical design where appropriate. Palette ${colors} must be clearly present but tasteful. Stats for behavioral emphasis only: ${stats}.
+
+ART DIRECTION: mature dark fantasy with touches of arcane science-fiction where the character data supports it; painterly-realistic concept art, elaborate production design, textured skin/fur/metal/fabric, controlled supernatural effects, moody environmental storytelling, premium collectible-character illustration, dramatic rim light and volumetric atmosphere. Character must remain readable against the background.
+
+STRICT NEGATIVES: no text, no letters, no UI, no frame, no watermark, no logo, no cropped head, no cropped feet, no duplicate protagonist, no random weapon, no generic circular halo unless explicitly required, no generic plate-armored bodybuilder, no modern casual clothing unless character data requires it, no extra limbs, no malformed hands.`;
 }
 function regenCounterFor(c){
   const day=new Date().toISOString().slice(0,10),r=c?.imageGeneration?.regenDaily;
