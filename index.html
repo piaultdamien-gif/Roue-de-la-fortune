@@ -3049,9 +3049,9 @@ function characterPortraitPrompt(c){
 
   const visualTerm=v=>{
     const x=norm(v);
-    if(x.includes('vampir'))return 'subtle dark life-draining magical energy';
-    if(x.includes('mutation'))return 'clearly unusual altered anatomy';
-    if(x.includes('cree artificiellement')||x.includes('artific'))return 'visibly engineered origin with integrated artificial details';
+    if(x.includes('vampir'))return 'subtle dark arcane siphoning effect';
+    if(x.includes('mutation'))return 'one clearly visible unusual physical trait integrated into the character';
+    if(x.includes('cree artificiellement')||x.includes('artific'))return 'subtle engineered visual details integrated into the character design';
     return clean(v);
   };
 
@@ -3075,12 +3075,12 @@ function characterPortraitPrompt(c){
   const summon=c?.summon?`MANDATORY SUMMON: one ${clean(c.summon.race)} subordinate summon, visibly separate and secondary.`:'';
 
   const histories=(c?.history||[]).map(String), historyVisual=[];
-  if(histories.some(h=>norm(h).includes('cree artificiellement')))historyVisual.push('ENGINEERED ORIGIN: show subtle integrated artificial/constructed details while preserving the stated race.');
+  if(histories.some(h=>norm(h).includes('cree artificiellement')))historyVisual.push('ORIGIN DETAIL: subtle engineered visual details integrated into the character design while preserving the stated race.');
   if(histories.some(h=>norm(h).includes('veteran')))historyVisual.push('Show believable signs of long experience and worn equipment.');
 
   const sign=app.sign?String(app.sign):''; let signLine='';
   if(sign){
-    if(norm(sign).includes('mutation'))signLine='DISTINCTIVE FEATURE: clearly unusual altered anatomy, immediately visible; not merely a tattoo, glow or armor decoration.';
+    if(norm(sign).includes('mutation'))signLine='DISTINCTIVE FEATURE: one clearly visible unusual physical trait integrated naturally into the character design.';
     else if(norm(sign).includes('halo')&&norm(sign).includes('fract'))signLine='DISTINCTIVE FEATURE: a broken halo made of irregular separated fragments with obvious gaps.';
     else signLine=`DISTINCTIVE FEATURE: ${visualTerm(sign)}, clearly visible.`;
   }
@@ -3116,6 +3116,15 @@ ${weaponLines.join('\n')}
 ${familiar.join('\n')}
 ${summon}
 ${historyVisual.join('\n')}
+
+VISUAL PRIORITY:
+1. Species, age, body type and scale.
+2. Distinctive physical feature.
+3. Exact weapon and mandatory familiar/summon.
+4. Power manifestation.
+5. Occupation and archetype.
+6. Environment and atmosphere.
+If details compete for attention, preserve the higher-priority character facts first.
 
 COMPOSITION:
 Head and feet visible. Make the stated height believable using architecture, tools, furniture or secondary figures as scale cues. Build an environment specifically appropriate to ${job} and ${arch}. Keep companions/summons secondary. Preserve the exact race, age, body type, colors, named equipment and mandatory companions.
