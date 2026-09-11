@@ -46,6 +46,7 @@
 .character-illustration{width:100%;height:100%;object-fit:cover}
 .illustration-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9a8d80;font-style:italic}
 .illustration-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.illustration-status{margin-top:8px;text-align:center;color:#b9aa98;font-size:.9rem;min-height:1.2em}
 .illustration-thumb-wrap{width:46px;height:62px;border-radius:7px;overflow:hidden;border:1px solid rgba(212,175,55,.35);background:#111;display:inline-flex;align-items:center;justify-content:center;margin-right:9px;vertical-align:middle}
 .illustration-thumb{width:100%;height:100%;object-fit:cover;display:none}
 .illustration-thumb-placeholder{width:100%;height:100%;display:inline-flex;align-items:center;justify-content:center;color:#9a8d80;font-size:18px}
@@ -1878,8 +1879,10 @@ function illustrationControlsHtml(characterId){
         <img class="character-illustration" data-illustration-for="${characterId}" alt="Illustration du personnage" style="display:none">
         <div class="illustration-placeholder" data-illustration-placeholder-for="${characterId}">Aucune illustration</div>
       </div>
+      <div class="illustration-status" data-illustration-status-for="${characterId}"></div>
       <div class="illustration-actions">
-        <button class="smallbtn" onclick="chooseIllustrationFor('${characterId}')">🖼️ Ajouter / remplacer</button>
+        <button class="smallbtn" onclick="regenerateCharacterIllustration('${characterId}')">🔄 Régénérer l’illustration</button>
+        <button class="smallbtn" onclick="chooseIllustrationFor('${characterId}')">🖼️ Importer une image</button>
         <button class="smallbtn" onclick="removeIllustrationFor('${characterId}')">🗑️ Retirer l’illustration</button>
         <button class="smallbtn" onclick="exportCharacterJson('${characterId}')">💾 Exporter cette fiche en JSON</button>
       </div>
@@ -2665,6 +2668,7 @@ function finishGeneration(){
     state._generationComplete=true;
     state._autoSavedAtFinish=true;
     saveCurrentCharacter();
+    setTimeout(()=>invokeCharacterImageGeneration(state.id).catch(console.error),1200);
   }
   taskTitle.textContent='Personnage terminé et sauvegardé ✅';
   if(characterNumber>=CHARACTERS_PER_SEASON){
@@ -3000,10 +3004,59 @@ async function cloudSyncAllData(){
     await cloudSyncGenealogy();const t=loadTournament();if(t)await cloudSaveTournament(t);await cloudSaveGameState();cloudUpdateTopStatus();
   }finally{__cloudSyncBusy=false}
 }
+const IMAGE_REGEN_LIMIT_PER_DAY=5;
+const __imageGenerationBusy=new Set();
+function imageStorageCharacterKey(characterId){return `${cloudCurrentGame.id}__${characterId}`}
+function cloudGeneratedImagePath(characterId){return `${cloudUser.id}/characters/${imageStorageCharacterKey(characterId)}/portrait.png`}
+function illustrationStatus(characterId,text){const el=document.querySelector(`[data-illustration-status-for="${characterId}"]`);if(el)el.textContent=text||''}
+function characterPortraitPrompt(c){
+  const stats=['Combat','Force','Intelligence','Résilience','Vitesse'].map(k=>`${k} ${c?.stats?.[k]??'inconnu'}`).join(', ');
+  const powers=c?.chi?`Chi: ${c.chi.label||c.chi.rank||''}`:(c?.powers||[]).map(p=>`${p.name}${Number.isFinite(p.mastery)?` (maîtrise ${p.mastery})`:''}`).join(', ')||'aucun pouvoir';
+  const weapons=(c?.weapons||[]).filter(w=>w?.name&&w.name!=='Aucune arme').map(w=>`${w.name}${Number.isFinite(Number(w.mastery))?` (maîtrise ${w.mastery})`:''}${Array.isArray(w.enchantments)&&w.enchantments.length?`, enchantements: ${w.enchantments.map(e=>e.name||e).join(', ')}`:''}`).join('; ')||'aucune arme';
+  const app=c?.appearance||{};
+  const appearance=Object.entries(app).filter(([,v])=>v!==null&&v!==undefined&&v!=='').map(([k,v])=>`${k}: ${typeof v==='object'?JSON.stringify(v):v}`).join(', ')||'non précisée';
+  return `Full-body vertical dark fantasy character portrait, head to toe visible, centered composition, realistic anatomy, highly detailed cinematic fantasy concept art, dramatic lighting, no text, no UI, no frame. Character: ${c.name||c.id}. Race: ${c.race||'inconnue'}. Gender: ${c.gender||'inconnu'}. Height: ${c.size||'inconnue'}. Archetype: ${c.arch||'inconnu'}. Job: ${c.job||'inconnu'}. Personality: ${c.personality||'inconnue'}. Appearance: ${appearance}. Powers: ${powers}. Weapons: ${weapons}. Weakness: ${c.weakness||'aucune'}. Stats: ${stats}. Preserve all unusual racial, magical, weapon and appearance traits. Show the character alone in a fitting dark-fantasy environment.`;
+}
+function regenCounterFor(c){
+  const day=new Date().toISOString().slice(0,10),r=c?.imageGeneration?.regenDaily;
+  return r?.day===day?Math.max(0,Number(r.count)||0):0;
+}
+function recordRegeneration(c){
+  const day=new Date().toISOString().slice(0,10),count=regenCounterFor(c)+1;
+  c.imageGeneration={...(c.imageGeneration||{}),regenDaily:{day,count},lastGeneratedAt:new Date().toISOString()};
+  const roster=loadRoster();roster[c.id]=JSON.parse(JSON.stringify(c));saveRoster(roster);if(typeof queueCloudCharacterSave==='function')queueCloudCharacterSave(c);
+  return count;
+}
+async function invokeCharacterImageGeneration(characterId,{regenerate=false}={}){
+  if(!cloudReady()||__imageGenerationBusy.has(characterId))return false;
+  const roster=loadRoster(),c=roster[characterId];if(!c?._generationComplete)return false;
+  if(regenerate&&regenCounterFor(c)>=IMAGE_REGEN_LIMIT_PER_DAY){illustrationStatus(characterId,'Limite atteinte : 5 régénérations aujourd’hui.');return false}
+  if(!regenerate){const existing=await getIllustration(characterId);if(existing)return true}
+  __imageGenerationBusy.add(characterId);illustrationStatus(characterId,regenerate?'🎨 Régénération en cours…':'🎨 Illustration automatique en cours…');
+  try{
+    const {data,error}=await cloudClient.functions.invoke('generate-character-image',{body:{characterId:imageStorageCharacterKey(characterId),prompt:characterPortraitPrompt(c)}});
+    if(error)throw error;if(!data?.success)throw new Error(data?.error||'Génération impossible');
+    const remote=await cloudDownloadIllustration(characterId,true);if(!remote)throw new Error('Image générée introuvable dans le Storage');
+    const db=await openIllustrationDB();await new Promise((resolve,reject)=>{const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');tx.objectStore(ILLUSTRATION_STORE).put(remote,characterId);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)});
+    if(regenerate)recordRegeneration(c);else{c.imageGeneration={...(c.imageGeneration||{}),initialGeneratedAt:new Date().toISOString(),lastGeneratedAt:new Date().toISOString()};const rr=loadRoster();rr[c.id]=JSON.parse(JSON.stringify(c));saveRoster(rr);queueCloudCharacterSave(c)}
+    await refreshIllustrationFor(characterId);setTimeout(hydrateIllustrationThumbs,0);illustrationStatus(characterId,regenerate?`✅ Image régénérée • ${regenCounterFor(c)}/5 aujourd’hui`:'✅ Illustration générée automatiquement');return true;
+  }catch(e){console.error('Génération illustration',e);illustrationStatus(characterId,'⚠️ Génération impossible — elle sera retentée automatiquement.');return false}
+  finally{__imageGenerationBusy.delete(characterId)}
+}
+async function regenerateCharacterIllustration(characterId){
+  const c=loadRoster()[characterId];if(!c)return;if(regenCounterFor(c)>=IMAGE_REGEN_LIMIT_PER_DAY){alert('Limite atteinte : 5 régénérations par personnage et par jour.');return}
+  if(!confirm(`Régénérer l’illustration de ${c.name||characterId} ?\n\nIl restera ${IMAGE_REGEN_LIMIT_PER_DAY-regenCounterFor(c)-1} régénération(s) aujourd’hui après celle-ci.`))return;
+  await invokeCharacterImageGeneration(characterId,{regenerate:true});
+}
+async function ensureMissingCharacterPortraits(){
+  if(!cloudReady())return;const chars=Object.values(loadRoster()).filter(c=>c?.id&&c?._generationComplete);
+  for(const c of chars){if(!cloudReady())break;try{const img=await getIllustration(c.id);if(!img)await invokeCharacterImageGeneration(c.id)}catch(e){console.warn('Portrait auto',c.id,e)}}
+}
 function cloudImagePath(characterId){return `${cloudUser.id}/${cloudCurrentGame.id}/${characterId}`}
+
 async function cloudUploadIllustration(characterId,file){if(!cloudReady()||!file)return;const {error}=await cloudClient.storage.from('character-images').upload(cloudImagePath(characterId),file,{upsert:true,contentType:file.type||'application/octet-stream'});if(error)cloudSyncError(error)}
-async function cloudDownloadIllustration(characterId){if(!cloudReady())return null;const {data,error}=await cloudClient.storage.from('character-images').download(cloudImagePath(characterId));if(error){if(String(error.message||'').toLowerCase().includes('not found'))return null;return null}return data||null}
-async function cloudDeleteIllustration(characterId){if(!cloudReady())return;const {error}=await cloudClient.storage.from('character-images').remove([cloudImagePath(characterId)]);if(error)cloudSyncError(error)}
+async function cloudDownloadIllustration(characterId,generatedOnly=false){if(!cloudReady())return null;let r=await cloudClient.storage.from('character-images').download(cloudGeneratedImagePath(characterId));if(!r.error&&r.data)return r.data;if(generatedOnly)return null;r=await cloudClient.storage.from('character-images').download(cloudImagePath(characterId));return (!r.error&&r.data)?r.data:null}
+async function cloudDeleteIllustration(characterId){if(!cloudReady())return;const {error}=await cloudClient.storage.from('character-images').remove([cloudImagePath(characterId),cloudGeneratedImagePath(characterId)]);if(error)cloudSyncError(error)}
 function cloudSyncError(e){console.error('Supabase sync',e);cloudStatus('☁️ Erreur de synchronisation','error')}
 function cloudUpdateTopStatus(){
   const btn=document.getElementById('cloudAccountBtn');
@@ -3026,6 +3079,7 @@ async function initCloud(){
     }catch(e){cloudSyncError(e)}
   }
   cloudUpdateTopStatus();
+  if(cloudReady()) setTimeout(()=>ensureMissingCharacterPortraits().catch(console.error),1800);
   cloudClient.auth.onAuthStateChange(async(_event,session)=>{cloudUser=session?.user||null;if(cloudUser){try{await cloudRefreshGames()}catch(e){cloudSyncError(e)}}else{cloudGames=[];cloudCurrentGame=null}cloudUpdateTopStatus();renderCloudModal()});
 }
 document.getElementById('cloudAccountBtn').onclick=openCloudModal;
