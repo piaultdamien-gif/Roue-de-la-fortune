@@ -3037,29 +3037,22 @@ async function invokeCharacterImageGeneration(characterId,{regenerate=false}={})
     const {data:{session}}=await cloudClient.auth.getSession();
     if(!session?.access_token)throw new Error('Session Supabase absente — reconnecte-toi à ton compte.');
     const payload={characterId:imageStorageCharacterKey(characterId),prompt:characterPortraitPrompt(c)};
-    async function callImageFunction(slug){
-      const resp=await fetch(`${SUPABASE_URL}/functions/v1/${slug}`,{
-        method:'POST',
-        headers:{
-          'Authorization':`Bearer ${session.access_token}`,
-          'apikey':SUPABASE_PUBLISHABLE_KEY,
-          'Content-Type':'application/json'
-        },
-        body:JSON.stringify(payload)
-      });
-      const raw=await resp.text();
-      let parsed=null;try{parsed=raw?JSON.parse(raw):null}catch(_){parsed=null}
-      return {resp,raw,parsed};
+    // La fonction déployée dans Supabase s'appelle exactement « Generate-character-image ».
+    // On passe par le client Supabase : il transmet la session active et évite le faux
+    // « Failed to fetch » provoqué auparavant par l'appel du mauvais slug en premier.
+    const {data,error}=await cloudClient.functions.invoke('Generate-character-image',{
+      body:payload
+    });
+    if(error){
+      let detail=error.message||String(error);
+      try{
+        if(error.context && typeof error.context.json==='function'){
+          const body=await error.context.json();
+          detail=body?.error||body?.message||detail;
+        }
+      }catch(_){ }
+      throw new Error(`Edge Function — ${String(detail).slice(0,500)}`);
     }
-    let fn=await callImageFunction('generate-character-image');
-    // Certains projets Supabase conservent la casse saisie lors de la création de la fonction.
-    // Le test manuel avait été fait sur « Generate-character-image » : on essaie donc aussi ce slug si nécessaire.
-    if(fn.resp.status===404)fn=await callImageFunction('Generate-character-image');
-    if(!fn.resp.ok){
-      const detail=fn.parsed?.error||fn.parsed?.message||fn.raw||`HTTP ${fn.resp.status}`;
-      throw new Error(`Edge Function ${fn.resp.status} — ${String(detail).slice(0,500)}`);
-    }
-    const data=fn.parsed;
     if(!data?.success)throw new Error(data?.error||'Génération impossible');
     const remote=await cloudDownloadIllustration(characterId,true);if(!remote)throw new Error('Image générée introuvable dans le Storage');
     const db=await openIllustrationDB();await new Promise((resolve,reject)=>{const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');tx.objectStore(ILLUSTRATION_STORE).put(remote,characterId);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)});
