@@ -1880,6 +1880,7 @@ function illustrationControlsHtml(characterId){
         <div class="illustration-placeholder" data-illustration-placeholder-for="${characterId}">Aucune illustration</div>
       </div>
       <div class="illustration-status" data-illustration-status-for="${characterId}"></div>
+      <div data-portrait-gallery-for="${characterId}"></div>
       <div class="illustration-actions">
         <button class="smallbtn" onclick="regenerateCharacterIllustration('${characterId}')">🔄 Régénérer l’illustration</button>
         <button class="smallbtn" onclick="chooseIllustrationFor('${characterId}')">🖼️ Importer une image</button>
@@ -1916,6 +1917,7 @@ async function refreshIllustrationFor(characterId){
     img.style.display='none';
     if(ph) ph.style.display='flex';
   }
+  setTimeout(()=>renderPortraitGallery(characterId),0);
 }
 
 async function hydrateIllustrationThumbs(){
@@ -3007,7 +3009,34 @@ async function cloudSyncAllData(){
 const IMAGE_REGEN_LIMIT_PER_DAY=5;
 const __imageGenerationBusy=new Set();
 function imageStorageCharacterKey(characterId){return `${cloudCurrentGame.id}__${characterId}`}
-function cloudGeneratedImagePath(characterId){return `${cloudUser.id}/characters/${imageStorageCharacterKey(characterId)}/portrait.png`}
+function cloudGeneratedImageDir(characterId){return `${cloudUser.id}/characters/${imageStorageCharacterKey(characterId)}`}
+function cloudGeneratedImagePath(characterId,portraitNumber=1){return `${cloudGeneratedImageDir(characterId)}/${characterId}-Portrait_${portraitNumber}.png`}
+async function cloudListGeneratedPortraits(characterId){
+  if(!cloudReady())return [];
+  const dir=cloudGeneratedImageDir(characterId);
+  const {data,error}=await cloudClient.storage.from('character-images').list(dir,{limit:100,sortBy:{column:'name',order:'asc'}});
+  if(error){console.warn('Liste portraits',error);return []}
+  return (data||[]).filter(x=>x.name.startsWith(`${characterId}-Portrait_`) && /-Portrait_\d+\.png$/.test(x.name)).map(x=>({name:x.name,path:`${dir}/${x.name}`,number:Number((x.name.match(/Portrait_(\d+)\.png$/)||[])[1])||0})).sort((a,b)=>a.number-b.number);
+}
+async function cloudDownloadPortraitPath(path){if(!cloudReady()||!path)return null;const r=await cloudClient.storage.from('character-images').download(path);return (!r.error&&r.data)?r.data:null}
+async function nextPortraitNumber(characterId){const list=await cloudListGeneratedPortraits(characterId);return list.length?Math.max(...list.map(x=>x.number))+1:1}
+async function selectGeneratedPortrait(characterId,path){
+  const roster=loadRoster(),c=roster[characterId];if(!c||!cloudReady())return;
+  const list=await cloudListGeneratedPortraits(characterId),chosen=list.find(x=>x.path===path);if(!chosen)return;
+  if(!confirm(`Sélectionner définitivement ${chosen.name} ?\n\nLes ${Math.max(0,list.length-1)} autre(s) portrait(s) seront supprimés.`))return;
+  const remove=list.filter(x=>x.path!==path).map(x=>x.path);if(remove.length){const {error}=await cloudClient.storage.from('character-images').remove(remove);if(error){alert('Suppression impossible : '+error.message);return}}
+  c.imageGeneration={...(c.imageGeneration||{}),selectedPortrait:path,selectedAt:new Date().toISOString()};roster[characterId]=JSON.parse(JSON.stringify(c));saveRoster(roster);queueCloudCharacterSave(c);
+  const blob=await cloudDownloadPortraitPath(path);if(blob){const db=await openIllustrationDB();await new Promise((resolve,reject)=>{const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');tx.objectStore(ILLUSTRATION_STORE).put(blob,characterId);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)})}
+  await refreshIllustrationFor(characterId);await renderPortraitGallery(characterId);setTimeout(hydrateIllustrationThumbs,0);illustrationStatus(characterId,'✅ Portrait sélectionné définitivement.');
+}
+async function renderPortraitGallery(characterId){
+  const host=document.querySelector(`[data-portrait-gallery-for="${characterId}"]`);if(!host||!cloudReady())return;
+  const list=await cloudListGeneratedPortraits(characterId),c=loadRoster()[characterId],selected=c?.imageGeneration?.selectedPortrait||null;
+  if(!list.length){host.innerHTML='';return}
+  host.innerHTML=`<div style="margin-top:14px"><div style="font-family:Cinzel,serif;color:#d6b36a;margin-bottom:8px">Variantes (${list.length})</div><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${list.map(x=>`<div style="border:1px solid ${selected===x.path?'#d6b36a':'#49343f'};border-radius:12px;padding:7px;background:#100d12"><img data-portrait-variant="${x.path}" style="width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:8px;display:block;background:#09080a"><div style="font-size:.78rem;margin:6px 0;color:#c9b9ad">${x.name}${selected===x.path?' • ✓ sélectionné':''}</div>${selected?'' : `<button class="smallbtn" style="width:100%" onclick="selectGeneratedPortrait('${characterId}','${x.path}')">✓ Sélectionner</button>`}</div>`).join('')}</div></div>`;
+  for(const img of host.querySelectorAll('[data-portrait-variant]')){const blob=await cloudDownloadPortraitPath(img.dataset.portraitVariant);if(blob){const u=URL.createObjectURL(blob);img.src=u;img.onload=()=>URL.revokeObjectURL(u)}}
+}
+
 function illustrationStatus(characterId,text){const el=document.querySelector(`[data-illustration-status-for="${characterId}"]`);if(el)el.textContent=text||''}
 function characterPortraitPrompt(c){
   const app=c?.appearance||{};
@@ -3065,7 +3094,9 @@ async function invokeCharacterImageGeneration(characterId,{regenerate=false}={})
   try{
     const {data:{session}}=await cloudClient.auth.getSession();
     if(!session?.access_token)throw new Error('Session Supabase absente — reconnecte-toi à ton compte.');
-    const payload={characterId:imageStorageCharacterKey(characterId),prompt:characterPortraitPrompt(c)};
+    const portraitNumber=await nextPortraitNumber(characterId);
+    const seed=Math.floor(Math.random()*2147483646)+1;
+    const payload={characterId:imageStorageCharacterKey(characterId),displayCharacterId:characterId,portraitNumber,seed,prompt:characterPortraitPrompt(c)};
     // La fonction déployée dans Supabase s'appelle exactement « Generate-character-image ».
     // On passe par le client Supabase : il transmet la session active et évite le faux
     // « Failed to fetch » provoqué auparavant par l'appel du mauvais slug en premier.
@@ -3083,7 +3114,8 @@ async function invokeCharacterImageGeneration(characterId,{regenerate=false}={})
       throw new Error(`Edge Function — ${String(detail).slice(0,500)}`);
     }
     if(!data?.success)throw new Error(data?.error||'Génération impossible');
-    const remote=await cloudDownloadIllustration(characterId,true);if(!remote)throw new Error('Image générée introuvable dans le Storage');
+    const generatedPath=data?.path||cloudGeneratedImagePath(characterId,portraitNumber);
+    const remote=await cloudDownloadPortraitPath(generatedPath);if(!remote)throw new Error('Image générée introuvable dans le Storage');
     const db=await openIllustrationDB();await new Promise((resolve,reject)=>{const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');tx.objectStore(ILLUSTRATION_STORE).put(remote,characterId);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)});
     if(regenerate)recordRegeneration(c);else{c.imageGeneration={...(c.imageGeneration||{}),initialGeneratedAt:new Date().toISOString(),lastGeneratedAt:new Date().toISOString()};const rr=loadRoster();rr[c.id]=JSON.parse(JSON.stringify(c));saveRoster(rr);queueCloudCharacterSave(c)}
     await refreshIllustrationFor(characterId);setTimeout(hydrateIllustrationThumbs,0);illustrationStatus(characterId,regenerate?`✅ Image régénérée • ${regenCounterFor(c)}/5 aujourd’hui`:'✅ Illustration générée automatiquement');return true;
@@ -3102,8 +3134,13 @@ async function ensureMissingCharacterPortraits(){
 function cloudImagePath(characterId){return `${cloudUser.id}/${cloudCurrentGame.id}/${characterId}`}
 
 async function cloudUploadIllustration(characterId,file){if(!cloudReady()||!file)return;const {error}=await cloudClient.storage.from('character-images').upload(cloudImagePath(characterId),file,{upsert:true,contentType:file.type||'application/octet-stream'});if(error)cloudSyncError(error)}
-async function cloudDownloadIllustration(characterId,generatedOnly=false){if(!cloudReady())return null;let r=await cloudClient.storage.from('character-images').download(cloudGeneratedImagePath(characterId));if(!r.error&&r.data)return r.data;if(generatedOnly)return null;r=await cloudClient.storage.from('character-images').download(cloudImagePath(characterId));return (!r.error&&r.data)?r.data:null}
-async function cloudDeleteIllustration(characterId){if(!cloudReady())return;const {error}=await cloudClient.storage.from('character-images').remove([cloudImagePath(characterId),cloudGeneratedImagePath(characterId)]);if(error)cloudSyncError(error)}
+async function cloudDownloadIllustration(characterId,generatedOnly=false){
+  if(!cloudReady())return null;const c=loadRoster()[characterId];
+  if(c?.imageGeneration?.selectedPortrait){const b=await cloudDownloadPortraitPath(c.imageGeneration.selectedPortrait);if(b)return b}
+  const list=await cloudListGeneratedPortraits(characterId);if(list.length){const b=await cloudDownloadPortraitPath(list[list.length-1].path);if(b)return b}
+  if(generatedOnly)return null;const r=await cloudClient.storage.from('character-images').download(cloudImagePath(characterId));return (!r.error&&r.data)?r.data:null
+}
+async function cloudDeleteIllustration(characterId){if(!cloudReady())return;const list=await cloudListGeneratedPortraits(characterId);const paths=[cloudImagePath(characterId),...list.map(x=>x.path)];const {error}=await cloudClient.storage.from('character-images').remove(paths);if(error)cloudSyncError(error)}
 function cloudSyncError(e){console.error('Supabase sync',e);cloudStatus('☁️ Erreur de synchronisation','error')}
 function cloudUpdateTopStatus(){
   const btn=document.getElementById('cloudAccountBtn');
