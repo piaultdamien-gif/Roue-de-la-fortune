@@ -3059,6 +3059,19 @@ function characterPortraitPrompt(c){
     ? weaponList.map(w=>{const ench=(w.ench||w.enchantments||[]).map(e=>e?.name||e).filter(Boolean);return `${w.name}${n(w.mastery)!==null?` (mastery ${w.mastery}/20)`:''}${ench.length?`; enchantment: ${ench.join(', ')}`:''}`}).join(' | ')
     : 'NO WEAPON WHATSOEVER — empty hands unless an ability itself requires a gesture. Never invent equipment.';
 
+  const weaponRules=weaponList.map(w=>{
+    const wn=norm(w.name);
+    let visual=`MANDATORY WEAPON: ${w.name}. It must be prominently visible, recognizable, correctly sized, and either held or carried in a clearly usable position.`;
+    if(wn.includes('lance-roquettes')||wn.includes('rocket'))visual+=` Depict a LARGE SHOULDER-FIRED ROCKET LAUNCHER with a clear launch tube and mechanical launcher silhouette. DO NOT replace it with a mining tool, staff, club, spear, sword, rifle, pistol, or generic fantasy weapon.`;
+    else if(wn.includes('epee a deux mains')||wn.includes('épée à deux mains'))visual+=` Depict a clearly recognizable LARGE TWO-HANDED SWORD, designed to be wielded with both hands. Do not substitute a one-handed sword.`;
+    else if(wn.includes('arc'))visual+=` Depict a clearly recognizable BOW with its string and limbs visible; if appropriate show arrows/quiver. Do not substitute a sword or firearm.`;
+    else if(wn.includes('chaine')||wn.includes('chaîne')||wn.includes('kusarigama'))visual+=` Make the flexible chain component unmistakably visible and mechanically coherent.`;
+    else visual+=` Preserve the exact weapon category; never substitute a more conventional fantasy weapon.`;
+    const ench=(w.ench||w.enchantments||[]).map(e=>e?.name||e).filter(Boolean);
+    if(ench.length)visual+=` Its enchantment(s) (${ench.join(', ')}) should alter the weapon visually through restrained magical material/effects without changing the weapon category.`;
+    return visual;
+  });
+
   const histories=(c?.history||[]).map(String);
   const artificial=histories.some(h=>norm(h).includes('cree artificiellement'));
   const amnesiac=histories.some(h=>norm(h).includes('amnesique'));
@@ -3128,6 +3141,7 @@ NON-NEGOTIABLE VISUAL FACTS — CHECK EVERY ITEM BEFORE GENERATING:
 • DISTINCTIVE FEATURE: ${sign}. ${signRule}
 • POWER: ${powerText}. Depict it as specific physical phenomena, never as an unexplained generic glow.
 • WEAPON/EQUIPMENT: ${weaponText}. ${weaponList.length?'The named weapon MUST be clearly visible, recognizable and appropriate in scale. Do not replace it with a sword or other fantasy default.':''}
+${weaponRules.map(x=>`• ${x}`).join('\n')}
 ${artificialRule?`• ORIGIN: ${artificialRule}\n`:''}${familiarLines.map(x=>`• FAMILIAR: ${x}`).join('\n')}${summonLines.map(x=>`\n• SUMMON: ${x}`).join('')}${extraLines.map(x=>`\n• EXTRA: ${x}`).join('')}
 
 SCALE:
