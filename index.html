@@ -3043,127 +3043,87 @@ function characterPortraitPrompt(c){
   const clean=v=>v===null||v===undefined||v===''?'unknown':String(v);
   const n=v=>Number.isFinite(Number(v))?Number(v):null;
   const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-  const height=clean(c?.size);
-  const heightMeters=(()=>{const m=String(c?.size||'').replace(',','.').match(/([0-9]+(?:\.[0-9]+)?)/);return m?Number(m[1]):null})();
-  const age=clean(app.age),body=clean(app.body),sign=app.sign?String(app.sign):'none';
-  const colors=[app.c1,app.c2].filter(Boolean).join(' and ')||'restrained character-appropriate colors';
-  const arch=clean(c?.arch||((c?.archParts||[]).join(' / ')));
-  const job=clean(c?.job);
+  const height=clean(c?.size), age=clean(app.age), body=clean(app.body);
+  const colors=[app.c1,app.c2].filter(Boolean).join(' and ')||'character-appropriate colors';
+  const arch=clean(c?.arch||((c?.archParts||[]).join(' / '))), job=clean(c?.job);
 
-  const powerText=c?.chi
-    ? `martial Chi: ${clean(c.chi.label||c.chi.rank)}`
-    : (c?.powers||[]).map(p=>`${p.name}${n(p.mastery)!==null?` (mastery ${p.mastery}/20)`:''}`).join('; ')||'no supernatural power';
+  const visualTerm=v=>{
+    const x=norm(v);
+    if(x.includes('vampir'))return 'subtle dark life-draining magical energy';
+    if(x.includes('mutation'))return 'clearly unusual altered anatomy';
+    if(x.includes('cree artificiellement')||x.includes('artific'))return 'visibly engineered origin with integrated artificial details';
+    return clean(v);
+  };
 
-  const weaponList=(c?.weapons||[]).filter(w=>w?.name&&norm(w.name)!=='aucune arme');
-  const weaponText=weaponList.length
-    ? weaponList.map(w=>{const ench=(w.ench||w.enchantments||[]).map(e=>e?.name||e).filter(Boolean);return `${w.name}${n(w.mastery)!==null?` (mastery ${w.mastery}/20)`:''}${ench.length?`; enchantment: ${ench.join(', ')}`:''}`}).join(' | ')
-    : 'NO WEAPON WHATSOEVER — empty hands unless an ability itself requires a gesture. Never invent equipment.';
+  const power=(c?.chi?`martial Chi (${clean(c.chi.label||c.chi.rank)})`:(c?.powers||[]).map(p=>clean(p.name)).join(', '))||'none';
+  const weapons=(c?.weapons||[]).filter(w=>w?.name&&norm(w.name)!=='aucune arme');
+  const weaponLines=weapons.length?weapons.map(w=>{
+    const wn=norm(w.name), ench=(w.ench||w.enchantments||[]).map(e=>visualTerm(e?.name||e)).filter(Boolean);
+    let shape=`one clearly visible ${w.name}, preserving this exact weapon category`;
+    if(wn.includes('lance-roquettes')||wn.includes('rocket'))shape='one large shoulder-fired fantasy rocket launcher with an unmistakable launch tube and mechanical launcher silhouette; held or carried prominently; never replace it with a mining tool, sword, staff or rifle';
+    else if(wn.includes('epee a deux mains')||wn.includes('épée à deux mains'))shape='one unmistakable large two-handed sword, visibly designed for two-handed use';
+    else if(wn.includes('kusarigama')||wn.includes('chaine')||wn.includes('chaîne'))shape=`one clearly recognizable ${w.name} with its flexible chain component visibly coherent`;
+    else if(wn.includes('arc'))shape='one clearly recognizable bow with visible limbs and string';
+    return `MANDATORY WEAPON: ${shape}${ench.length?`; visual enchantment: ${ench.join(', ')}`:''}.`;
+  }):['NO WEAPON: hands remain unarmed; do not invent a weapon.'];
 
-  const weaponRules=weaponList.map(w=>{
-    const wn=norm(w.name);
-    let visual=`MANDATORY WEAPON: ${w.name}. It must be prominently visible, recognizable, correctly sized, and either held or carried in a clearly usable position.`;
-    if(wn.includes('lance-roquettes')||wn.includes('rocket'))visual+=` Depict a LARGE SHOULDER-FIRED ROCKET LAUNCHER with a clear launch tube and mechanical launcher silhouette. DO NOT replace it with a mining tool, staff, club, spear, sword, rifle, pistol, or generic fantasy weapon.`;
-    else if(wn.includes('epee a deux mains')||wn.includes('épée à deux mains'))visual+=` Depict a clearly recognizable LARGE TWO-HANDED SWORD, designed to be wielded with both hands. Do not substitute a one-handed sword.`;
-    else if(wn.includes('arc'))visual+=` Depict a clearly recognizable BOW with its string and limbs visible; if appropriate show arrows/quiver. Do not substitute a sword or firearm.`;
-    else if(wn.includes('chaine')||wn.includes('chaîne')||wn.includes('kusarigama'))visual+=` Make the flexible chain component unmistakably visible and mechanically coherent.`;
-    else visual+=` Preserve the exact weapon category; never substitute a more conventional fantasy weapon.`;
-    const ench=(w.ench||w.enchantments||[]).map(e=>e?.name||e).filter(Boolean);
-    if(ench.length)visual+=` Its enchantment(s) (${ench.join(', ')}) should alter the weapon visually through restrained magical material/effects without changing the weapon category.`;
-    return visual;
-  });
-
-  const histories=(c?.history||[]).map(String);
-  const artificial=histories.some(h=>norm(h).includes('cree artificiellement'));
-  const amnesiac=histories.some(h=>norm(h).includes('amnesique'));
-
-  const extraLines=[];
-  const familiarLines=[];
-  for(const x of (c?.extraDetail||[])){
-    const kind=clean(x?.kind);
-    if(norm(kind).includes('familier')){
-      const abilities=(x?.abilities||[]).map(a=>a?.name||a).filter(Boolean);
-      familiarLines.push(`ONE familiar is mandatory: ${clean(x?.type)}${n(x?.power)!==null?`, power ${x.power}/20`:''}${abilities.length?`, abilities: ${abilities.join(', ')}`:''}. It is a companion, visibly distinct from the protagonist, and must appear in the scene.`);
-    }else{
-      const bits=[x?.name,x?.type].filter(Boolean).map(String);
-      const abilities=(x?.abilities||[]).map(a=>a?.name||a).filter(Boolean);
-      extraLines.push(`${kind}${bits.length?`: ${bits.join(' — ')}`:''}${n(x?.mastery)!==null?` (mastery ${x.mastery}/20)`:''}${n(x?.power)!==null?` (power ${x.power}/20)`:''}${abilities.length?`; abilities: ${abilities.join(', ')}`:''}`);
-    }
+  const familiar=[];
+  for(const x of (c?.extraDetail||[]))if(norm(x?.kind).includes('familier')){
+    const abilities=(x?.abilities||[]).map(a=>visualTerm(a?.name||a)).filter(Boolean);
+    familiar.push(`MANDATORY COMPANION: one ${clean(x?.type)} familiar, visibly separate and secondary to the protagonist${abilities.length?`; traits: ${abilities.join(', ')}`:''}.`);
   }
-  if(c?.extra && !extraLines.length && !familiarLines.length)extraLines.push(String(c.extra));
+  const summon=c?.summon?`MANDATORY SUMMON: one ${clean(c.summon.race)} subordinate summon, visibly separate and secondary.`:'';
 
-  const summonLines=[];
-  if(c?.summon){
-    summonLines.push(`ONE subordinate summon is mandatory: ${clean(c.summon.race)}. Keep it visually separate from the protagonist and secondary in composition.`);
-  }
+  const histories=(c?.history||[]).map(String), historyVisual=[];
+  if(histories.some(h=>norm(h).includes('cree artificiellement')))historyVisual.push('ENGINEERED ORIGIN: show subtle integrated artificial/constructed details while preserving the stated race.');
+  if(histories.some(h=>norm(h).includes('veteran')))historyVisual.push('Show believable signs of long experience and worn equipment.');
 
-  let scaleRule=`EXACT HEIGHT ${height}. Make this physically legible with doors, tools, furniture, architecture and/or secondary figures.`;
-  if(heightMeters!==null){
-    if(heightMeters<=0.8) scaleRule=`EXTREME SCALE: protagonist is EXACTLY ${height}, genuinely tiny. A 1.8 m adult human is about ${(1.8/Math.max(heightMeters,.1)).toFixed(1)}× taller. Show an unmistakable scale reference. Never enlarge the protagonist to normal heroic size.`;
-    else if(heightMeters>=2.2) scaleRule=`EXTREME SCALE: protagonist is EXACTLY ${height}, genuinely gigantic. Nearby people/doors/architecture must visibly establish this scale.`;
+  const sign=app.sign?String(app.sign):''; let signLine='';
+  if(sign){
+    if(norm(sign).includes('mutation'))signLine='DISTINCTIVE FEATURE: clearly unusual altered anatomy, immediately visible; not merely a tattoo, glow or armor decoration.';
+    else if(norm(sign).includes('halo')&&norm(sign).includes('fract'))signLine='DISTINCTIVE FEATURE: a broken halo made of irregular separated fragments with obvious gaps.';
+    else signLine=`DISTINCTIVE FEATURE: ${visualTerm(sign)}, clearly visible.`;
   }
 
   const bodyMap={
-    corpulent:'visibly heavy and thick-set: broad waist, substantial abdomen, thick limbs, real soft/heavy mass; NOT shredded or V-shaped',
-    athletique:'athletic and functional: trained, mobile physique with believable muscle; NOT an exaggerated bodybuilder',
-    elance:'slender, long-lined and elegant; NOT bulky',
-    mince:'lean and narrow; NOT bulky',
-    'tres mince':'very thin, slight frame, visibly low body mass; NOT athleticized'
+    corpulent:'heavy, thick-set build with broad waist and substantial abdomen; not a shredded bodybuilder',
+    athletique:'athletic functional build with believable muscle; not an exaggerated bodybuilder',
+    elance:'slender, long-lined build; not bulky', mince:'lean narrow build; not bulky',
+    'tres mince':'very thin slight frame with visibly low body mass'
   };
-  const bodyRule=bodyMap[norm(body)]||`literal body type: ${body}; never normalize it into a generic muscular hero`;
+  const bodyLine=bodyMap[norm(body)]||body;
 
-  const roleHints=[];
-  const j=norm(job),a=norm(arch);
-  if(j.includes('mineur'))roleHints.push('MINER identity must be readable through practical mining gear, lamp/light source, dust, mineral/crystal context, rugged workwear and/or mining tools; do not turn him into a generic knight');
-  if(j.includes('espion'))roleHints.push('SPY identity: discreet layered garments, concealed tools, observant posture, stealth/infiltration cues; avoid generic heavy plate armor');
-  if(j.includes('scientifique'))roleHints.push('SCIENTIST identity: instruments, samples, apparatus or research context integrated naturally');
-  if(a.includes('commandant'))roleHints.push('COMMANDER identity: controlled authority, tactical awareness and leadership cues rather than mindless aggression');
-  if(a.includes('invocateur'))roleHints.push('SUMMONER identity: deliberate ritual/control cues and spatial relationship with the summoned being');
-  if(a.includes('tireur'))roleHints.push('SHOOTER identity: weapon handling and stance must reflect ranged expertise');
-  const roleRule=roleHints.length?roleHints.join('. '):`Make occupation ${job} and archetype ${arch} immediately readable through costume, props, posture and environment.`;
+  const role=[]; const j=norm(job),a=norm(arch);
+  if(j.includes('mineur'))role.push('miner: practical mining workwear, lamp/light source, mineral context and rugged equipment');
+  if(j.includes('espion'))role.push('spy: discreet layered clothing, concealed tools and observant stealth posture');
+  if(j.includes('scientifique'))role.push('scientist: research instruments, samples or apparatus');
+  if(a.includes('commandant'))role.push('commander: controlled authority, tactical awareness and leadership cues');
+  if(a.includes('invocateur'))role.push('summoner: deliberate control/ritual cues connected to the summoned being');
+  if(a.includes('tireur'))role.push('ranged specialist: confident, technically correct ranged-weapon handling');
 
-  const signNorm=norm(sign);
-  let signRule=sign==='none'?'No invented signature feature.':`MANDATORY DISTINCTIVE FEATURE: ${sign}. It must be immediately visible and unmistakable.`;
-  if(signNorm.includes('mutation'))signRule+=` Show a clear anatomical/biological mutation affecting the body or face—not merely a tattoo, glow, scar, or armor decoration.`;
-  if(signNorm.includes('halo')&&signNorm.includes('fract'))signRule+=` The halo is physically broken into irregular separated fragments with obvious gaps; never a perfect ring.`;
+  return `Create one standalone vertical 2:3 full-body cinematic dark-fantasy character illustration. No text, UI, card layout, border or logo.
 
-  const artificialRule=artificial?`ARTIFICIALLY CREATED is visually mandatory: include convincing constructed/engineered biological or synthetic evidence integrated into the character (seams, embedded structures, manufactured anatomy, artificial components or fabrication marks) while preserving race ${clean(c.race)}. This is NOT optional decoration.`:'';
-  const amnesiaRule=amnesiac?'Amnesia may be suggested subtly through worn identifiers, fragmented personal objects or uncertain investigative behavior; do not add text.':'';
-  const stats=['Combat','Force','Intelligence','Résilience','Vitesse'].map(k=>`${k} ${c?.stats?.[k]??'?'}`).join(', ');
+MANDATORY CHARACTER:
+${clean(c.gender)} ${clean(c.race)}, exactly ${height} tall, visibly ${age}, ${bodyLine}.
+Personality: ${clean(c.personality)}; communicate it through expression and posture.
+Role: ${arch} / ${job}.${role.length?' Visual cues: '+role.join('; ')+'.':''}
+Dominant character colors: ${colors}.
+${signLine}
 
-  return `Create ONE vertical 2:3 full-body premium dark-fantasy character key art. Head and feet visible. No card layout and no text.
+MANDATORY ABILITIES:
+POWER: ${power}. Show it as a specific controlled physical/magical phenomenon appropriate to the named ability, not a generic glow.
+${weaponLines.join('\n')}
+${familiar.join('\n')}
+${summon}
+${historyVisual.join('\n')}
 
-NON-NEGOTIABLE VISUAL FACTS — CHECK EVERY ITEM BEFORE GENERATING:
-• PROTAGONIST: ${clean(c.race)}, ${clean(c.gender)}, EXACTLY ${height}, ${age}, ${body}.
-• BODY: ${bodyRule}.
-• ROLE: ${arch} / ${job}. ${roleRule}
-• PERSONALITY: ${clean(c.personality)} — expression, posture and staging must communicate it.
-• PALETTE: ${colors} are the dominant character colors.
-• DISTINCTIVE FEATURE: ${sign}. ${signRule}
-• POWER: ${powerText}. Depict it as specific physical phenomena, never as an unexplained generic glow.
-• WEAPON/EQUIPMENT: ${weaponText}. ${weaponList.length?'The named weapon MUST be clearly visible, recognizable and appropriate in scale. Do not replace it with a sword or other fantasy default.':''}
-${weaponRules.map(x=>`• ${x}`).join('\n')}
-${artificialRule?`• ORIGIN: ${artificialRule}\n`:''}${familiarLines.map(x=>`• FAMILIAR: ${x}`).join('\n')}${summonLines.map(x=>`\n• SUMMON: ${x}`).join('')}${extraLines.map(x=>`\n• EXTRA: ${x}`).join('')}
+COMPOSITION:
+Head and feet visible. Make the stated height believable using architecture, tools, furniture or secondary figures as scale cues. Build an environment specifically appropriate to ${job} and ${arch}. Keep companions/summons secondary. Preserve the exact race, age, body type, colors, named equipment and mandatory companions.
 
-SCALE:
-${scaleRule}
+ART DIRECTION:
+Premium painterly-realistic fantasy production art, intricate handcrafted materials, believable anatomy, layered fabrics/metal/leather, microtexture, wear and history, atmospheric depth, volumetric cinematic light, sophisticated restrained effects, strong readable silhouette and high-end collectible key-art finish. Avoid generic plate armor unless the character data calls for it.
 
-STORY / LORE CUES:
-${histories.length?histories.join(' | '):'none'}. ${amnesiaRule}
-Translate lore into visual storytelling only; never write lore as text in the image.
-
-SCENE DESIGN:
-Build a cinematic environment that specifically belongs to THIS character, especially the occupation ${job} and archetype ${arch}. The scene must help explain the character rather than functioning as an empty cave/studio backdrop. Secondary creatures or figures must remain subordinate. Preserve a strong readable silhouette and enough environmental context to establish scale.
-
-QUALITY TARGET:
-Highly detailed painterly-realistic fantasy production art; intricate handcrafted materials; believable skin/fur/anatomy; layered fabrics, metal, leather and race-specific surfaces where appropriate; controlled asymmetry; microtexture; wear and history; atmospheric depth; volumetric light; sophisticated VFX; cinematic composition; premium collectible key-art finish. Do not default to generic plate armor.
-
-STATS AS BEHAVIOR ONLY: ${stats}. Use them to influence readiness, confidence and physical energy. Never display numbers.
-
-FINAL COMPLIANCE CHECK:
-Before rendering, verify: correct race; exact apparent scale; correct age; correct body type; ${job} visually readable; ${arch} visually readable; palette ${colors}; feature ${sign}; exact named weapon or truly no weapon; every mandatory familiar/summon present; artificial origin visible when specified. If any of these are missing, correct the composition before rendering.
-
-STRICT NEGATIVES:
-no text, letters, captions, numbers, UI, stat panel, character card, border, logo, watermark; no cropped head or feet; no duplicate protagonist; no random weapon; no replacing unusual weapons with swords; no generic armored bodybuilder; no forced heroic anatomy; no species confusion; no ignoring height/body/age; no missing mandatory familiar; no extra limbs; no malformed hands.`;
+Do not add unrelated weapons or creatures. Do not replace unusual equipment with conventional fantasy weapons. Do not display words, letters, numbers, statistics or interface elements.`;
 }
 function regenCounterFor(c){
   const day=new Date().toISOString().slice(0,10),r=c?.imageGeneration?.regenDaily;
