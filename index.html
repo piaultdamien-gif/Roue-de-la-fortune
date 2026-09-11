@@ -2740,7 +2740,12 @@ function tournamentSeason(){
   return complete[0]||1;
 }
 function loadTournament(){try{return JSON.parse(localStorage.getItem(TOURNAMENT_KEY)||'null')}catch(e){return null}}
-function saveTournament(t){localStorage.setItem(TOURNAMENT_KEY,JSON.stringify(t)); if(typeof queueCloudTournamentSave==='function') queueCloudTournamentSave(t)}
+function saveTournament(t){
+  localStorage.setItem(TOURNAMENT_KEY,JSON.stringify(t));
+  if(typeof queueCloudTournamentSave==='function') queueCloudTournamentSave(t);
+  const last=t?.rounds?.[t.rounds.length-1];
+  if(last?.length===1)setTimeout(()=>ensureChampionPortrait(last[0],t.season).catch(console.error),250);
+}
 function shuffleTournament(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function createTournament(){
   const season=tournamentSeason(), roster=loadRoster();
@@ -3144,18 +3149,20 @@ function recordRegeneration(c){
   const roster=loadRoster();roster[c.id]=JSON.parse(JSON.stringify(c));saveRoster(roster);if(typeof queueCloudCharacterSave==='function')queueCloudCharacterSave(c);
   return count;
 }
-async function invokeCharacterImageGeneration(characterId,{regenerate=false}={}){
-  if(!cloudReady()||__imageGenerationBusy.has(characterId))return false;
+async function invokeCharacterImageGeneration(characterId,{regenerate=false,champion=false,championSeason=null}={}){
+  const busyKey=champion?`${characterId}::champion`:characterId;
+  if(!cloudReady()||__imageGenerationBusy.has(busyKey))return false;
   const roster=loadRoster(),c=roster[characterId];if(!c||!isCharacterGenerationComplete(c))return false;
-  if(regenerate&&regenCounterFor(c)>=IMAGE_REGEN_LIMIT_PER_DAY){illustrationStatus(characterId,'Limite atteinte : 5 régénérations aujourd’hui.');return false}
-  if(!regenerate){const existing=await getIllustration(characterId);if(existing)return true}
-  __imageGenerationBusy.add(characterId);illustrationStatus(characterId,regenerate?'🎨 Régénération en cours…':'🎨 Illustration automatique en cours…');
+  if(!champion&&regenerate&&regenCounterFor(c)>=IMAGE_REGEN_LIMIT_PER_DAY){illustrationStatus(characterId,'Limite atteinte : 5 régénérations aujourd’hui.');return false}
+  if(!champion&&!regenerate){const existing=await getIllustration(characterId);if(existing)return true}
+  __imageGenerationBusy.add(busyKey);
+  illustrationStatus(characterId,champion?'🏆 Portrait champion 9B en cours…':(regenerate?'🎨 Régénération en cours…':'🎨 Illustration automatique en cours…'));
   try{
     const {data:{session}}=await cloudClient.auth.getSession();
     if(!session?.access_token)throw new Error('Session Supabase absente — reconnecte-toi à ton compte.');
-    const portraitNumber=await nextPortraitNumber(characterId);
+    const portraitNumber=champion?1:await nextPortraitNumber(characterId);
     const seed=Math.floor(Math.random()*2147483646)+1;
-    const payload={characterId:imageStorageCharacterKey(characterId),displayCharacterId:characterId,portraitNumber,seed,prompt:characterPortraitPrompt(c)};
+    const payload={characterId:imageStorageCharacterKey(characterId),displayCharacterId:characterId,portraitNumber,seed,prompt:characterPortraitPrompt(c),generationMode:champion?'champion':'normal',championSeason:championSeason||null};
     // La fonction déployée dans Supabase s'appelle exactement « Generate-character-image ».
     // On passe par le client Supabase : il transmet la session active et évite le faux
     // « Failed to fetch » provoqué auparavant par l'appel du mauvais slug en premier.
@@ -3173,13 +3180,24 @@ async function invokeCharacterImageGeneration(characterId,{regenerate=false}={})
       throw new Error(`Edge Function — ${String(detail).slice(0,500)}`);
     }
     if(!data?.success)throw new Error(data?.error||'Génération impossible');
-    const generatedPath=data?.path||cloudGeneratedImagePath(characterId,portraitNumber);
+    const generatedPath=data?.path||(champion?`${cloudGeneratedImageDir(characterId)}/${characterId}-Champion.png`:cloudGeneratedImagePath(characterId,portraitNumber));
     const remote=await cloudDownloadPortraitPath(generatedPath);if(!remote)throw new Error('Image générée introuvable dans le Storage');
+    if(champion){
+      c.imageGeneration={...(c.imageGeneration||{}),championPath:generatedPath,championSeason:championSeason||null,championGeneratedAt:new Date().toISOString(),championModel:data?.model||'@cf/black-forest-labs/flux-2-klein-9b'};
+      const rr=loadRoster();rr[c.id]=JSON.parse(JSON.stringify(c));saveRoster(rr);if(typeof queueCloudCharacterSave==='function')queueCloudCharacterSave(c);
+      illustrationStatus(characterId,'🏆 Portrait champion 9B généré');
+      return true;
+    }
     const db=await openIllustrationDB();await new Promise((resolve,reject)=>{const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');tx.objectStore(ILLUSTRATION_STORE).put(remote,characterId);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)});
     if(regenerate)recordRegeneration(c);else{c.imageGeneration={...(c.imageGeneration||{}),initialGeneratedAt:new Date().toISOString(),lastGeneratedAt:new Date().toISOString()};const rr=loadRoster();rr[c.id]=JSON.parse(JSON.stringify(c));saveRoster(rr);queueCloudCharacterSave(c)}
     await refreshIllustrationFor(characterId);setTimeout(hydrateIllustrationThumbs,0);illustrationStatus(characterId,regenerate?`✅ Image régénérée • ${regenCounterFor(c)}/5 aujourd’hui`:'✅ Illustration générée automatiquement');return true;
   }catch(e){console.error('Génération illustration',e);const msg=e?.message||String(e);illustrationStatus(characterId,`⚠️ Génération impossible : ${msg.slice(0,220)}`);return false}
-  finally{__imageGenerationBusy.delete(characterId)}
+  finally{__imageGenerationBusy.delete(busyKey)}
+}
+async function ensureChampionPortrait(characterId,season){
+  const c=loadRoster()[characterId];if(!c)return false;
+  if(c?.imageGeneration?.championPath&&Number(c?.imageGeneration?.championSeason)===Number(season))return true;
+  return invokeCharacterImageGeneration(characterId,{champion:true,championSeason:season});
 }
 async function regenerateCharacterIllustration(characterId){
   const c=loadRoster()[characterId];if(!c)return;if(regenCounterFor(c)>=IMAGE_REGEN_LIMIT_PER_DAY){alert('Limite atteinte : 5 régénérations par personnage et par jour.');return}
