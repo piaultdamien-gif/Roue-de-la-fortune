@@ -3029,18 +3029,43 @@ function recordRegeneration(c){
 }
 async function invokeCharacterImageGeneration(characterId,{regenerate=false}={}){
   if(!cloudReady()||__imageGenerationBusy.has(characterId))return false;
-  const roster=loadRoster(),c=roster[characterId];if(!c?._generationComplete)return false;
+  const roster=loadRoster(),c=roster[characterId];if(!c||!isCharacterGenerationComplete(c))return false;
   if(regenerate&&regenCounterFor(c)>=IMAGE_REGEN_LIMIT_PER_DAY){illustrationStatus(characterId,'Limite atteinte : 5 régénérations aujourd’hui.');return false}
   if(!regenerate){const existing=await getIllustration(characterId);if(existing)return true}
   __imageGenerationBusy.add(characterId);illustrationStatus(characterId,regenerate?'🎨 Régénération en cours…':'🎨 Illustration automatique en cours…');
   try{
-    const {data,error}=await cloudClient.functions.invoke('generate-character-image',{body:{characterId:imageStorageCharacterKey(characterId),prompt:characterPortraitPrompt(c)}});
-    if(error)throw error;if(!data?.success)throw new Error(data?.error||'Génération impossible');
+    const {data:{session}}=await cloudClient.auth.getSession();
+    if(!session?.access_token)throw new Error('Session Supabase absente — reconnecte-toi à ton compte.');
+    const payload={characterId:imageStorageCharacterKey(characterId),prompt:characterPortraitPrompt(c)};
+    async function callImageFunction(slug){
+      const resp=await fetch(`${SUPABASE_URL}/functions/v1/${slug}`,{
+        method:'POST',
+        headers:{
+          'Authorization':`Bearer ${session.access_token}`,
+          'apikey':SUPABASE_PUBLISHABLE_KEY,
+          'Content-Type':'application/json'
+        },
+        body:JSON.stringify(payload)
+      });
+      const raw=await resp.text();
+      let parsed=null;try{parsed=raw?JSON.parse(raw):null}catch(_){parsed=null}
+      return {resp,raw,parsed};
+    }
+    let fn=await callImageFunction('generate-character-image');
+    // Certains projets Supabase conservent la casse saisie lors de la création de la fonction.
+    // Le test manuel avait été fait sur « Generate-character-image » : on essaie donc aussi ce slug si nécessaire.
+    if(fn.resp.status===404)fn=await callImageFunction('Generate-character-image');
+    if(!fn.resp.ok){
+      const detail=fn.parsed?.error||fn.parsed?.message||fn.raw||`HTTP ${fn.resp.status}`;
+      throw new Error(`Edge Function ${fn.resp.status} — ${String(detail).slice(0,500)}`);
+    }
+    const data=fn.parsed;
+    if(!data?.success)throw new Error(data?.error||'Génération impossible');
     const remote=await cloudDownloadIllustration(characterId,true);if(!remote)throw new Error('Image générée introuvable dans le Storage');
     const db=await openIllustrationDB();await new Promise((resolve,reject)=>{const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');tx.objectStore(ILLUSTRATION_STORE).put(remote,characterId);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)});
     if(regenerate)recordRegeneration(c);else{c.imageGeneration={...(c.imageGeneration||{}),initialGeneratedAt:new Date().toISOString(),lastGeneratedAt:new Date().toISOString()};const rr=loadRoster();rr[c.id]=JSON.parse(JSON.stringify(c));saveRoster(rr);queueCloudCharacterSave(c)}
     await refreshIllustrationFor(characterId);setTimeout(hydrateIllustrationThumbs,0);illustrationStatus(characterId,regenerate?`✅ Image régénérée • ${regenCounterFor(c)}/5 aujourd’hui`:'✅ Illustration générée automatiquement');return true;
-  }catch(e){console.error('Génération illustration',e);illustrationStatus(characterId,'⚠️ Génération impossible — elle sera retentée automatiquement.');return false}
+  }catch(e){console.error('Génération illustration',e);const msg=e?.message||String(e);illustrationStatus(characterId,`⚠️ Génération impossible : ${msg.slice(0,220)}`);return false}
   finally{__imageGenerationBusy.delete(characterId)}
 }
 async function regenerateCharacterIllustration(characterId){
@@ -3049,7 +3074,7 @@ async function regenerateCharacterIllustration(characterId){
   await invokeCharacterImageGeneration(characterId,{regenerate:true});
 }
 async function ensureMissingCharacterPortraits(){
-  if(!cloudReady())return;const chars=Object.values(loadRoster()).filter(c=>c?.id&&c?._generationComplete);
+  if(!cloudReady())return;const chars=Object.values(loadRoster()).filter(c=>c?.id&&isCharacterGenerationComplete(c));
   for(const c of chars){if(!cloudReady())break;try{const img=await getIllustration(c.id);if(!img)await invokeCharacterImageGeneration(c.id)}catch(e){console.warn('Portrait auto',c.id,e)}}
 }
 function cloudImagePath(characterId){return `${cloudUser.id}/${cloudCurrentGame.id}/${characterId}`}
@@ -3080,7 +3105,7 @@ async function initCloud(){
   }
   cloudUpdateTopStatus();
   if(cloudReady()) setTimeout(()=>ensureMissingCharacterPortraits().catch(console.error),1800);
-  cloudClient.auth.onAuthStateChange(async(_event,session)=>{cloudUser=session?.user||null;if(cloudUser){try{await cloudRefreshGames()}catch(e){cloudSyncError(e)}}else{cloudGames=[];cloudCurrentGame=null}cloudUpdateTopStatus();renderCloudModal()});
+  cloudClient.auth.onAuthStateChange(async(_event,session)=>{cloudUser=session?.user||null;if(cloudUser){try{await cloudRefreshGames();if(cloudReady())setTimeout(()=>ensureMissingCharacterPortraits().catch(console.error),1200)}catch(e){cloudSyncError(e)}}else{cloudGames=[];cloudCurrentGame=null}cloudUpdateTopStatus();renderCloudModal()});
 }
 document.getElementById('cloudAccountBtn').onclick=openCloudModal;
 document.getElementById('cloudCloseBtn').onclick=closeCloudModal;
