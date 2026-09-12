@@ -485,6 +485,7 @@ Deno.serve(async (req) => {
   chosenAttempt: chosen === first ? 1 : 2,
   firstValidation,
   secondValidation,
+  warnings,
 }));
     
     const needsReview = !!chosenValidation && !(
