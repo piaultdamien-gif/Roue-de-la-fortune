@@ -141,9 +141,7 @@ async function callOpenRouter(
 
     if (r.ok) {
       const text = openRouterText(data);
-
-     console.log("OPENROUTER_200_RAW", JSON.stringify(data));
-
+     
       if (text) {
         return { text, data };
       }
@@ -268,15 +266,9 @@ Return ONLY valid JSON:
     { maxTokens: 2500, temperature: 0 },
   );
   
-console.log("VALIDATOR_RESPONSE_RECEIVED", JSON.stringify({
-  length: text.length,
-  text,
-}));
-  
   const parsed = parseLooseJson(text);
 
 if (!parsed) {
-  console.log("VALIDATOR_RAW_RESPONSE", text);
   return null;
 }
   
