@@ -264,7 +264,7 @@ Return ONLY valid JSON:
         ],
       },
     ],
-    { maxTokens: 1200, temperature: 0 },
+    { maxTokens: 2500, temperature: 0 },
   );
   
 console.log("VALIDATOR_RESPONSE_RECEIVED", JSON.stringify({
