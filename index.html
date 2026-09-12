@@ -3168,7 +3168,7 @@ async function invokeCharacterImageGeneration(characterId,{regenerate=false,cham
     if(!session?.access_token)throw new Error('Session Supabase absente — reconnecte-toi à ton compte.');
     const portraitNumber=champion?1:await nextPortraitNumber(characterId);
     const seed=Math.floor(Math.random()*2147483646)+1;
-    const payload={characterId:imageStorageCharacterKey(characterId),displayCharacterId:characterId,portraitNumber,seed,prompt:characterPortraitPrompt(c),generationMode:champion?'champion':'normal',championSeason:championSeason||null};
+    const payload={characterId:imageStorageCharacterKey(characterId),displayCharacterId:characterId,portraitNumber,seed,character:c,prompt:characterPortraitPrompt(c),generationMode:champion?'champion':'normal',championSeason:championSeason||null};
     // La fonction déployée dans Supabase s'appelle exactement « Generate-character-image ».
     // On passe par le client Supabase : il transmet la session active et évite le faux
     // « Failed to fetch » provoqué auparavant par l'appel du mauvais slug en premier.
