@@ -128,6 +128,7 @@ async function callOpenRouter(
         messages,
         max_tokens: opts.maxTokens ?? 1400,
         temperature: opts.temperature ?? 0.25,
+        reasoning: { max_tokens: 400 },
       }),
     });
 
