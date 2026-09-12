@@ -1,3 +1,4 @@
+// Auto-deploy test
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const CORS = {
