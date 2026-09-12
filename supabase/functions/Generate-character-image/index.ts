@@ -490,6 +490,8 @@ Deno.serve(async (req) => {
 
     console.log("PORTRAIT_VALIDATION", JSON.stringify({
   characterId: displayCharacterId,
+  hasCharacter: !!character,
+  hasLegacyPrompt: !!legacyPrompt,
   attempts,
   chosenAttempt: chosen === first ? 1 : 2,
   firstValidation,
