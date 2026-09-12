@@ -243,8 +243,12 @@ Return ONLY valid JSON:
   );
 
   const parsed = parseLooseJson(text);
-  if (!parsed) return null;
 
+if (!parsed) {
+  console.log("VALIDATOR_RAW_RESPONSE", text);
+  return null;
+}
+  
   const score = clampInt(parsed.score, 0, 100, 0);
   return {
     criticalPass: parsed.critical_pass === true,
