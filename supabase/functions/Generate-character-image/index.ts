@@ -112,35 +112,58 @@ async function callOpenRouter(
   messages: any[],
   opts: { maxTokens?: number; temperature?: number } = {},
 ) {
-  const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://piaultdamien-gif.github.io/Roue-de-la-fortune/",
-      "X-Title": "Roue de la Fortune",
-    },
-    body: JSON.stringify({
-      model: OPENROUTER_MODEL,
-      messages,
-      max_tokens: opts.maxTokens ?? 1400,
-      temperature: opts.temperature ?? 0.25,
-    }),
-  });
+  const maxAttempts = 3;
 
-  const raw = await r.text();
-  let data: any = null;
-  try {
-    data = JSON.parse(raw);
-  } catch (_) {}
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://piaultdamien-gif.github.io/Roue-de-la-fortune/",
+        "X-Title": "Roue de la Fortune",
+      },
+      body: JSON.stringify({
+        model: OPENROUTER_MODEL,
+        messages,
+        max_tokens: opts.maxTokens ?? 1400,
+        temperature: opts.temperature ?? 0.25,
+      }),
+    });
 
-  if (!r.ok) {
-    throw new Error(`OpenRouter ${r.status}: ${data?.error?.message || raw.slice(0, 500)}`);
+    const raw = await r.text();
+    let data: any = null;
+
+    try {
+      data = JSON.parse(raw);
+    } catch (_) {}
+
+    if (r.ok) {
+      const text = openRouterText(data);
+
+      if (text) {
+        return { text, data };
+      }
+
+      if (attempt === maxAttempts) {
+        throw new Error("OpenRouter a renvoyé une réponse vide.");
+      }
+    } else if (r.status !== 429 || attempt === maxAttempts) {
+      throw new Error(
+        `OpenRouter ${r.status}: ${data?.error?.message || raw.slice(0, 500)}`
+      );
+    }
+
+    const delayMs = attempt * 2000;
+
+    console.log(
+      `OPENROUTER_RETRY attempt=${attempt}/${maxAttempts} status=${r.status} delay=${delayMs}ms`
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 
-  const text = openRouterText(data);
-  if (!text) throw new Error("OpenRouter a renvoyÃ© une rÃ©ponse vide.");
-  return { text, data };
+  throw new Error("OpenRouter indisponible après plusieurs tentatives.");
 }
 
 async function buildDirectorPrompt(apiKey: string, character: any, legacyPrompt: string) {
