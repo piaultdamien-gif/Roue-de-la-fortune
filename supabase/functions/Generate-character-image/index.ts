@@ -141,6 +141,8 @@ async function callOpenRouter(
     if (r.ok) {
       const text = openRouterText(data);
 
+     console.log("OPENROUTER_200_RAW", JSON.stringify(data));
+
       if (text) {
         return { text, data };
       }
