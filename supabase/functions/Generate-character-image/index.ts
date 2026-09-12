@@ -478,6 +478,15 @@ Deno.serve(async (req) => {
     }
 
     const chosenValidation = chosen === first ? firstValidation : secondValidation;
+
+    console.log("PORTRAIT_VALIDATION", JSON.stringify({
+  characterId: displayCharacterId,
+  attempts,
+  chosenAttempt: chosen === first ? 1 : 2,
+  firstValidation,
+  secondValidation,
+}));
+    
     const needsReview = !!chosenValidation && !(
       chosenValidation.criticalPass && Number(chosenValidation.score || 0) >= VALIDATION_SCORE_MIN
     );
