@@ -525,9 +525,13 @@ Deno.serve(async (req) => {
   warnings,
 }));
     
-    const needsReview = !!chosenValidation && !(
-      chosenValidation.criticalPass && Number(chosenValidation.score || 0) >= VALIDATION_SCORE_MIN
-    );
+    const needsReview = !!character && (
+  !chosenValidation ||
+  !(
+    chosenValidation.criticalPass &&
+    Number(chosenValidation.score || 0) >= VALIDATION_SCORE_MIN
+  )
+);
 
     const filename = generationMode === "champion"
       ? `${displayCharacterId}-Champion.png`
