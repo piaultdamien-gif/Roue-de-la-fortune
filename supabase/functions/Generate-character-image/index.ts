@@ -241,7 +241,12 @@ Return ONLY valid JSON:
     ],
     { maxTokens: 1200, temperature: 0 },
   );
-
+  
+console.log("VALIDATOR_RESPONSE_RECEIVED", JSON.stringify({
+  length: text.length,
+  text,
+}));
+  
   const parsed = parseLooseJson(text);
 
 if (!parsed) {
