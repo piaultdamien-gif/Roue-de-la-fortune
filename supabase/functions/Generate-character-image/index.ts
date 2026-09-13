@@ -194,7 +194,7 @@ Return ONLY valid JSON with this exact shape:
 
   const user = `CHARACTER JSON:\n${JSON.stringify(character, null, 2)}\n\nA legacy hand-written prompt is included only as a fallback/reference for terminology. Do not blindly copy it and do not let it override the JSON:\n${legacyPrompt || "(none)"}`;
 
-  const { text } = await callOpenRouter(
+  const { text, data } = await callOpenRouter(
     apiKey,
     [
       { role: "system", content: system },
