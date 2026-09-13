@@ -246,6 +246,14 @@ Rules:
 - score is 0-100 for overall visual conformity, not beauty.
 - If the image fails, provide a COMPLETE replacement FLUX prompt that preserves successful traits and clearly fixes the failures. Do not merely list corrections.
 
+SOURCE-OF-TRUTH RULES:
+- Only facts explicitly present in SOURCE CHARACTER JSON may be treated as required character traits.
+- Details invented, inferred, expanded, or embellished by the director or FLUX prompt are artistic suggestions only.
+- Never mark an image as wrong, weak, or missing because it omits or changes an invented prompt detail.
+- Do not invent exact quantities when the source JSON gives none. For example, a Clonage power requires cloning to be visually represented when relevant, but does not require exactly three clones unless the source JSON explicitly says three.
+- Job, archetype, history, personality, power, and other abstract fields may guide visual interpretation, but invented clothing, equipment, scenery, symbols, trophies, tools, poses, or environmental details derived from them are not mandatory.
+- Evaluate critical accuracy primarily against SOURCE CHARACTER JSON, not against embellishments in the FLUX prompt.
+
 Return ONLY valid JSON:
 {
   "critical_pass": true,
