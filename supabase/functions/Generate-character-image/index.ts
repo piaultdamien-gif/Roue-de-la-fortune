@@ -116,7 +116,13 @@ function neutralizeForCloudflare(prompt: string) {
     .replace(/multiple visible scars?/gi, "multiple visible healed marks")
     .replace(/\bscars?\b/gi, "healed marks")
     .replace(/wound cicatrices?/gi, "healed marks")
-
+    .replace(/small wound/gi, "subtle damaged area")
+    .replace(/\bwounds?\b/gi, "damaged area")
+    .replace(/\binjur(?:y|ies|ed)\b/gi, "damaged area")
+    .replace(/mends?/gi, "restores")
+    .replace(/\bflesh\b/gi, "physical form")
+    .replace(/healing threads?/gi, "restorative light")
+    
     .slice(0, 7000);
 }
 
