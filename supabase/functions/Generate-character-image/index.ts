@@ -12,7 +12,7 @@ const CF_MODEL_CHAMPION = "@cf/black-forest-labs/flux-2-klein-9b";
 const BUCKET = "character-images";
 const WIDTH = 512;
 const HEIGHT = 1024;
-const VALIDATION_SCORE_MIN = 85;
+const VALIDATION_SCORE_MIN = 80;
 
 const STYLE_REFERENCE_PATHS = [
   "style-references/reference_1_Urgorra.jpg",
