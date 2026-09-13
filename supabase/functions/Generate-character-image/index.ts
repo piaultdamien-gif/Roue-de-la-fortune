@@ -406,7 +406,18 @@ async function generateFlux(
   } catch (e: any) {
     if (String(e?.code) !== "3030" && !String(e?.message || "").includes("3030")) throw e;
     const safer = neutralizeForCloudflare(prompt);
-    return await run(safer);
+
+try {
+  return await run(safer);
+} catch (e2: any) {
+  console.log("CLOUDFLARE_3030_AFTER_NEUTRALIZE", JSON.stringify({
+    characterPromptLength: prompt.length,
+    saferPromptLength: safer.length,
+    saferPreview: safer.slice(0, 1500),
+    error: String(e2?.message || e2),
+  }));
+  throw e2;
+}
   }
 }
 
