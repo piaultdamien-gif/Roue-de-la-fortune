@@ -205,7 +205,16 @@ Return ONLY valid JSON with this exact shape:
 
   const parsed = parseLooseJson(text);
   const fluxPrompt = String(parsed?.flux_prompt || extractFluxPromptFromText(text) || "").trim();
-  if (!fluxPrompt) throw new Error("Ling n'a pas produit de FLUX prompt exploitable.");
+  if (!fluxPrompt) {
+  console.log("DIRECTOR_PARSE_FAILED", JSON.stringify({
+    textLength: text.length,
+    parsed: !!parsed,
+    finish: data?.choices?.[0]?.finish_reason ?? null,
+    hasContent: !!data?.choices?.[0]?.message?.content,
+    contentPreview: text.slice(0, 500),
+  }));
+  throw new Error("Ling n'a pas produit de FLUX prompt exploitable.");
+  }
 
   return {
     critical: Array.isArray(parsed?.critical) ? parsed.critical.map(String).slice(0, 30) : [],
