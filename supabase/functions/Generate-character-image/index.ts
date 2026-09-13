@@ -276,7 +276,9 @@ Return ONLY valid JSON:
   "corrected_flux_prompt": "complete replacement prompt, or empty string if no correction is needed"
 }`;
 
-  const userText = `SOURCE CHARACTER JSON:\n${JSON.stringify(character, null, 2)}\n\nDIRECTOR VISUAL INTERPRETATION (NON-AUTHORITATIVE):\n${critical.length ? critical.map((x) => `- ${x}`).join("\n") : "Use the JSON directly."}\n\nPROMPT USED:\n${currentPrompt}`;
+  const userText = `SOURCE CHARACTER JSON:\n${JSON.stringify(character, null, 2)}\n\nVALIDATION SOURCE:
+Use only the SOURCE CHARACTER JSON and the generated image as authoritative evidence.
+Do not treat the director interpretation or generation prompt as validation requirements.`;
 
   const { text, data } = await callOpenRouter(
     apiKey,
