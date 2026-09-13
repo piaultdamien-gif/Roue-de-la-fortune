@@ -537,8 +537,10 @@ If the requested weapon is a specific weapon type, its silhouette must be unmist
 
 SCALE CORRECTION:
 When relative size or height failed validation, make the size relationship visually undeniable.
-Use environmental objects and any secondary character as explicit scale references.
-The smaller character must occupy proportionally less vertical image space than the larger character.
+Use a physically explicit scale composition.
+If the protagonist is much smaller than a normal adult, place the protagonist on a raised object such as a desk, table, crate, or pedestal while the normal adult stands on the floor beside it.
+The smaller character must still occupy clearly less vertical image space than the larger character.
+Do not place both characters on the same ground plane when this makes the size relationship ambiguous.
 Never enlarge the protagonist merely because they are the main subject.
 If an exact height is specified, preserve it visually through clear relative scale cues.
 
