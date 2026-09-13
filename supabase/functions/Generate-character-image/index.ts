@@ -265,7 +265,7 @@ Return ONLY valid JSON:
 
   const userText = `SOURCE CHARACTER JSON:\n${JSON.stringify(character, null, 2)}\n\nDIRECTOR CRITICAL TRAITS:\n${critical.length ? critical.map((x) => `- ${x}`).join("\n") : "Use the JSON directly."}\n\nPROMPT USED:\n${currentPrompt}`;
 
-  const { text } = await callOpenRouter(
+  const { text, data } = await callOpenRouter(
     apiKey,
     [
       { role: "system", content: system },
