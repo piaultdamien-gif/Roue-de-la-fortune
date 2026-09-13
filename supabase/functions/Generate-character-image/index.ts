@@ -535,7 +535,15 @@ Do not preserve an incorrect visual interpretation from the previous image.
 For weapons, species anatomy, body type, age, scale, familiar, and distinctive physical traits, prioritize literal visual accuracy over artistic interpretation.
 If the requested weapon is a specific weapon type, its silhouette must be unmistakably that weapon type and must not resemble another weapon category.
 
+SCALE CORRECTION:
+When relative size or height failed validation, make the size relationship visually undeniable.
+Use environmental objects and any secondary character as explicit scale references.
+The smaller character must occupy proportionally less vertical image space than the larger character.
+Never enlarge the protagonist merely because they are the main subject.
+If an exact height is specified, preserve it visually through clear relative scale cues.
+
 Reference images 0-3 are style references only. Preserve the generated character data; do not copy subjects or specific traits from the references.`;
+          
           const second = await generateFlux(
             CF_ACCOUNT_ID,
             CF_TOKEN,
