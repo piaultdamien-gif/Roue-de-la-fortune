@@ -469,7 +469,17 @@ Deno.serve(async (req) => {
         const correction = String(firstValidation.correctedFluxPrompt || "").trim();
         if (correction) {
           attempts = 2;
-          const correctionPrompt = `${correction}\n\nReference images 0-3 are style references only. Preserve the generated character data; do not copy subjects or specific traits from the references.`;
+          const correctionPrompt = `${correction}
+
+CORRECTION PRIORITY:
+This is a corrective regeneration. The previous image failed visual validation.
+Treat every correction stated above as mandatory, not optional.
+Explicitly fix every trait described as wrong, missing, weak, failed, or critical.
+Do not preserve an incorrect visual interpretation from the previous image.
+For weapons, species anatomy, body type, age, scale, familiar, and distinctive physical traits, prioritize literal visual accuracy over artistic interpretation.
+If the requested weapon is a specific weapon type, its silhouette must be unmistakably that weapon type and must not resemble another weapon category.
+
+Reference images 0-3 are style references only. Preserve the generated character data; do not copy subjects or specific traits from the references.`;
           const second = await generateFlux(
             CF_ACCOUNT_ID,
             CF_TOKEN,
