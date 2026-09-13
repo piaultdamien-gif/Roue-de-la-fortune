@@ -200,7 +200,7 @@ Return ONLY valid JSON with this exact shape:
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    { maxTokens: 1800, temperature: 0.25 },
+    { maxTokens: 3500, temperature: 0.25 },
   );
 
   const parsed = parseLooseJson(text);
