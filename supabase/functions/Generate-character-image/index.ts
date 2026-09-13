@@ -278,6 +278,13 @@ Return ONLY valid JSON:
   const parsed = parseLooseJson(text);
 
 if (!parsed) {
+  console.log("VALIDATOR_PARSE_FAILED", JSON.stringify({
+    textLength: text.length,
+    finish: data?.choices?.[0]?.finish_reason ?? null,
+    hasContent: !!data?.choices?.[0]?.message?.content,
+    contentPreview: text.slice(0, 700),
+  }));
+
   return null;
 }
   
