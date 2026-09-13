@@ -521,7 +521,7 @@ Deno.serve(async (req) => {
 
       const firstPass = !!firstValidation?.criticalPass && Number(firstValidation?.score || 0) >= VALIDATION_SCORE_MIN;
 
-      if (firstValidation && !firstPass) {
+      if (false && firstValidation && !firstPass) {
         const correction = String(firstValidation.correctedFluxPrompt || "").trim();
         if (correction) {
           attempts = 2;
