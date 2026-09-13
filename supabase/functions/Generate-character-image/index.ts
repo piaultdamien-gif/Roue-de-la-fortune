@@ -104,6 +104,19 @@ function neutralizeForCloudflare(prompt: string) {
     .replace(/blood magic/gi, "crimson arcane energy")
     .replace(/\bblood\b/gi, "crimson essence")
     .replace(/\bdeath\b/gi, "otherworldly")
+
+    .replace(/visible bone anatomy/gi, "clearly defined skeletal fantasy structure")
+    .replace(/exposed bones?/gi, "skeletal fantasy structure")
+    .replace(/extra organ nodules?/gi, "subtle unusual fantasy forms")
+    .replace(/layered tissue lumps?/gi, "layered fantasy forms")
+    .replace(/tissue lumps?/gi, "fantasy forms")
+    .replace(/organ nodules?/gi, "fantasy structures")
+    .replace(/thin translucent membranes?/gi, "soft translucent fantasy surfaces")
+    .replace(/translucent membranes?/gi, "translucent fantasy surfaces")
+    .replace(/multiple visible scars?/gi, "multiple visible healed marks")
+    .replace(/\bscars?\b/gi, "healed marks")
+    .replace(/wound cicatrices?/gi, "healed marks")
+
     .slice(0, 7000);
 }
 
