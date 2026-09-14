@@ -3186,10 +3186,25 @@ async function invokeCharacterImageGeneration(characterId,{regenerate=false,cham
       throw new Error(`Edge Function — ${String(detail).slice(0,500)}`);
     }
     if(!data?.success)throw new Error(data?.error||'Génération impossible');
-    const generatedPath=data?.path||(champion?`${cloudGeneratedImageDir(characterId)}/${characterId}-Champion.png`:cloudGeneratedImagePath(characterId,portraitNumber));
+    let finalData=data;
+         if(data?.correctionRequested && data?.correctionPromptForNextRequest){
+    const {data:correctionData,error:correctionError}=await cloudClient.functions.invoke('Generate-character-image',{
+    body:{
+      ...payload,
+      correctionMode:true,
+      correctionPrompt:data.correctionPromptForNextRequest
+    }
+    });
+          if(!correctionError && correctionData?.success){
+  finalData=correctionData;
+}else{
+  console.warn('Correction portrait non appliquée',correctionError||correctionData);
+}
+    }
+    const generatedPath=finalData?.path||(champion?`${cloudGeneratedImageDir(characterId)}/${characterId}-Champion.png`:cloudGeneratedImagePath(characterId,portraitNumber));
     const remote=await cloudDownloadPortraitPath(generatedPath);if(!remote)throw new Error('Image générée introuvable dans le Storage');
     if(champion){
-      c.imageGeneration={...(c.imageGeneration||{}),championPath:generatedPath,championSeason:championSeason||null,championGeneratedAt:new Date().toISOString(),championModel:data?.model||'@cf/black-forest-labs/flux-2-klein-9b'};
+      c.imageGeneration={...(c.imageGeneration||{}),championPath:generatedPath,championSeason:championSeason||null,championGeneratedAt:new Date().toISOString(),championModel:finalData?.model||'@cf/black-forest-labs/flux-2-klein-9b'};
       const rr=loadRoster();rr[c.id]=JSON.parse(JSON.stringify(c));saveRoster(rr);if(typeof queueCloudCharacterSave==='function')queueCloudCharacterSave(c);
       illustrationStatus(characterId,'🏆 Portrait champion 9B généré');
       return true;
