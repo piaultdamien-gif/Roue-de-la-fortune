@@ -377,12 +377,12 @@ async function generateFlux(
 ) {
   const endpoint = `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/ai/run/${model}`;
 
-  const run = async (p: string) => {
+  const run = async (p: string, runSeed = seed) => {
     const form = new FormData();
     form.append("prompt", p);
     form.append("width", String(WIDTH));
     form.append("height", String(HEIGHT));
-    form.append("seed", String(seed));
+    form.append("seed", String(runSeed));
     form.append("guidance", "4.0");
 
     refs.slice(0, 4).forEach((ref, i) => {
@@ -418,7 +418,7 @@ async function generateFlux(
     const safer = neutralizeForCloudflare(prompt);
 
 try {
-  return await run(safer);
+  return await run(safer, seed + 1);
 } catch (e2: any) {
   console.log("CLOUDFLARE_3030_AFTER_NEUTRALIZE", JSON.stringify({
     characterPromptLength: prompt.length,
