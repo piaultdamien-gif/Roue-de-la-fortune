@@ -414,35 +414,45 @@ async function generateFlux(
   };
 
   try {
-    return await run(prompt);
-  } catch (e: any) {
-    if (String(e?.code) !== "3030" && !String(e?.message || "").includes("3030")) throw e;
-    const safer = neutralizeForCloudflare(prompt);
-
-try {
-  return await run(safer, seed + 1);
-} catch (e2: any) {
-  const is3030 =
-    String(e2?.code) === "3030" ||
-    String(e2?.message || "").includes("3030");
-
-  if (is3030) {
-    return await run(safer, seed + 2, false);
+  return await run(prompt);
+} catch (e: any) {
+  if (
+    String(e?.code) !== "3030" &&
+    !String(e?.message || "").includes("3030")
+  ) {
+    throw e;
   }
 
-  throw e2;
-}
-  console.log("CLOUDFLARE_3030_AFTER_NEUTRALIZE", JSON.stringify({
-    characterPromptLength: prompt.length,
-    saferPromptLength: safer.length,
-    saferPreview: safer.slice(0, 1500),
-    error: String(e2?.message || e2),
-  }));
-  throw e2;
-}
-  }
-}
+  const safer = neutralizeForCloudflare(prompt);
 
+  try {
+    return await run(safer, seed + 1);
+  } catch (e2: any) {
+    const is3030 =
+      String(e2?.code) === "3030" ||
+      String(e2?.message || "").includes("3030");
+
+    if (!is3030) {
+      throw e2;
+    }
+
+    try {
+      return await run(safer, seed + 2, false);
+    } catch (e3: any) {
+      console.log(
+        "CLOUDFLARE_3030_AFTER_NEUTRALIZE",
+        JSON.stringify({
+          characterPromptLength: prompt.length,
+          saferPromptLength: safer.length,
+          saferPreview: safer.slice(0, 1500),
+          error: String(e3?.message || e3),
+        }),
+      );
+
+      throw e3;
+    }
+  }
+  
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return jsonResponse({ success: false, error: "POST required" }, 405);
