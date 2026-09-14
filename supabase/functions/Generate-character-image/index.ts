@@ -301,7 +301,7 @@ Do not treat the director interpretation or generation prompt as validation requ
         ],
       },
     ],
-    { maxTokens: 2500, temperature: 0 },
+    { maxTokens: 3500, temperature: 0 },
   );
   
   const parsed = parseLooseJson(text);
