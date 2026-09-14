@@ -616,6 +616,31 @@ Reference images 0-3 are style references only. Preserve the generated character
 
     const chosenValidation = chosen === first ? firstValidation : secondValidation;
 
+    if (
+  correctionMode &&
+  chosenValidation &&
+  previousValidationScore >= 0
+) {
+  const correctionScore = Number(chosenValidation.score || 0);
+  const correctionPass =
+    !!chosenValidation.criticalPass &&
+    correctionScore >= VALIDATION_SCORE_MIN;
+
+  const previousPass =
+    previousCriticalPass &&
+    previousValidationScore >= VALIDATION_SCORE_MIN;
+
+  if (!correctionPass && (previousPass || correctionScore <= previousValidationScore)) {
+    return jsonResponse({
+      success: false,
+      correctionRejected: true,
+      reason: "Correction validation worse than previous portrait",
+      previousScore: previousValidationScore,
+      correctionScore,
+    });
+  }
+    }
+
     console.log("PORTRAIT_VALIDATION", JSON.stringify({
   characterId: displayCharacterId,
   hasCharacter: !!character,
