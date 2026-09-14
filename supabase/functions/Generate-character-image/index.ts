@@ -377,7 +377,7 @@ async function generateFlux(
 ) {
   const endpoint = `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/ai/run/${model}`;
 
-  const run = async (p: string, runSeed = seed) => {
+  const run = async (p: string, runSeed = seed, includeRefs = true) => {
     const form = new FormData();
     form.append("prompt", p);
     form.append("width", String(WIDTH));
@@ -385,9 +385,11 @@ async function generateFlux(
     form.append("seed", String(runSeed));
     form.append("guidance", "4.0");
 
-    refs.slice(0, 4).forEach((ref, i) => {
-      form.append(`input_image_${i}`, ref.blob, ref.name);
-    });
+    if (includeRefs) {
+  refs.slice(0, 4).forEach((ref, i) => {
+    form.append(`input_image_${i}`, ref.blob, ref.name);
+  });
+}
 
     const r = await fetch(endpoint, {
       method: "POST",
@@ -420,6 +422,16 @@ async function generateFlux(
 try {
   return await run(safer, seed + 1);
 } catch (e2: any) {
+  const is3030 =
+    String(e2?.code) === "3030" ||
+    String(e2?.message || "").includes("3030");
+
+  if (is3030) {
+    return await run(safer, seed + 2, false);
+  }
+
+  throw e2;
+}
   console.log("CLOUDFLARE_3030_AFTER_NEUTRALIZE", JSON.stringify({
     characterPromptLength: prompt.length,
     saferPromptLength: safer.length,
