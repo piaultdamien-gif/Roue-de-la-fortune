@@ -122,6 +122,10 @@ function neutralizeForCloudflare(prompt: string) {
     .replace(/mends?/gi, "restores")
     .replace(/\bflesh\b/gi, "physical form")
     .replace(/healing threads?/gi, "restorative light")
+    .replace(/\bbleed(?:ing)?\b/gi, "crimson magical glow")
+    .replace(/\bwound(?:ed)?\b/gi, "magical mark")
+    .replace(/\binjur(?:y|ed)\b/gi, "magical mark")
+    .replace(/damaged area/gi, "glowing marked area")
     
     .slice(0, 7000);
 }
