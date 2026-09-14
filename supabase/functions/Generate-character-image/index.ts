@@ -467,6 +467,8 @@ Deno.serve(async (req) => {
     });
 
     const body = await req.json();
+    const correctionMode = body?.correctionMode === true;
+    const incomingCorrectionPrompt = String(body?.correctionPrompt || "").trim();
     const storageCharacterId = cleanId(body?.characterId, "character");
     const displayCharacterId = cleanId(body?.displayCharacterId, storageCharacterId);
     const portraitNumber = clampInt(body?.portraitNumber, 1, 9999, 1);
@@ -482,9 +484,11 @@ Deno.serve(async (req) => {
 
     const warnings: string[] = [];
     let director: any = null;
-    let fluxPrompt = legacyPrompt;
+    let fluxPrompt = correctionMode && incomingCorrectionPrompt
+  ? incomingCorrectionPrompt
+  : legacyPrompt;
 
-    if (character) {
+    if (character && !correctionMode) {
       try {
         director = await buildDirectorPrompt(OPENROUTER_API_KEY, character, legacyPrompt);
         fluxPrompt = director.fluxPrompt;
@@ -521,7 +525,7 @@ Deno.serve(async (req) => {
 
       const firstPass = !!firstValidation?.criticalPass && Number(firstValidation?.score || 0) >= VALIDATION_SCORE_MIN;
 
-      if (false && firstValidation && !firstPass) {
+        if (false && firstValidation && !firstPass) {
         const correction = String(firstValidation.correctedFluxPrompt || "").trim();
         if (correction) {
           attempts = 2;
@@ -617,6 +621,18 @@ Reference images 0-3 are style references only. Preserve the generated character
 
     if (uploadError) throw new Error(`Storage upload: ${uploadError.message}`);
 
+    const correctionRequested = !!(
+  character &&
+  firstValidation &&
+  needsReview &&
+  firstValidation.correctedFluxPrompt
+);
+
+    const correctionPromptForNextRequest =
+  correctionRequested
+    ? String(firstValidation.correctedFluxPrompt || "")
+    : "";
+    
     return jsonResponse({
       success: true,
       path,
@@ -637,6 +653,8 @@ Reference images 0-3 are style references only. Preserve the generated character
             checks: chosenValidation.checks,
             issues: chosenValidation.issues,
             needsReview,
+            correctionRequested,
+            correctionPromptForNextRequest,
           }
         : null,
       warnings,
