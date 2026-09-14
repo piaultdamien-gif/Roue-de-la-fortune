@@ -496,6 +496,8 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const correctionMode = body?.correctionMode === true;
+    const previousValidationScore = Number(body?.previousValidationScore ?? -1);
+    const previousCriticalPass = body?.previousCriticalPass === true;
     const incomingCorrectionPrompt = String(body?.correctionPrompt || "").trim();
     const storageCharacterId = cleanId(body?.characterId, "character");
     const displayCharacterId = cleanId(body?.displayCharacterId, storageCharacterId);
