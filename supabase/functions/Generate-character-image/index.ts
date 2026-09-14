@@ -126,6 +126,14 @@ function neutralizeForCloudflare(prompt: string) {
     .replace(/\bwound(?:ed)?\b/gi, "magical mark")
     .replace(/\binjur(?:y|ed)\b/gi, "magical mark")
     .replace(/damaged area/gi, "glowing marked area")
+    .replace(/clawed hands and feet/gi, "fantasy hands and feet")
+    .replace(/clawed hands/gi, "fantasy hands")
+    .replace(/clawed feet/gi, "fantasy feet")
+    .replace(/restraint shackles/gi, "arcane connection")
+    .replace(/\bshackles?\b/gi, "arcane links")
+    .replace(/regeneration effect/gi, "healing light effect")
+    .replace(/physical form knitting/gi, "glowing form restoring")
+    .replace(/\bregeneration\b/gi, "healing light")
     
     .slice(0, 7000);
 }
