@@ -452,6 +452,8 @@ async function generateFlux(
       throw e3;
     }
   }
+}
+}
   
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
