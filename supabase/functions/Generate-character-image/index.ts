@@ -131,7 +131,7 @@ async function callOpenRouter(
   messages: any[],
   opts: { maxTokens?: number; temperature?: number } = {},
 ) {
-  const maxAttempts = 1;
+  const maxAttempts = 3;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
