@@ -152,7 +152,7 @@ async function callOpenRouter(
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
         "HTTP-Referer": "https://piaultdamien-gif.github.io/Roue-de-la-fortune/",
-        "X-Title": "Roue de la Fortune",
+        "X-Title": "Hazard Game Tournament",
       },
       body: JSON.stringify({
         model: OPENROUTER_MODEL,
