@@ -414,8 +414,7 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
   <button id="wheelTabBtn" class="tabbtn active">🎰 Roue</button>
   <button id="listTabBtn" class="tabbtn">📋 Liste des personnages</button>
 <button id="genealogyTabBtn" class="tabbtn">🌳 Descendants & lignées</button>
-<button id="tournamentTabBtn" class="tabbtn">⚔️ Tournoi</button>
-<button id="hallTabBtn" class="tabbtn">🏆 Hall of Fame</button>
+<div class="universe-nav"><button id="arenaTabBtn" class="tabbtn">⚔️ Arène ▾</button><div id="arenaMenu" class="universe-menu"><button type="button" data-arena-view="tournament">🏟️ Tournoi</button><button type="button" data-arena-view="hall">🏆 Hall of Fame</button></div></div>
 <div class="universe-nav"><button id="universeTabBtn" class="tabbtn">🌌 Univers ▾</button><div id="universeMenu" class="universe-menu"><button type="button" data-universe-view="world">🌍 VAELORIA</button><button type="button" data-universe-view="races">🧬 Races</button></div></div>
 </div>
 <div id="wheelTab" class="tabpage active">
@@ -534,9 +533,10 @@ const listTabBtn=document.getElementById('listTabBtn');
 const genealogyTabBtn=document.getElementById('genealogyTabBtn');
 const genealogyTab=document.getElementById('genealogyTab');
 const tournamentTab=document.getElementById('tournamentTab');
-const tournamentTabBtn=document.getElementById('tournamentTabBtn');
+const tournamentTabBtn=document.querySelector('[data-arena-view="tournament"]');
+const arenaTabBtn=document.getElementById('arenaTabBtn');const arenaMenu=document.getElementById('arenaMenu');
 const hallTab=document.getElementById('hallTab');
-const hallTabBtn=document.getElementById('hallTabBtn');
+const hallTabBtn=document.querySelector('[data-arena-view="hall"]');
 const universeTab=document.getElementById('universeTab');const universeTabBtn=document.getElementById('universeTabBtn');const universeMenu=document.getElementById('universeMenu');
 const wheelTab=document.getElementById('wheelTab');
 const listTab=document.getElementById('listTab');
@@ -1104,7 +1104,7 @@ function relationSummary(s){
   }
   return bits.join(' • ');
 }
-function showTab(which){const isWheel=which==='wheel',isList=which==='list',isGenealogy=which==='genealogy',isTournament=which==='tournament',isHall=which==='hall',isUniverse=which==='universe';wheelTab.classList.toggle('active',isWheel);listTab.classList.toggle('active',isList);genealogyTab.classList.toggle('active',isGenealogy);tournamentTab.classList.toggle('active',isTournament);hallTab.classList.toggle('active',isHall);universeTab.classList.toggle('active',isUniverse);wheelTabBtn.classList.toggle('active',isWheel);listTabBtn.classList.toggle('active',isList);genealogyTabBtn.classList.toggle('active',isGenealogy);tournamentTabBtn.classList.toggle('active',isTournament);hallTabBtn.classList.toggle('active',isHall);universeTabBtn.classList.toggle('active',isUniverse);if(isList)renderRoster();if(isGenealogy)renderGenealogy();if(isTournament)renderTournament();if(isHall)renderHallOfFame();if(isUniverse)setUniverseView(document.getElementById('universeRacesView').hidden===false?'races':'world')}
+function showTab(which){const isWheel=which==='wheel',isList=which==='list',isGenealogy=which==='genealogy',isTournament=which==='tournament',isHall=which==='hall',isArena=isTournament||isHall,isUniverse=which==='universe';wheelTab.classList.toggle('active',isWheel);listTab.classList.toggle('active',isList);genealogyTab.classList.toggle('active',isGenealogy);tournamentTab.classList.toggle('active',isTournament);hallTab.classList.toggle('active',isHall);universeTab.classList.toggle('active',isUniverse);wheelTabBtn.classList.toggle('active',isWheel);listTabBtn.classList.toggle('active',isList);genealogyTabBtn.classList.toggle('active',isGenealogy);tournamentTabBtn.classList.toggle('active',isTournament);hallTabBtn.classList.toggle('active',isHall);arenaTabBtn.classList.toggle('active',isArena);universeTabBtn.classList.toggle('active',isUniverse);if(isList)renderRoster();if(isGenealogy)renderGenealogy();if(isTournament)renderTournament();if(isHall)renderHallOfFame();if(isUniverse)setUniverseView(document.getElementById('universeRacesView').hidden===false?'races':'world')}
 function mysticLinkDetail(s){
   return (s?.extraDetail||[]).find(x=>x&&x.kind==='Lien mystique'&&x.target==='Un autre personnage')||null;
 }
@@ -2910,8 +2910,8 @@ function setUniverseView(v){let world=v!=='races';document.getElementById('unive
 wheelTabBtn.onclick=()=>showTab('wheel');
 listTabBtn.onclick=()=>{closeCharacterDetail();showTab('list')};
 genealogyTabBtn.onclick=()=>showTab('genealogy');
-tournamentTabBtn.onclick=()=>showTab('tournament');
-hallTabBtn.onclick=()=>showTab('hall');universeTabBtn.onclick=e=>{e.stopPropagation();universeMenu.parentElement.classList.toggle('open')};document.querySelectorAll('[data-universe-view]').forEach(b=>b.onclick=e=>{e.stopPropagation();showTab('universe');setUniverseView(b.dataset.universeView);universeMenu.parentElement.classList.remove('open')});document.addEventListener('click',()=>universeMenu.parentElement.classList.remove('open'));
+arenaTabBtn.onclick=e=>{e.stopPropagation();arenaMenu.parentElement.classList.toggle('open');universeMenu.parentElement.classList.remove('open')};document.querySelectorAll('[data-arena-view]').forEach(b=>b.onclick=e=>{e.stopPropagation();showTab(b.dataset.arenaView);arenaMenu.parentElement.classList.remove('open')});
+universeTabBtn.onclick=e=>{e.stopPropagation();universeMenu.parentElement.classList.toggle('open');arenaMenu.parentElement.classList.remove('open')};document.querySelectorAll('[data-universe-view]').forEach(b=>b.onclick=e=>{e.stopPropagation();showTab('universe');setUniverseView(b.dataset.universeView);universeMenu.parentElement.classList.remove('open')});document.addEventListener('click',()=>{universeMenu.parentElement.classList.remove('open');arenaMenu.parentElement.classList.remove('open')});
 document.getElementById('createTournamentBtn').onclick=createTournament;
 document.getElementById('simulateTournamentPhaseBtn').onclick=()=>simulateTournamentBatch('round');
 document.getElementById('resetTournamentBtn').onclick=()=>{if(loadTournament()&&confirm('Effacer toute la progression du tournoi ?')){const oldT=loadTournament();localStorage.removeItem(TOURNAMENT_KEY);if(typeof cloudDeleteTournament==='function')cloudDeleteTournament(oldT?.season);renderTournament()}};
