@@ -2763,10 +2763,9 @@ function safeWheelText(v){
   return String(v);
 }
 function weightedPick(opts){
-  let total=opts.reduce((s,o)=>s+(Number(o?.weight)||0),0);
-  if(total<=0)return wheelOptionText(opts[0]);
+  const total=opts.reduce((s,o)=>s+(Number(o.weight)||0),0);
   let r=Math.random()*total;
-  for(const o of opts){r-=Number(o?.weight)||0;if(r<=0)return wheelOptionText(o);}
+  for(const o of opts){r-=Number(o.weight)||0;if(r<=0)return wheelOptionText(o);}
   return wheelOptionText(opts[opts.length-1]);
 }
 function drawWheel(opts,rot=rotation){ctx.clearRect(0,0,760,760);let cx=380,cy=380,R=325,total=opts.reduce((s,o)=>s+o.weight,0),a=-Math.PI/2,type=wheelRankType(),isAppearanceColor=(taskTitle.textContent||'').startsWith('Couleur dominante');ctx.save();ctx.translate(cx,cy);ctx.rotate(rot);opts.forEach((o,i)=>{let span=2*Math.PI*o.weight/total,a1=a+span;ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,R,a,a1);ctx.closePath();let n=valNum(o.label),fill=isAppearanceColor?(namedWheelColors[o.label]||`hsl(${(i*53+18)%360} 48% 42%)`):(type&&n?levelColor(type==='weakness'?11-n:n):`hsl(${(i*53+18)%360} 48% ${i%2?45:37}%)`);ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle='#10151e';ctx.lineWidth=2;ctx.stroke();if(span>.07){ctx.save();ctx.rotate(a+span/2);ctx.textAlign='right';ctx.fillStyle=readableText(fill);ctx.font=`700 ${Math.max(10,Math.min(18,13+span*4))}px system-ui`;let label=wheelDisplayLabel(o.label),t=label.length>27?label.slice(0,25)+'…':label;ctx.fillText(t,R-18,5);ctx.restore()}a=a1});ctx.beginPath();ctx.arc(0,0,66,0,Math.PI*2);ctx.fillStyle='#151a22';ctx.fill();ctx.strokeStyle='#ffd166';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='850 17px system-ui';ctx.fillText('ROUE',0,6);ctx.restore()}
