@@ -1224,8 +1224,10 @@ function openCharacterDetail(id){
         <div class="detail-row"><b>Liens :</b> ${links.length?links.join('<br>'):'—'}${needsMysticExistingTargetRepair(s)?`<br><span class="muted">Cible du lien mystique non définie.</span><br><button class="secondary" onclick="repairMysticExistingTarget('${id}')">🔗 Choisir le personnage lié</button>`:''}</div>
       </div>
       <div class="detail-box"><h4>Apparence</h4>
-        <div class="detail-row">${s.appearance?.age||'—'} • ${s.appearance?.body||'—'}</div>
-        <div class="detail-row">${s.appearance?.c1||'—'} + ${s.appearance?.c2||'—'} • ${s.appearance?.sign||'—'}</div>
+        <div class="detail-row"><b>Âge / corpulence</b><span>${s.appearance?.age||'—'} • ${s.appearance?.body||'—'}</span></div>
+        <div class="detail-row"><b>Couleurs dominantes</b><span>${s.appearance?.c1||'—'} + ${s.appearance?.c2||'—'}</span></div>
+        <div class="detail-row"><b>Style vestimentaire</b><span>${s.vaeloria?.clothing||s.appearance?.clothing||'—'}</span></div>
+        <div class="detail-row"><b>Signe distinctif</b><span>${s.appearance?.sign||'—'}</span></div>
       </div>
     </div>
   </div>`;
@@ -1571,6 +1573,30 @@ function selectDescendantsForNextSeason(){
   meta.selectedBySeason[target]=selected.map(x=>x.id);
   saveStore(STORAGE_DESC,d);saveStore(STORAGE_META,meta);renderRoster();renderGenealogy();
   alert(`${selected.length} descendant${selected.length>1?'s':''} sélectionné${selected.length>1?'s':''} pour S${target}${eligible.length>16?` sur ${eligible.length} éligibles`:''}.`);
+}
+
+
+function vaeloriaImportantHtml(s){
+  const v=s?.vaeloria||{},a=v.ancestry||{},b=v.birth||{},rows=[];
+  const add=(label,val)=>{
+    if(val===undefined||val===null||val===''||(Array.isArray(val)&&!val.length))return;
+    rows.push(`<div class="detail-row"><b>${label}</b><span>${Array.isArray(val)?val.join(' • '):val}</span></div>`);
+  };
+  add('Strate de naissance',b.stratum);add('Région',b.region);add('Culture',b.culture);
+  add('Race d’origine',a.originRace);
+  add('Lignée vampirique',a.vampireLineage);add('Acquisition vampirique',a.vampireLineage?a.acquisition:null);
+  add('Lignée lycanthropique',a.lycanLineage);add('Acquisition lycanthropique',a.lycanLineage?a.acquisition:null);
+  add('Origine spirituelle',a.spiritOrigin);add('Essence / environnement',a.environment);
+  add('Rang draconique',a.dragonRank);add('Strate ancestrale',a.dragonAncestralStratum);add('Lignée draconique',a.dragonLineage);
+  add('Origine de création',a.artificialOrigin);add('Constitution',a.constitution);add('Éveil',a.awakening);
+  add('Type biologique',a.alienType);add('Monde natal',a.homeEnvironment);add('Présence sur Vaeloria',a.vaeloriaAge);
+  add('Rang divin',a.divineRank);add('Ascendance divine',a.divineAncestry);add('Domaine divin',a.divineDomain);
+  add('Rang titanique',a.titanRank);add('Origine primordiale',a.primordialOrigin);
+  add('Forme de non-vie',a.undeadForm);add('Réanimation',a.reanimation);
+  add('Nature animale',a.beastNature);add('Espèce animale',a.beastSpecies);
+  add('Ascendances hybrides',a.hybridRaces);add('Type d’hybridation',a.hybridType);
+  add('Intégration Nexus',a.nexusIntegration);add('Affinités de lignée',a.affinities);
+  return rows.length?`<div class="detail-box"><h4>🧬 Origines & lignée</h4>${rows.join('')}</div>`:'';
 }
 
 function alienBiologyHtml(s){
@@ -2294,7 +2320,7 @@ function applyAlienStateIfNeeded(){
   state.racialTraits=state.racialTraits||[];
 }
 
-function reset(){state={alienBiology:null,id:currentCharacterId(),name:'',title:'',raceParts:[],race:'',gender:'',size:'',arch:'',archParts:[],slayerTarget:null,job:'',history:[],extra:'',extraDetail:[],extraStatMods:[],relationships:[],genealogy:{parents:[],children:[],generation:1,lineage:[],partnerLinks:[]},personality:'',stats:{},powers:[],weapons:[],weakness:'',blessings:[],curses:[],appearance:{},transformation:null,awakening:null,chi:null,prodigeMods:[],logs:[]};queue=[];index=0;rotation=0;spinNumber=0;buildInitial();render();drawWheel([W('?')])}
+function reset(){state={alienBiology:null,vaeloria:{ancestry:{},birth:{stratum:null,region:null,culture:null},clothing:null},id:currentCharacterId(),name:'',title:'',raceParts:[],race:'',gender:'',size:'',arch:'',archParts:[],slayerTarget:null,job:'',history:[],extra:'',extraDetail:[],extraStatMods:[],relationships:[],genealogy:{parents:[],children:[],generation:1,lineage:[],partnerLinks:[]},personality:'',stats:{},powers:[],weapons:[],weakness:'',blessings:[],curses:[],appearance:{},transformation:null,awakening:null,chi:null,prodigeMods:[],logs:[]};queue=[];index=0;rotation=0;spinNumber=0;buildInitial();render();drawWheel([W('?')])}
 function task(title,options,apply){return{title,options:()=>typeof options==='function'?options():options,apply}} function insert(tasks){queue.splice(index+1,0,...tasks)}
 function raceKey(p){if(p.startsWith('Homme-bête'))return null;return p} 
 function summonCountFromMastery(m){
@@ -3186,8 +3212,8 @@ MANDATORY CHARACTER:
 ${clean(c.gender)} ${clean(c.race)}, exactly ${height} tall, visibly ${age}, ${bodyLine}.
 Personality: ${clean(c.personality)}; communicate it through expression and posture.
 Role: ${arch} / ${job}.${role.length?' Visual cues: '+role.join('; ')+'.':''}
-Vaeloria origin: ${clean(c?.vaeloria?.birth?.stratum||'unknown')} / ${clean(c?.vaeloria?.birth?.region||'unknown')} / ${clean(c?.vaeloria?.birth?.culture||'unknown')}.
-Clothing style: ${clean(c?.vaeloria?.clothing||c?.appearance?.clothing||'unspecified')}.
+Vaeloria setting: ${clean(c?.vaeloria?.birth?.stratum||'unknown')} / ${clean(c?.vaeloria?.birth?.region||'unknown')}.
+CLOTHING STYLE: ${clean(c?.vaeloria?.clothing||c?.appearance?.clothing||'unspecified')}. This controls clothing only and must never replace the distinctive physical feature.
 Dominant character colors: ${colors}.
 ${signLine}
 
