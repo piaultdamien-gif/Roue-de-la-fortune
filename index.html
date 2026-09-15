@@ -1582,6 +1582,7 @@ function vaeloriaImportantHtml(s){
     if(val===undefined||val===null||val===''||(Array.isArray(val)&&!val.length))return;
     rows.push(`<div class="detail-row"><b>${label}</b><span>${Array.isArray(val)?val.join(' • '):val}</span></div>`);
   };
+  if(b.stratum||b.region||b.culture)add('Origine',`${b.stratum||'—'} • ${b.region||'—'} • ${b.culture||'—'}`);
   add('Strate de naissance',b.stratum);add('Région',b.region);add('Culture',b.culture);
   add('Race d’origine',a.originRace);
   add('Lignée vampirique',a.vampireLineage);add('Acquisition vampirique',a.vampireLineage?a.acquisition:null);
