@@ -284,6 +284,7 @@ SOURCE-OF-TRUTH RULES:
 - Do not invent exact quantities when the source JSON gives none. For example, a Clonage power requires cloning to be visually represented when relevant, but does not require exactly three clones unless the source JSON explicitly says three.
 - Job, archetype, history, personality, power, and other abstract fields may guide visual interpretation, but invented clothing, equipment, scenery, symbols, trophies, tools, poses, or environmental details derived from them are not mandatory.
 - Evaluate critical accuracy primarily against SOURCE CHARACTER JSON, not against embellishments in the FLUX prompt.
+- When writing corrected_flux_prompt, never introduce an alternative, synonym, creature type, weapon type, anatomical trait, or visual interpretation that could contradict the SOURCE CHARACTER JSON. If the source gives a precise category, preserve that category strictly and do not broaden it with incompatible examples.
 
 Return ONLY valid JSON:
 {
