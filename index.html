@@ -387,6 +387,17 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
   .layout{grid-template-columns:minmax(0,1.25fr) minmax(360px,.75fr)}.hall-grid{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.team-slots{grid-template-columns:repeat(5,minmax(0,1fr))}.tournament-round{min-width:260px}.tabs{justify-content:center}
 }
 @media(hover:hover) and (pointer:fine){.tournament-fighter{cursor:default}}
+
+<style id="tournamentCombatFix">
+.tournament-match{overflow:visible}
+.tournament-actions{position:relative;z-index:3;margin-top:10px}
+.tournament-actions button{width:100%;min-height:42px}
+@media(max-width:720px){
+  .tournament-match-slot{min-height:210px}
+  .tournament-match{padding:10px}
+  .tournament-actions button{min-height:48px}
+}
+</style>
 </style>
 </head><body><header><div><h1>⚔️ Hazard Game Tournament</h1><div class="muted">Chaque donnée aléatoire affichée provient de la roue que tu vois tourner.</div></div><div class="pill" id="charId">S1-001</div></header>
 <div class="cloud-bar">
@@ -475,6 +486,7 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
       <div class="top"><div><div class="title">⚔️ Tournoi des 64</div><div class="muted">Tableau à élimination directe. Chaque combat est simulé individuellement et son vainqueur est déterminé automatiquement.</div></div><div class="pill" id="tournamentSeasonLabel">S1</div></div>
       <div class="tournament-toolbar">
         <button class="secondary" id="createTournamentBtn">🎲 Créer / refaire le tirage</button>
+        <button class="secondary" id="simulateTournamentPhaseBtn">⚔️ Simuler la phase</button>
         <button class="secondary" id="resetTournamentBtn">🗑️ Réinitialiser le tournoi</button>
       </div>
       <div id="tournamentStatus" class="note">Le tournoi sera disponible dès que la saison contient 64 personnages.</div>
@@ -2854,7 +2866,7 @@ function renderTournament(){
   const t=loadTournament(),roster=loadRoster(),season=t?.season||tournamentSeason();lab.textContent=`S${season}`;
   if(!t){const n=Object.keys(roster).filter(id=>id.startsWith(`S${season}-`)).length;status.textContent=n>=64?'64 personnages disponibles : tu peux créer le tirage du tournoi.':`S${season} : ${n}/64 personnages.`;root.innerHTML='<div class="tournament-empty">Aucun tournoi créé.</div>';drawTournamentConnectors();return}
   t.battles??={};t.deaths??=[];const first=t.rounds[0]||[];status.textContent=`S${t.season} • ${first.length} combattants • combats et progression sauvegardés automatiquement.`;root.innerHTML='';
-  t.rounds.forEach((round,ri)=>{const col=document.createElement('div');col.className='tournament-round';col.innerHTML=`<h3>${tournamentRoundName(ri)}</h3><div class="tournament-round-body"></div>`;const body=col.lastElementChild,slotHeight=Math.max(118,118*Math.pow(2,ri));for(let mi=0;mi<Math.ceil(round.length/2);mi++){const key=`${ri}-${mi}`,battle=t.battles[key],slot=document.createElement('div');slot.className='tournament-match-slot';slot.style.height=`${slotHeight}px`;const box=document.createElement('div');box.className='tournament-match';box.dataset.matchKey=key;[round[mi*2],round[mi*2+1]].filter(Boolean).forEach(id=>{const c=roster[id]||{},win=t.winners[key]===id,row=document.createElement('div');row.className='tournament-fighter'+(win?' winner':'')+(t.deaths.includes(id)?' battle-dead':'');row.innerHTML=`<span class="ph">⚔️</span><span><b>${id}</b><br>${c.name||'Sans nom'}</span>`;box.appendChild(row);tournamentPortrait(row.querySelector('.ph'),id)});
+  t.rounds.forEach((round,ri)=>{const col=document.createElement('div');col.className='tournament-round';col.innerHTML=`<h3>${tournamentRoundName(ri)}</h3><div class="tournament-round-body"></div>`;const body=col.lastElementChild,slotHeight=Math.max(210,210*Math.pow(2,ri));for(let mi=0;mi<Math.ceil(round.length/2);mi++){const key=`${ri}-${mi}`,battle=t.battles[key],slot=document.createElement('div');slot.className='tournament-match-slot';slot.style.height=`${slotHeight}px`;const box=document.createElement('div');box.className='tournament-match';box.dataset.matchKey=key;[round[mi*2],round[mi*2+1]].filter(Boolean).forEach(id=>{const c=roster[id]||{},win=t.winners[key]===id,row=document.createElement('div');row.className='tournament-fighter'+(win?' winner':'')+(t.deaths.includes(id)?' battle-dead':'');row.innerHTML=`<span class="ph">⚔️</span><span><b>${id}</b><br>${c.name||'Sans nom'}</span>`;box.appendChild(row);tournamentPortrait(row.querySelector('.ph'),id)});
     if(round[mi*2]&&round[mi*2+1]){const actions=document.createElement('div');actions.className='tournament-actions';actions.innerHTML=`<button type="button" class="smallbtn" ${battle?'disabled':''}>${battle?'✓ Combat simulé':'🎲 Simuler ce combat'}</button>`;if(!battle)actions.firstChild.onclick=()=>simulateTournamentBattle(ri,mi);box.appendChild(actions)}
     if(battle){const rep=document.createElement('div');rep.className='battle-report';const pa=Math.round(battle.probA*100),pb=100-pa,wc=roster[battle.winner]||{};rep.innerHTML=`<b>${battle.terrain}</b> • ${battle.distanceLabel} (${battle.distance} m)<br>Infos : ${battle.a} — ${battle.knowledgeA} / ${battle.b} — ${battle.knowledgeB}<div class="battle-chance">Chances estimées avant tirage : ${battle.a} ${pa}% • ${battle.b} ${pb}%</div>🏆 <b>${battle.winner} — ${wc.name||'Sans nom'}</b>${battle.death?`<br>☠️ ${battle.death} est mort pendant le combat.`:''}`;box.appendChild(rep)}slot.appendChild(box);body.appendChild(slot)}root.appendChild(col)});
   const last=t.rounds[t.rounds.length-1];if(last?.length===1){status.innerHTML=`🏆 Champion de S${t.season} : <b>${last[0]} — ${(roster[last[0]]||{}).name||'Sans nom'}</b>${t.deaths.length?` • ☠️ ${t.deaths.length} mort${t.deaths.length>1?'s':''}`:''}`}
@@ -2882,6 +2894,7 @@ genealogyTabBtn.onclick=()=>showTab('genealogy');
 tournamentTabBtn.onclick=()=>showTab('tournament');
 hallTabBtn.onclick=()=>showTab('hall');
 document.getElementById('createTournamentBtn').onclick=createTournament;
+document.getElementById('simulateTournamentPhaseBtn').onclick=()=>simulateTournamentBatch('round');
 document.getElementById('resetTournamentBtn').onclick=()=>{if(loadTournament()&&confirm('Effacer toute la progression du tournoi ?')){const oldT=loadTournament();localStorage.removeItem(TOURNAMENT_KEY);if(typeof cloudDeleteTournament==='function')cloudDeleteTournament(oldT?.season);renderTournament()}};
 prevCharBtn.onclick=()=>previousCharacter();
 nextCharBtn.onclick=()=>advanceCharacter();
