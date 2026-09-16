@@ -416,6 +416,7 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
 <button id="genealogyTabBtn" class="tabbtn">🌳 Descendants & lignées</button>
 <button id="tournamentTabBtn" class="tabbtn">⚔️ Tournoi</button>
 <button id="hallTabBtn" class="tabbtn">🏆 Hall of Fame</button>
+<button id="universeTabBtn" class="tabbtn">🌌 Univers</button>
 </div>
 <div id="wheelTab" class="tabpage active">
 <div class="layout"><section class="panel left"><div class="top"><div class="title" id="taskTitle">Prêt</div><div class="pill" id="count">0 roue</div></div><div class="wheelwrap"><div class="pointer"></div><canvas id="wheel" width="760" height="760"></canvas></div><div class="result" id="result">Clique sur « Commencer »<small>Les sous-roues seront ajoutées automatiquement selon les résultats.</small></div><div class="controls"><button id="spinBtn">Commencer</button><button class="secondary" id="autoBtn">Auto : OFF</button><button class="secondary" id="resetBtn">Réinitialiser</button><button class="secondary" id="exportBtn">Exporter JSON</button><button class="secondary" id="prevCharBtn">← Précédent</button><button class="secondary" id="nextCharBtn">Suivant →</button></div><div class="note">✓ Hazard Game Tournament : génération, lignées, tournoi simulé combat par combat et Hall of Fame.</div></section>
@@ -504,6 +505,17 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
     <div id="hallChampions" class="hall-grid"></div>
   </div>
 </section>
+
+<section id="universeTab" class="tabpage">
+  <div class="roster-page">
+    <div class="panel" style="padding:16px">
+      <div class="title">🌌 Univers</div>
+      <div class="muted">Intégration isolée du générateur.</div>
+      <details open style="margin-top:14px"><summary style="cursor:pointer;font-weight:800">🌍 VAELORIA</summary><div class="note" style="margin-top:10px">Emplacement réservé à la carte globale et aux 18 régions.</div></details>
+      <details style="margin-top:14px"><summary style="cursor:pointer;font-weight:800">🧬 Races</summary><div class="note" style="margin-top:10px">Emplacement réservé aux illustrations et descriptions des races.</div></details>
+    </div>
+  </div>
+</section>
 <div class="page-jump-controls" aria-label="Navigation rapide dans la page">
   <button type="button" class="secondary" id="jumpTopBtn" title="Aller en haut de la page" aria-label="Aller en haut de la page">↑</button>
   <button type="button" class="secondary" id="jumpBottomBtn" title="Aller en bas de la page" aria-label="Aller en bas de la page">↓</button>
@@ -535,6 +547,8 @@ const tournamentTab=document.getElementById('tournamentTab');
 const tournamentTabBtn=document.getElementById('tournamentTabBtn');
 const hallTab=document.getElementById('hallTab');
 const hallTabBtn=document.getElementById('hallTabBtn');
+const universeTab=document.getElementById('universeTab');
+const universeTabBtn=document.getElementById('universeTabBtn');
 const wheelTab=document.getElementById('wheelTab');
 const listTab=document.getElementById('listTab');
 
@@ -1102,9 +1116,9 @@ function relationSummary(s){
   return bits.join(' • ');
 }
 function showTab(which){
-  const isWheel=which==='wheel',isList=which==='list',isGenealogy=which==='genealogy',isTournament=which==='tournament',isHall=which==='hall';
-  wheelTab.classList.toggle('active',isWheel);listTab.classList.toggle('active',isList);genealogyTab.classList.toggle('active',isGenealogy);tournamentTab.classList.toggle('active',isTournament);hallTab.classList.toggle('active',isHall);
-  wheelTabBtn.classList.toggle('active',isWheel);listTabBtn.classList.toggle('active',isList);genealogyTabBtn.classList.toggle('active',isGenealogy);tournamentTabBtn.classList.toggle('active',isTournament);hallTabBtn.classList.toggle('active',isHall);
+  const isWheel=which==='wheel',isList=which==='list',isGenealogy=which==='genealogy',isTournament=which==='tournament',isHall=which==='hall',isUniverse=which==='universe';
+  wheelTab.classList.toggle('active',isWheel);listTab.classList.toggle('active',isList);genealogyTab.classList.toggle('active',isGenealogy);tournamentTab.classList.toggle('active',isTournament);hallTab.classList.toggle('active',isHall);universeTab.classList.toggle('active',isUniverse);
+  wheelTabBtn.classList.toggle('active',isWheel);listTabBtn.classList.toggle('active',isList);genealogyTabBtn.classList.toggle('active',isGenealogy);tournamentTabBtn.classList.toggle('active',isTournament);hallTabBtn.classList.toggle('active',isHall);universeTabBtn.classList.toggle('active',isUniverse);
   if(isList)renderRoster();if(isGenealogy)renderGenealogy();if(isTournament)renderTournament();if(isHall)renderHallOfFame();
 }
 function mysticLinkDetail(s){
@@ -2893,6 +2907,7 @@ listTabBtn.onclick=()=>{closeCharacterDetail();showTab('list')};
 genealogyTabBtn.onclick=()=>showTab('genealogy');
 tournamentTabBtn.onclick=()=>showTab('tournament');
 hallTabBtn.onclick=()=>showTab('hall');
+universeTabBtn.onclick=()=>showTab('universe');
 document.getElementById('createTournamentBtn').onclick=createTournament;
 document.getElementById('simulateTournamentPhaseBtn').onclick=()=>simulateTournamentBatch('round');
 document.getElementById('resetTournamentBtn').onclick=()=>{if(loadTournament()&&confirm('Effacer toute la progression du tournoi ?')){const oldT=loadTournament();localStorage.removeItem(TOURNAMENT_KEY);if(typeof cloudDeleteTournament==='function')cloudDeleteTournament(oldT?.season);renderTournament()}};
