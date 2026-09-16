@@ -1268,6 +1268,19 @@ function openAdjacentCharacter(id,delta){
   const ids=sortedRosterIds(),pos=ids.indexOf(id),next=ids[pos+delta];
   if(next) openCharacterDetail(next);
 }
+function characterOriginsLineageRows(s){
+  const L=s?.lineage||{},rows=[];
+  const add=(k,v)=>{if(v!==null&&v!==undefined&&v!==''&&(!Array.isArray(v)||v.length))rows.push([k,Array.isArray(v)?v.join(' / '):v])};
+  add('Strate de naissance',s?.birthStratum);add('Région',s?.birthRegion);add('Culture',s?.culture);
+  const labels={originRace:'Race d’origine',vampire:'Lignée vampirique',vampireAcquisition:'Acquisition vampirique',werewolf:'Lignée lycanthropique',werewolfAcquisition:'Acquisition lycanthropique',spiritOrigin:'Origine spirituelle',spiritEssence:'Essence spirituelle',dragonRank:'Rang draconique',dragonStratum:'Strate ancestrale',dragonLineage:'Lignée draconique',artificialOrigin:'Origine artificielle',artificialConstitution:'Constitution',artificialAwakening:'Éveil',alienType:'Type biologique',alienEnvironment:'Environnement natal',alienPresence:'Ancienneté sur Vaeloria',divineRank:'Rang divin',divineAncestry:'Ascendance divine',divineDomain:'Domaine divin',titanRank:'Rang titanique',titanOrigin:'Origine primordiale',undeadForm:'Forme non-morte',reanimation:'Réanimation',beastNature:'Nature Homme-bête',beastSpecies:'Espèce Homme-bête',hybridA:'Ascendance hybride I',hybridB:'Ascendance hybride II',hybridType:'Type hybride',nexusIntegration:'Intégration Nexus'};
+  for(const [k,v] of Object.entries(L))if(labels[k])add(labels[k],v);
+  add('Style vestimentaire',s?.clothingStyle);
+  return rows;
+}
+function characterOriginsLineageHtml(s){
+  const rows=characterOriginsLineageRows(s);
+  return rows.length?rows.map(([k,v])=>`<div class="detail-row"><b>${k} :</b> ${v}</div>`).join(''):'<div class="detail-row">—</div>';
+}
 function openCharacterDetail(id){
   setTimeout(()=>refreshIllustrationFor(id),0);
   setTimeout(()=>{
@@ -1310,6 +1323,7 @@ function openCharacterDetail(id){
         <div class="detail-row"><b>Métier :</b> ${s.job||'—'}</div><div class="detail-row"><b>Histoire :</b> ${s.history?.join(' + ')||'—'}</div>
         <div class="detail-row"><b>Personnalité :</b> ${s.personality||'—'}</div>
       </div>
+      <div class="detail-box"><h4>🧬 Origines & lignée</h4>${characterOriginsLineageHtml(s)}</div>
       <div class="detail-box"><h4>Stats</h4>${statsFull}</div>
       <div class="detail-box"><h4>Pouvoirs & armes</h4>
         <div class="detail-row"><b>Pouvoirs :</b> ${powers.length?powers.join('<br>'):'—'}</div>
@@ -1325,8 +1339,11 @@ function openCharacterDetail(id){
         <div class="detail-row"><b>Liens :</b> ${links.length?links.join('<br>'):'—'}${needsMysticExistingTargetRepair(s)?`<br><span class="muted">Cible du lien mystique non définie.</span><br><button class="secondary" onclick="repairMysticExistingTarget('${id}')">🔗 Choisir le personnage lié</button>`:''}</div>
       </div>
       <div class="detail-box"><h4>Apparence</h4>
-        <div class="detail-row">${s.appearance?.age||'—'} • ${s.appearance?.body||'—'}</div>
-        <div class="detail-row">${s.appearance?.c1||'—'} + ${s.appearance?.c2||'—'} • ${s.appearance?.sign||'—'}</div>
+        <div class="detail-row"><b>Âge apparent :</b> ${s.appearance?.age||'—'}</div>
+        <div class="detail-row"><b>Corpulence :</b> ${s.appearance?.body||'—'}</div>
+        <div class="detail-row"><b>Couleurs :</b> ${s.appearance?.c1||'—'} + ${s.appearance?.c2||'—'}</div>
+        <div class="detail-row"><b>Style vestimentaire :</b> ${s.clothingStyle||'—'}</div>
+        <div class="detail-row"><b>Signe distinctif :</b> ${s.appearance?.sign||'—'}</div>
       </div>
     </div>
   </div>`;
