@@ -2763,13 +2763,39 @@ function safeWheelText(v){
   return String(v);
 }
 function weightedPick(opts){
-  let total=opts.reduce((s,o)=>s+o.weight,0),r=Math.random()*total;
-  for(let i=0;i<opts.length;i++){r-=opts[i].weight;if(r<=0)return i}
+  let total=opts.reduce((s,o)=>s+(Number(o?.weight)||0),0),r=Math.random()*total;
+  for(let i=0;i<opts.length;i++){r-=Number(opts[i]?.weight)||0;if(r<=0)return i}
   return opts.length-1
 }
 function wheelDisplayLabel(v){return safeWheelText(v)}
-function drawWheel(opts,rot=rotation){ctx.clearRect(0,0,760,760);let cx=380,cy=380,R=325,total=opts.reduce((s,o)=>s+o.weight,0),a=-Math.PI/2,type=wheelRankType(),isAppearanceColor=(taskTitle.textContent||'').startsWith('Couleur dominante');ctx.save();ctx.translate(cx,cy);ctx.rotate(rot);opts.forEach((o,i)=>{let span=2*Math.PI*o.weight/total,a1=a+span;ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,R,a,a1);ctx.closePath();let n=valNum(o.label),fill=isAppearanceColor?(namedWheelColors[o.label]||`hsl(${(i*53+18)%360} 48% 42%)`):(type&&n?levelColor(type==='weakness'?11-n:n):['#8b1739','#57112f','#6b245f','#3b163f','#120b14','#2a0d20','#741d48','#24102c'][i%8]);ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle='#10151e';ctx.lineWidth=2;ctx.stroke();if(span>.07){ctx.save();ctx.rotate(a+span/2);ctx.textAlign='right';ctx.fillStyle=readableText(fill);ctx.font=`700 ${Math.max(10,Math.min(18,13+span*4))}px system-ui`;let label=wheelDisplayLabel(o.label),t=label.length>27?label.slice(0,25)+'…':label;ctx.fillText(t,R-18,5);ctx.restore()}a=a1});ctx.beginPath();ctx.arc(0,0,66,0,Math.PI*2);ctx.fillStyle='#0b080d';ctx.fill();ctx.strokeStyle='#8b365f';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='850 17px system-ui';ctx.fillText('ROUE',0,6);ctx.restore()}
-async function spin(opts){spinning=true;spinBtn.disabled=true;let chosen=weightedPick(opts),total=opts.reduce((s,o)=>s+o.weight,0),before=opts.slice(0,chosen).reduce((s,o)=>s+o.weight,0),center=(before+opts[chosen].weight/2)/total*2*Math.PI;let start=rotation,desired=-center,turns=(5+Math.floor(Math.random()*3))*2*Math.PI,end=start+turns+(desired-(start%(2*Math.PI))),dur=1700+Math.random()*500,t0=performance.now();await new Promise(done=>{function f(t){let p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,4);rotation=start+(end-start)*e;drawWheel(opts,rotation);p<1?requestAnimationFrame(f):done()}requestAnimationFrame(f)});rotation=end;spinning=false;spinBtn.disabled=false;return opts[chosen].label}
+function drawWheel(opts,rot=rotation){
+  ctx.clearRect(0,0,WHEEL_SIZE,WHEEL_SIZE);
+  if(!opts.length)return;
+  const n=opts.length,arc=TAU/n,colorWheel=isColorWheelOptions(opts);
+  for(let i=0;i<n;i++){
+    const a0=rot+i*arc,a1=a0+arc;
+    ctx.beginPath();ctx.moveTo(CENTER,CENTER);ctx.arc(CENTER,CENTER,RADIUS,a0,a1);ctx.closePath();
+    if(colorWheel){
+      const raw=String(opts[i]?.label??'');
+      ctx.fillStyle=wheelColorHex(raw,i);
+    }else{
+      const palette=['#8b1739','#57112f','#6b245f','#3b163f','#120b14','#2a0d20','#741d48','#24102c'];
+      ctx.fillStyle=palette[i%palette.length];
+    }
+    ctx.fill();
+    ctx.strokeStyle='rgba(230,190,205,.20)';ctx.lineWidth=1;ctx.stroke();
+    ctx.save();
+    ctx.translate(CENTER,CENTER);ctx.rotate(a0+arc/2);ctx.textAlign='right';
+    ctx.fillStyle='#f6eee9';ctx.font='800 18px Cinzel,serif';
+    let txt=wheelDisplayLabel(opts[i]?.label??opts[i]);
+    if(txt.length>23)txt=txt.slice(0,21)+'…';
+    ctx.fillText(txt,RADIUS-18,6);ctx.restore();
+  }
+  ctx.beginPath();ctx.arc(CENTER,CENTER,78,0,TAU);ctx.fillStyle='#0b080d';ctx.fill();
+  ctx.strokeStyle='#8b365f';ctx.lineWidth=4;ctx.stroke();
+  ctx.fillStyle='#ead9cf';ctx.font='900 21px Cinzel,serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('HGT',CENTER,CENTER);
+}
+function spin(opts){spinning=true;spinBtn.disabled=true;let chosen=weightedPick(opts),total=opts.reduce((s,o)=>s+o.weight,0),before=opts.slice(0,chosen).reduce((s,o)=>s+o.weight,0),center=(before+opts[chosen].weight/2)/total*2*Math.PI;let start=rotation,desired=-center,turns=(5+Math.floor(Math.random()*3))*2*Math.PI,end=start+turns+(desired-(start%(2*Math.PI))),dur=1700+Math.random()*500,t0=performance.now();await new Promise(done=>{function f(t){let p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,4);rotation=start+(end-start)*e;drawWheel(opts,rotation);p<1?requestAnimationFrame(f):done()}requestAnimationFrame(f)});rotation=end;spinning=false;spinBtn.disabled=false;return opts[chosen].label}
 function finishGeneration(){
   if(index<queue.length)return false;
   auto=false;
