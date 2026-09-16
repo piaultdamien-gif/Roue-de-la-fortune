@@ -510,6 +510,7 @@ Deno.serve(async (req) => {
     const incomingCorrectionPrompt = String(body?.correctionPrompt || "").trim();
     const storageCharacterId = cleanId(body?.characterId, "character");
     const displayCharacterId = cleanId(body?.displayCharacterId, storageCharacterId);
+    const characterInstanceId = cleanId(body?.characterInstanceId ?? body?.character?.instanceId, "legacy");
     const portraitNumber = clampInt(body?.portraitNumber, 1, 9999, 1);
     const generationMode = body?.generationMode === "champion" ? "champion" : "normal";
     const championSeason = body?.championSeason ?? null;
@@ -669,9 +670,14 @@ Reference images 0-3 are style references only. Preserve the generated character
   )
 );
 
+    // Immutable creation identity prevents a newly-created Sx-xxx from ever
+    // colliding with portraits belonging to a previously deleted Sx-xxx.
+    const portraitIdentity = characterInstanceId === "legacy"
+      ? displayCharacterId
+      : `${displayCharacterId}__${characterInstanceId}`;
     const filename = generationMode === "champion"
-      ? `${displayCharacterId}-Champion.png`
-      : `${displayCharacterId}-Portrait_${portraitNumber}.png`;
+      ? `${portraitIdentity}-Champion.png`
+      : `${portraitIdentity}-Portrait_${portraitNumber}.png`;
     const path = `${user.id}/characters/${storageCharacterId}/${filename}`;
     const bytes = base64ToBytes(chosen.image);
 
@@ -700,6 +706,7 @@ Reference images 0-3 are style references only. Preserve the generated character
     return jsonResponse({
       success: true,
       path,
+      characterInstanceId,
       model,
       directorModel: character ? OPENROUTER_MODEL : null,
       validatorModel: character ? OPENROUTER_MODEL : null,
