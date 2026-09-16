@@ -419,6 +419,12 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
 @media(max-width:700px){.race-grid{grid-template-columns:1fr}.race-card{display:grid;grid-template-columns:minmax(105px,34%) 1fr}.race-media{aspect-ratio:2/3}.race-copy{align-self:center}}
 </style>
 
+
+<style id="arenaMenuStyles">
+.tab-menu{position:relative;flex:0 0 auto}.tab-menu>summary{list-style:none;cursor:pointer}.tab-menu>summary::-webkit-details-marker{display:none}.tab-caret{font-size:.8em;margin-left:3px}.tab-menu[open] .tab-caret{display:inline-block;transform:rotate(180deg)}
+.tab-menu-popover{display:none;position:absolute;z-index:1000;top:calc(100% + 6px);left:0;min-width:190px;padding:7px;border:1px solid var(--line);border-radius:12px;background:#101722;box-shadow:0 14px 32px #0009}.tab-menu[open] .tab-menu-popover{display:grid;gap:6px}.tab-subbtn{width:100%;text-align:left}.tab-menu>summary.active{background:var(--accent);color:#07111d;border-color:transparent}
+@media(max-width:700px){.tab-menu-popover{position:fixed;left:10px;right:10px;top:auto;min-width:0;margin-top:6px}.tab-subbtn{min-height:44px}}
+</style>
 </head><body><header><div><h1>⚔️ Hazard Game Tournament</h1><div class="muted">Chaque donnée aléatoire affichée provient de la roue que tu vois tourner.</div></div><div class="pill" id="charId">S1-001</div></header>
 <div class="cloud-bar">
   <span id="cloudStatus" class="cloud-status">☁️ Mode local</span>
@@ -434,8 +440,13 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
   <button id="wheelTabBtn" class="tabbtn active">🎰 Roue</button>
   <button id="listTabBtn" class="tabbtn">📋 Liste des personnages</button>
 <button id="genealogyTabBtn" class="tabbtn">🌳 Descendants & lignées</button>
-<button id="tournamentTabBtn" class="tabbtn">⚔️ Tournoi</button>
-<button id="hallTabBtn" class="tabbtn">🏆 Hall of Fame</button>
+<details id="arenaMenu" class="tab-menu">
+  <summary id="arenaTabBtn" class="tabbtn">⚔️ Arène <span class="tab-caret">▾</span></summary>
+  <div class="tab-menu-popover">
+    <button id="tournamentTabBtn" class="tabbtn tab-subbtn">⚔️ Tournoi</button>
+    <button id="hallTabBtn" class="tabbtn tab-subbtn">🏆 Hall of Fame</button>
+  </div>
+</details>
 <button id="universeTabBtn" class="tabbtn">🌌 Univers</button>
 </div>
 <div id="wheelTab" class="tabpage active">
@@ -575,6 +586,8 @@ const tournamentTab=document.getElementById('tournamentTab');
 const tournamentTabBtn=document.getElementById('tournamentTabBtn');
 const hallTab=document.getElementById('hallTab');
 const hallTabBtn=document.getElementById('hallTabBtn');
+const arenaTabBtn=document.getElementById('arenaTabBtn');
+const arenaMenu=document.getElementById('arenaMenu');
 const universeTab=document.getElementById('universeTab');
 const universeTabBtn=document.getElementById('universeTabBtn');
 const wheelTab=document.getElementById('wheelTab');
@@ -1187,6 +1200,7 @@ function showTab(which){
   const isWheel=which==='wheel',isList=which==='list',isGenealogy=which==='genealogy',isTournament=which==='tournament',isHall=which==='hall',isUniverse=which==='universe';
   wheelTab.classList.toggle('active',isWheel);listTab.classList.toggle('active',isList);genealogyTab.classList.toggle('active',isGenealogy);tournamentTab.classList.toggle('active',isTournament);hallTab.classList.toggle('active',isHall);universeTab.classList.toggle('active',isUniverse);
   wheelTabBtn.classList.toggle('active',isWheel);listTabBtn.classList.toggle('active',isList);genealogyTabBtn.classList.toggle('active',isGenealogy);tournamentTabBtn.classList.toggle('active',isTournament);hallTabBtn.classList.toggle('active',isHall);universeTabBtn.classList.toggle('active',isUniverse);
+  arenaTabBtn.classList.toggle('active',isTournament||isHall);
   if(isList)renderRoster();if(isGenealogy)renderGenealogy();if(isTournament)renderTournament();if(isHall)renderHallOfFame();
 }
 function mysticLinkDetail(s){
@@ -3326,8 +3340,8 @@ function renderHallOfFame(){
 wheelTabBtn.onclick=()=>showTab('wheel');
 listTabBtn.onclick=()=>{closeCharacterDetail();showTab('list')};
 genealogyTabBtn.onclick=()=>showTab('genealogy');
-tournamentTabBtn.onclick=()=>showTab('tournament');
-hallTabBtn.onclick=()=>showTab('hall');
+tournamentTabBtn.onclick=()=>{showTab('tournament');arenaMenu.removeAttribute('open')};
+hallTabBtn.onclick=()=>{showTab('hall');arenaMenu.removeAttribute('open')};
 universeTabBtn.onclick=()=>showTab('universe');
 document.getElementById('createTournamentBtn').onclick=createTournament;
 document.getElementById('simulateTournamentPhaseBtn').onclick=()=>simulateTournamentBatch('round');
