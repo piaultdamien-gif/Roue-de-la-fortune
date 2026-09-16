@@ -2048,16 +2048,25 @@ async function refreshIllustrationFor(characterId){
   setTimeout(()=>renderPortraitGallery(characterId),0);
 }
 
-async function hydrateIllustrationThumbs(){
-  const imgs=[...document.querySelectorAll('[data-illustration-thumb-for]')];
-  for(const img of imgs){
-    const id=img.dataset.illustrationThumbFor;
-    const ph=document.querySelector(`[data-illustration-thumb-placeholder-for="${id}"]`);
+let __illustrationThumbObserver=null;
+const __illustrationThumbLoading=new Set();
+
+async function loadIllustrationThumb(img){
+  if(!img||!img.isConnected||img.dataset.thumbLoaded==='1'||img.dataset.thumbLoading==='1') return;
+  const id=img.dataset.illustrationThumbFor;
+  if(!id) return;
+  const key=characterImageIdentity(id);
+  if(__illustrationThumbLoading.has(key)) return;
+  img.dataset.thumbLoading='1';
+  __illustrationThumbLoading.add(key);
+  try{
+    const blob=await getIllustration(id);
+    if(!img.isConnected) return;
+    const ph=img.parentElement?.querySelector(`[data-illustration-thumb-placeholder-for="${id}"]`);
     if(img.dataset.objectUrl){
       URL.revokeObjectURL(img.dataset.objectUrl);
       delete img.dataset.objectUrl;
     }
-    const blob=await getIllustration(id);
     if(blob){
       const url=URL.createObjectURL(blob);
       img.src=url;
@@ -2065,10 +2074,46 @@ async function hydrateIllustrationThumbs(){
       img.style.display='block';
       if(ph) ph.style.display='none';
     }else{
+      img.removeAttribute('src');
       img.style.display='none';
       if(ph) ph.style.display='inline-flex';
     }
+    img.dataset.thumbLoaded='1';
+  }catch(e){
+    console.warn('Miniature indisponible',id,e);
+  }finally{
+    delete img.dataset.thumbLoading;
+    __illustrationThumbLoading.delete(key);
   }
+}
+
+function hydrateIllustrationThumbs(){
+  const imgs=[...document.querySelectorAll('[data-illustration-thumb-for]')];
+  if(!imgs.length) return;
+
+  if('IntersectionObserver' in window){
+    if(__illustrationThumbObserver) __illustrationThumbObserver.disconnect();
+    __illustrationThumbObserver=new IntersectionObserver(entries=>{
+      for(const entry of entries){
+        if(!entry.isIntersecting) continue;
+        __illustrationThumbObserver.unobserve(entry.target);
+        loadIllustrationThumb(entry.target);
+      }
+    },{root:null,rootMargin:'220px 0px',threshold:0.01});
+    for(const img of imgs){
+      if(img.dataset.thumbLoaded!=='1') __illustrationThumbObserver.observe(img);
+    }
+    return;
+  }
+
+  // Fallback ancien navigateur : petites séries pour ne jamais bloquer le registre.
+  let i=0;
+  const pump=()=>{
+    const batch=imgs.slice(i,i+4);i+=4;
+    batch.forEach(loadIllustrationThumb);
+    if(i<imgs.length) setTimeout(pump,60);
+  };
+  pump();
 }
 
 function deleteCharacterCompletely(id){
