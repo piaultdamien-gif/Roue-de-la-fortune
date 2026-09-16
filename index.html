@@ -399,6 +399,12 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
 }
 </style>
 </style>
+
+<style id="vaeloriaSafeUi">
+.universe-nav{position:relative}.universe-menu{display:none;position:absolute;z-index:90;top:calc(100% + 6px);right:0;min-width:190px;padding:7px;border:1px solid #563343;border-radius:12px;background:#100b11;box-shadow:0 18px 45px #000a}.universe-nav.open .universe-menu{display:grid;gap:5px}.universe-menu button{width:100%;text-align:left}.universe-shell{max-width:1450px;margin:auto;padding:0 18px 32px}.universe-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px;margin-bottom:14px}.universe-switch{display:flex;gap:8px}.universe-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px}.universe-card{overflow:hidden;border:1px solid #50313e;border-radius:14px;background:#110c12}.universe-img{aspect-ratio:16/9;background:linear-gradient(145deg,#21101c,#09070a);display:grid;place-items:center;text-align:center;color:#a9939d}.universe-img img{width:100%;height:100%;object-fit:cover}.universe-copy{padding:13px}.universe-copy h3{margin:0 0 6px;color:#ead6b2}.universe-stratum{margin:22px 0 10px}.universe-stratum h2{margin:0;color:#e2c28c}.universe-map{aspect-ratio:16/9;border:1px solid #50313e;border-radius:14px;overflow:hidden;background:#09070a;margin-bottom:18px}.universe-map .universe-img{height:100%;aspect-ratio:auto}.race-universe-grid .universe-img{aspect-ratio:2/3}.universe-placeholder b{display:block;color:#d8b982;margin-bottom:4px}
+@media(max-width:700px){.universe-head{align-items:flex-start;flex-direction:column}.universe-switch{width:100%}.universe-switch button{flex:1}.universe-grid{grid-template-columns:1fr}.universe-menu{position:fixed;left:12px;right:12px;top:120px}.universe-map{aspect-ratio:4/3}}
+</style>
+
 </head><body><header><div><h1>⚔️ Hazard Game Tournament</h1><div class="muted">Chaque donnée aléatoire affichée provient de la roue que tu vois tourner.</div></div><div class="pill" id="charId">S1-001</div></header>
 <div class="cloud-bar">
   <span id="cloudStatus" class="cloud-status">☁️ Mode local</span>
@@ -416,6 +422,13 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
 <button id="genealogyTabBtn" class="tabbtn">🌳 Descendants & lignées</button>
 <button id="tournamentTabBtn" class="tabbtn">⚔️ Tournoi</button>
 <button id="hallTabBtn" class="tabbtn">🏆 Hall of Fame</button>
+<div class="universe-nav" id="universeNav">
+  <button id="universeTabBtn" class="tabbtn">🌌 Univers ▾</button>
+  <div class="universe-menu" id="universeMenu">
+    <button type="button" data-universe-view="world">🌍 VAELORIA</button>
+    <button type="button" data-universe-view="races">🧬 Races</button>
+  </div>
+</div>
 </div>
 <div id="wheelTab" class="tabpage active">
 <div class="layout"><section class="panel left"><div class="top"><div class="title" id="taskTitle">Prêt</div><div class="pill" id="count">0 roue</div></div><div class="wheelwrap"><div class="pointer"></div><canvas id="wheel" width="760" height="760"></canvas></div><div class="result" id="result">Clique sur « Commencer »<small>Les sous-roues seront ajoutées automatiquement selon les résultats.</small></div><div class="controls"><button id="spinBtn">Commencer</button><button class="secondary" id="autoBtn">Auto : OFF</button><button class="secondary" id="resetBtn">Réinitialiser</button><button class="secondary" id="exportBtn">Exporter JSON</button><button class="secondary" id="prevCharBtn">← Précédent</button><button class="secondary" id="nextCharBtn">Suivant →</button></div><div class="note">✓ Hazard Game Tournament : génération, lignées, tournoi simulé combat par combat et Hall of Fame.</div></section>
@@ -504,6 +517,21 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
     <div id="hallChampions" class="hall-grid"></div>
   </div>
 </section>
+
+<section id="universeTab" class="tabpage">
+  <div class="universe-shell">
+    <div class="panel universe-head">
+      <div><div class="title">🌌 Univers</div><div class="muted">Encyclopédie de Vaeloria.</div></div>
+      <div class="universe-switch">
+        <button class="secondary" type="button" data-universe-view="world">🌍 VAELORIA</button>
+        <button class="secondary" type="button" data-universe-view="races">🧬 Races</button>
+      </div>
+    </div>
+    <div id="universeWorldView"></div>
+    <div id="universeRacesView" hidden></div>
+  </div>
+</section>
+
 <div class="page-jump-controls" aria-label="Navigation rapide dans la page">
   <button type="button" class="secondary" id="jumpTopBtn" title="Aller en haut de la page" aria-label="Aller en haut de la page">↑</button>
   <button type="button" class="secondary" id="jumpBottomBtn" title="Aller en bas de la page" aria-label="Aller en bas de la page">↓</button>
@@ -535,6 +563,10 @@ const tournamentTab=document.getElementById('tournamentTab');
 const tournamentTabBtn=document.getElementById('tournamentTabBtn');
 const hallTab=document.getElementById('hallTab');
 const hallTabBtn=document.getElementById('hallTabBtn');
+const universeTab=document.getElementById('universeTab');
+const universeTabBtn=document.getElementById('universeTabBtn');
+const universeMenu=document.getElementById('universeMenu');
+const universeNav=document.getElementById('universeNav');
 const wheelTab=document.getElementById('wheelTab');
 const listTab=document.getElementById('listTab');
 
@@ -1102,10 +1134,12 @@ function relationSummary(s){
   return bits.join(' • ');
 }
 function showTab(which){
-  const isWheel=which==='wheel',isList=which==='list',isGenealogy=which==='genealogy',isTournament=which==='tournament',isHall=which==='hall';
+  const isWheel=which==='wheel',isList=which==='list',isGenealogy=which==='genealogy',isTournament=which==='tournament',isHall=which==='hall',isUniverse=which==='universe';
   wheelTab.classList.toggle('active',isWheel);listTab.classList.toggle('active',isList);genealogyTab.classList.toggle('active',isGenealogy);tournamentTab.classList.toggle('active',isTournament);hallTab.classList.toggle('active',isHall);
   wheelTabBtn.classList.toggle('active',isWheel);listTabBtn.classList.toggle('active',isList);genealogyTabBtn.classList.toggle('active',isGenealogy);tournamentTabBtn.classList.toggle('active',isTournament);hallTabBtn.classList.toggle('active',isHall);
   if(isList)renderRoster();if(isGenealogy)renderGenealogy();if(isTournament)renderTournament();if(isHall)renderHallOfFame();
+
+  universeTab.classList.toggle('active',isUniverse);universeTabBtn.classList.toggle('active',isUniverse);if(isUniverse)setUniverseView('world');
 }
 function mysticLinkDetail(s){
   return (s?.extraDetail||[]).find(x=>x&&x.kind==='Lien mystique'&&x.target==='Un autre personnage')||null;
@@ -2888,11 +2922,79 @@ function renderHallOfFame(){
   function renderHallOfFameDraft(ids){meta.championTeamDraft=ids;saveUniverseMeta(meta);renderHallOfFame()}
   const save=document.getElementById('saveChampionTeamBtn');if(save)save.onclick=()=>saveChampionTeam(draft);
 }
+
+const VAELORIA_UNIVERSE={
+ Elyrion:{label:'☁️ ELYRION',description:'Strate céleste formée de gigantesques îles flottantes et d’archipels secondaires.',regions:{
+  Aetherys:['Hautes Terres célestes','Anciennes terres célestes historiquement marquées par les présences divines et les civilisations angéliques.'],
+  Thoryndra:['Îles des Tempêtes','Archipels célestes traversés par de puissants courants et des tempêtes fréquentes.'],
+  Liorael:['Îles verdoyantes','Îles fertiles, cascades suspendues et écosystèmes célestes luxuriants.'],
+  Caelorn:['Frontières basses','Terres basses d’Elyrion et zones de passage privilégiées vers Yndara.']}},
+ Yndara:{label:'🌍 YNDARA',description:'Strate de surface : immense continent central entouré de grandes terres et d’archipels.',regions:{
+  Sylvaeryn:['Forêt primordiale','Forêts antiques et berceau historique des Elfes et des Fées, autour du colossal Vaelyr.'],
+  Kharadryn:['Montagnes fracturées','Massifs, forteresses et anciennes routes vers Nharak ; berceau historique des Nains et de nombreux Géants.'],
+  Avelorn:['Grandes Plaines','Plaines fertiles et cités cosmopolites ; berceau historique des Humains.'],
+  Drakhenor:['Terres de la Steppe','Steppes, plateaux et canyons ; berceau historique des Orcs.'],
+  Maelora:['Terres sauvages','Jungles, marécages et régions chaudes où vivent de nombreuses lignées d’Hommes-bêtes et de Gobelins.'],
+  Iskarya:['Terres boréales','Taïgas, toundras et glaciers des régions septentrionales.'],
+  Nexara:['Terre Nexus','Grande terre périphérique façonnée par l’héritage Neoxus et les civilisations N.E.X.U.S.'],
+  Kaelora:['Archipel des Mers chaudes','Archipels tropicaux, récifs et grandes routes maritimes.'],
+  Vaerunn:['Îles des Tempêtes','Îles océaniques exposées à des vents violents et des orages fréquents.']}},
+ Nharak:{label:'🔥 NHARAK',description:'Immense strate souterraine variée ; ni enfer, ni royaume des morts.',regions:{
+  Varkhoryn:['Terres ardentes','Chaînes volcaniques, fleuves de lave et civilisations adaptées à la chaleur profonde.'],
+  Kythera:['Profondeurs cristallines','Cavernes monumentales riches en cristaux et ressources rares.'],
+  Lumerys:['Forêts lumineuses','Forêts bioluminescentes abritant des écosystèmes souterrains autonomes.'],
+  Naeroth:['Mer intérieure','Gigantesque mer souterraine bordée de ports cavernicoles et de profondeurs inconnues.'],
+  "Mor'Khal":['Grandes Profondeurs','Zones les plus profondes et les moins cartographiées, riches en ruines et passages anciens.']}}
+};
+const VAELORIA_RACE_DESCRIPTIONS={
+'Humain':'Originaire d’Avelorn et aujourd’hui largement répandu dans les trois strates.',
+'Elfe':'Ancien peuple biologique apparu dans les forêts primordiales de Sylvaeryn.',
+'Nain':'Peuple ancien de Kharadryn, historiquement lié aux montagnes et aux routes vers Nharak.',
+'Orc':'Peuple originaire de Drakhenor, composé de cultures et de clans très divers.',
+'Gobelin':'Peuple de Yndara développé dans des régions difficiles à exploiter puis diffusé vers Nharak.',
+'Fée':'Ancienne race biologique et magique de Vaeloria, historiquement liée à Sylvaeryn.',
+'Géant':'Ancienne race biologique de grande taille, distincte des Titans.',
+'Vampire':'Condition ou lignée transformative conservant une race biologique d’origine.',
+'Loup-garou':'Lignée transformative lupine pouvant affecter plusieurs races d’origine.',
+'Démon':'Peuple natif de Nharak ; le terme ne détermine ni sa morale ni ses pouvoirs.',
+'Ange':'Peuple natif d’Elyrion, distinct des Divinités et non nécessairement à leur service.',
+'Esprit':'Être d’origine naturelle ou issu de la persistance spirituelle d’une race.',
+'Dragon humanoïde':'Ancienne espèce draconique biologique adaptée aux trois strates.',
+'Golem / Artificiel':'Race créée puis devenue autonome, d’origine arcane, mécanique ou Nexus.',
+'Extraterrestre':'Espèces venues d’autres mondes que Vaeloria, distinctes des Neoxus.',
+'Divinité / Demi-dieu':'Ensemble des Demi-dieux, Divinités et rares Dieux célestes.',
+'Titan':'Lignée très ancienne liée à Vaeloria, comprenant Titans, Primordiaux et Fondateurs.',
+'Squelette':'Forme de non-vie conservant une race d’origine ; certaines deviennent des Liches.',
+'Homme-bête':'Ensemble de lignées liées à des espèces animales réelles ou fantastiques.',
+'Hybride':'Descendance de deux véritables ascendances raciales.',
+'Cyborg':'Être biologique transformé par une intégration durable de technologie Nexus.'
+};
+function universeSlug(s){return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/['’]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
+function universeImage(path,label,portrait=false){return `<div class="universe-img"><img src="${path}" alt="${escapeHtml(label)}" onerror="this.remove();this.parentElement.innerHTML='<div class=&quot;universe-placeholder&quot;><b>Illustration prévue</b>${escapeHtml(label)}<br><small>${path}</small></div>'"></div>`}
+function renderUniverseWorld(){
+ const root=document.getElementById('universeWorldView');if(!root)return;
+ let h=`<div class="universe-map">${universeImage('assets/universe/vaeloria-map.webp','Carte globale de VAELORIA')}</div>`;
+ for(const s of ['Elyrion','Yndara','Nharak']){const d=VAELORIA_UNIVERSE[s];h+=`<div class="universe-stratum"><h2>${d.label}</h2><div class="muted">${d.description}</div></div><div class="universe-grid">`;
+ for(const [name,[env,desc]] of Object.entries(d.regions)){h+=`<article class="universe-card">${universeImage(`assets/universe/regions/${universeSlug(name)}.webp`,name)}<div class="universe-copy"><h3>${name}</h3><div class="muted">${env}</div><p>${desc}</p></div></article>`}h+='</div>'}
+ root.innerHTML=h;
+}
+function renderUniverseRaces(){
+ const root=document.getElementById('universeRacesView');if(!root)return;
+ root.innerHTML=`<div class="universe-grid race-universe-grid">${Object.entries(VAELORIA_RACE_DESCRIPTIONS).map(([name,desc])=>`<article class="universe-card">${universeImage(`assets/universe/races/${universeSlug(name)}.webp`,name,true)}<div class="universe-copy"><h3>${name}</h3><p>${desc}</p></div></article>`).join('')}</div>`;
+}
+function setUniverseView(view){
+ const world=view!=='races',w=document.getElementById('universeWorldView'),r=document.getElementById('universeRacesView');
+ if(!w||!r)return;w.hidden=!world;r.hidden=world;if(world)renderUniverseWorld();else renderUniverseRaces();
+}
+
 wheelTabBtn.onclick=()=>showTab('wheel');
 listTabBtn.onclick=()=>{closeCharacterDetail();showTab('list')};
 genealogyTabBtn.onclick=()=>showTab('genealogy');
 tournamentTabBtn.onclick=()=>showTab('tournament');
 hallTabBtn.onclick=()=>showTab('hall');
+universeTabBtn.onclick=(e)=>{e.stopPropagation();universeNav.classList.toggle('open')};
+document.querySelectorAll('[data-universe-view]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();showTab('universe');setUniverseView(b.dataset.universeView);universeNav.classList.remove('open')}));
+document.addEventListener('click',()=>universeNav.classList.remove('open'));
 document.getElementById('createTournamentBtn').onclick=createTournament;
 document.getElementById('simulateTournamentPhaseBtn').onclick=()=>simulateTournamentBatch('round');
 document.getElementById('resetTournamentBtn').onclick=()=>{if(loadTournament()&&confirm('Effacer toute la progression du tournoi ?')){const oldT=loadTournament();localStorage.removeItem(TOURNAMENT_KEY);if(typeof cloudDeleteTournament==='function')cloudDeleteTournament(oldT?.season);renderTournament()}};
