@@ -1988,7 +1988,7 @@ async function chooseIllustrationFor(characterId){
     if(!file) return;
     await saveIllustration(characterId,file);
     await refreshIllustrationFor(characterId);
-    setTimeout(hydrateIllustrationThumbs,0);
+    setTimeout(()=>refreshIllustrationThumbsFor(characterId),0);
   };
   input.click();
 }
@@ -1997,7 +1997,7 @@ async function removeIllustrationFor(characterId){
   if(!confirm('Supprimer uniquement l’illustration de ce personnage ?')) return;
   await deleteIllustration(characterId);
   await refreshIllustrationFor(characterId);
-  setTimeout(hydrateIllustrationThumbs,0);
+  setTimeout(()=>refreshIllustrationThumbsFor(characterId),0);
 }
 
 function illustrationControlsHtml(characterId){
@@ -2084,6 +2084,15 @@ async function loadIllustrationThumb(img){
   }finally{
     delete img.dataset.thumbLoading;
     __illustrationThumbLoading.delete(key);
+  }
+}
+
+function refreshIllustrationThumbsFor(characterId){
+  const imgs=[...document.querySelectorAll(`[data-illustration-thumb-for="${characterId}"]`)];
+  for(const img of imgs){
+    delete img.dataset.thumbLoaded;
+    delete img.dataset.thumbLoading;
+    loadIllustrationThumb(img);
   }
 }
 
@@ -3564,7 +3573,7 @@ async function selectGeneratedPortrait(characterId,path){
   const remove=list.filter(x=>x.path!==path).map(x=>x.path);if(remove.length){const {error}=await cloudClient.storage.from('character-images').remove(remove);if(error){alert('Suppression impossible : '+error.message);return}}
   c.imageGeneration={...(c.imageGeneration||{}),selectedPortrait:path,selectedAt:new Date().toISOString()};roster[characterId]=JSON.parse(JSON.stringify(c));saveRoster(roster);queueCloudCharacterSave(c);
   const blob=await cloudDownloadPortraitPath(path);if(blob){const db=await openIllustrationDB();await new Promise((resolve,reject)=>{const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');tx.objectStore(ILLUSTRATION_STORE).put(blob,characterImageIdentity(characterId));tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)})}
-  await refreshIllustrationFor(characterId);await renderPortraitGallery(characterId);setTimeout(hydrateIllustrationThumbs,0);illustrationStatus(characterId,'✅ Portrait sélectionné définitivement.');
+  await refreshIllustrationFor(characterId);await renderPortraitGallery(characterId);setTimeout(()=>refreshIllustrationThumbsFor(characterId),0);illustrationStatus(characterId,'✅ Portrait sélectionné définitivement.');
 }
 async function renderPortraitGallery(characterId){
   const host=document.querySelector(`[data-portrait-gallery-for="${characterId}"]`);if(!host||!cloudReady())return;
@@ -3747,7 +3756,7 @@ async function invokeCharacterImageGeneration(characterId,{regenerate=false,cham
     }
     const db=await openIllustrationDB();await new Promise((resolve,reject)=>{const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');tx.objectStore(ILLUSTRATION_STORE).put(remote,characterImageIdentity(characterId));tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)});
     if(regenerate)recordRegeneration(c);else{c.imageGeneration={...(c.imageGeneration||{}),initialGeneratedAt:new Date().toISOString(),lastGeneratedAt:new Date().toISOString()};const rr=loadRoster();rr[c.id]=JSON.parse(JSON.stringify(c));saveRoster(rr);queueCloudCharacterSave(c)}
-    await refreshIllustrationFor(characterId);setTimeout(hydrateIllustrationThumbs,0);illustrationStatus(characterId,regenerate?`✅ Image régénérée • ${regenCounterFor(c)}/5 aujourd’hui`:'✅ Illustration générée automatiquement');return true;
+    await refreshIllustrationFor(characterId);setTimeout(()=>refreshIllustrationThumbsFor(characterId),0);illustrationStatus(characterId,regenerate?`✅ Image régénérée • ${regenCounterFor(c)}/5 aujourd’hui`:'✅ Illustration générée automatiquement');return true;
   }catch(e){console.error('Génération illustration',e);const msg=e?.message||String(e);illustrationStatus(characterId,`⚠️ Génération impossible : ${msg.slice(0,220)}`);return false}
   finally{__imageGenerationBusy.delete(busyKey)}
 }
