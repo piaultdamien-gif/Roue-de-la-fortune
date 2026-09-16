@@ -2051,17 +2051,18 @@ async function refreshIllustrationFor(characterId){
 let __illustrationThumbObserver=null;
 const __illustrationThumbLoading=new Set();
 
-async function loadIllustrationThumb(img){
-  if(!img||!img.isConnected||img.dataset.thumbLoaded==='1'||img.dataset.thumbLoading==='1') return;
+async function loadIllustrationThumb(img,force=false){
+  if(!img||!img.isConnected) return;
+  if(!force&&(img.dataset.thumbLoaded==='1'||img.dataset.thumbLoading==='1')) return;
   const id=img.dataset.illustrationThumbFor;
   if(!id) return;
-  const key=characterImageIdentity(id);
-  if(__illustrationThumbLoading.has(key)) return;
+  const requestId=String((Number(img.dataset.thumbRequest||0)+1));
+  img.dataset.thumbRequest=requestId;
   img.dataset.thumbLoading='1';
-  __illustrationThumbLoading.add(key);
   try{
     const blob=await getIllustration(id);
-    if(!img.isConnected) return;
+    // Une ancienne requête ne doit jamais écraser un rafraîchissement plus récent.
+    if(!img.isConnected||img.dataset.thumbRequest!==requestId) return;
     const ph=img.parentElement?.querySelector(`[data-illustration-thumb-placeholder-for="${id}"]`);
     if(img.dataset.objectUrl){
       URL.revokeObjectURL(img.dataset.objectUrl);
@@ -2073,17 +2074,18 @@ async function loadIllustrationThumb(img){
       img.dataset.objectUrl=url;
       img.style.display='block';
       if(ph) ph.style.display='none';
+      img.dataset.thumbLoaded='1';
     }else{
       img.removeAttribute('src');
       img.style.display='none';
       if(ph) ph.style.display='inline-flex';
+      // Ne pas figer « aucune image » : un portrait automatique peut arriver juste après.
+      delete img.dataset.thumbLoaded;
     }
-    img.dataset.thumbLoaded='1';
   }catch(e){
     console.warn('Miniature indisponible',id,e);
   }finally{
-    delete img.dataset.thumbLoading;
-    __illustrationThumbLoading.delete(key);
+    if(img.dataset.thumbRequest===requestId) delete img.dataset.thumbLoading;
   }
 }
 
@@ -2092,7 +2094,7 @@ function refreshIllustrationThumbsFor(characterId){
   for(const img of imgs){
     delete img.dataset.thumbLoaded;
     delete img.dataset.thumbLoading;
-    loadIllustrationThumb(img);
+    loadIllustrationThumb(img,true);
   }
 }
 
