@@ -3761,37 +3761,31 @@ async function regenerateCharacterIllustration(characterId){
   if(!confirm(`Régénérer l’illustration de ${c.name||characterId} ?\n\nIl restera ${IMAGE_REGEN_LIMIT_PER_DAY-regenCounterFor(c)-1} régénération(s) aujourd’hui après celle-ci.`))return;
   await invokeCharacterImageGeneration(characterId,{regenerate:true});
 }
-const PORTRAIT_QUEUE_MAX_ATTEMPTS=3;
-const PORTRAIT_QUEUE_RETRY_DELAY_MS=2500;
-let __portraitQueuePromise=null;
-const sleepPortraitQueue=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+let __portraitCatchupRunning=false;
+const PORTRAIT_AUTO_RETRIES=3;
+const portraitRetrySleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function ensureMissingCharacterPortraits(){
-  if(__portraitQueuePromise)return __portraitQueuePromise;
-  __portraitQueuePromise=(async()=>{
-    if(!cloudReady())return;
+  if(!cloudReady()||__portraitCatchupRunning)return;
+  __portraitCatchupRunning=true;
+  try{
     const chars=Object.values(loadRoster()).filter(c=>c?.id&&isCharacterGenerationComplete(c));
-    const missing=[];
     for(const c of chars){
-      if(!cloudReady())return;
-      try{if(!(await getIllustration(c.id)))missing.push(c.id)}
-      catch(e){console.warn('Vérification portrait',c.id,e);missing.push(c.id)}
-    }
-    if(!missing.length)return;
-    console.info(`Portraits manquants : ${missing.length}/${chars.length}`,missing);
-    for(const id of missing){
       if(!cloudReady())break;
-      for(let attempt=1;attempt<=PORTRAIT_QUEUE_MAX_ATTEMPTS;attempt++){
+      let img=null;
+      try{img=await getIllustration(c.id)}catch(e){console.warn('Vérification portrait',c.id,e)}
+      if(img)continue;
+      for(let attempt=1;attempt<=PORTRAIT_AUTO_RETRIES&&!img;attempt++){
+        if(!cloudReady())break;
         try{
-          if(await getIllustration(id))break;
-          const ok=await invokeCharacterImageGeneration(id);
-          if(ok||await getIllustration(id))break;
-        }catch(e){console.warn(`Portrait auto ${id} tentative ${attempt}`,e)}
-        if(attempt<PORTRAIT_QUEUE_MAX_ATTEMPTS)await sleepPortraitQueue(PORTRAIT_QUEUE_RETRY_DELAY_MS*attempt);
+          const ok=await invokeCharacterImageGeneration(c.id);
+          if(ok){try{img=await getIllustration(c.id)}catch(_){img=null}}
+        }catch(e){console.warn(`Portrait auto ${c.id} tentative ${attempt}`,e)}
+        if(!img&&attempt<PORTRAIT_AUTO_RETRIES)await portraitRetrySleep(1500*attempt);
       }
+      // Petite pause entre deux personnages : évite de marteler Edge Function / Storage.
+      await portraitRetrySleep(500);
     }
-    setTimeout(()=>hydrateIllustrationThumbs(),0);
-  })().finally(()=>{__portraitQueuePromise=null});
-  return __portraitQueuePromise;
+  }finally{__portraitCatchupRunning=false}
 }
 function cloudImagePath(characterId){return `${cloudUser.id}/${cloudCurrentGame.id}/${characterImageIdentity(characterId)}`}
 
