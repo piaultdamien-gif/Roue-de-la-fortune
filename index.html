@@ -595,16 +595,42 @@ function raceOptions(excluded=[]){
   return races.filter(r=>!excluded.includes(r)).map(r=>W(r, rareWeights[r] ?? ordinaryWeight));
 }
 
+function weaponContextMultiplier(name){
+ let m=1, arch=(state.archParts||[]).join(' / '), culture=state.culture||'', region=state.birthRegion||'';
+ const melee=['Épée','Épée à deux mains','Katana','Dagues doubles','Hache','Hache à deux mains','Marteau de guerre','Rope Dart / Corde-dard','Lance','Hallebarde','Faux','Bâton','Nunchaku','Chaîne / Kusarigama','Fouet','Gantelets de combat','Bouclier offensif'];
+ const rangedSet=['Arc','Arbalète','Pistolet','Fusil','Fusil de précision','Fusil à pompe','Mitrailleuse','Lance-roquettes','Arme énergétique'];
+ const heavy=['Épée à deux mains','Hache à deux mains','Marteau de guerre','Hallebarde','Bouclier offensif'];
+ const subtle=['Dagues doubles','Fouet','Chaîne / Kusarigama','Rope Dart / Corde-dard'];
+ const mystic=['Grimoire / catalyseur','Arme énergétique'];
+ // Archétype = influence principale.
+ if(/Tireur/i.test(arch)&&rangedSet.includes(name))m*=3;
+ if(/Guerrier|Berserker|Tank|Paladin|Slayer/i.test(arch)&&melee.includes(name))m*=2;
+ if(/Berserker|Tank/i.test(arch)&&heavy.includes(name))m*=1.5;
+ if(/Assassin|Voleur/i.test(arch)&&subtle.includes(name))m*=2;
+ if(/Mage|Sorcier|Invocateur/i.test(arch)&&mystic.includes(name))m*=2;
+ // Culture/région = influence secondaire.
+ if((region==='Nexara'||/Nexus|Technopolit|techno/i.test(culture))&&['Pistolet','Fusil','Fusil de précision','Arme énergétique'].includes(name))m*=2;
+ if(/Forteresses|Hautes-cimes|Forgienne|Martiale/i.test(culture)&&heavy.includes(name))m*=1.5;
+ if(/Nomade|Itinérante|Navigatrice|Frontière/i.test(culture)&&['Arc','Lance','Dagues doubles','Bâton'].includes(name))m*=1.5;
+ if(/Sylvaine|Clairières|Forestière|Jungle/i.test(culture)&&['Arc','Lance','Dagues doubles'].includes(name))m*=1.5;
+ if(/Haute-céleste|Savante|Spirituelle|Cristalline/i.test(culture)&&['Grimoire / catalyseur','Arme énergétique','Bâton'].includes(name))m*=1.5;
+ return m;
+}
 function weaponOptions(forceRanged=false){
-  // « Aucune arme » occupe exactement 25 % de la roue.
-  const pool=(forceRanged?ranged:weapons).filter(w=>w!=='Aucune arme');
-  const each=75/pool.length;
-  return [W('Aucune arme',25), ...pool.map(w=>W(w,each))];
+ // « Aucune arme » reste exactement à 25 % ; les 75 % restants sont répartis contextuellement.
+ const pool=(forceRanged?ranged:weapons).filter(w=>w!=='Aucune arme');
+ const raw=pool.map(w=>[w,weaponContextMultiplier(w)]);
+ const total=raw.reduce((a,x)=>a+x[1],0)||1;
+ return [W('Aucune arme',25),...raw.map(([w,m])=>W(w,75*m/total))];
 }
 
 // Artiste martial : 50 % mains nues, sinon uniquement armes martiales/non modernes.
 const martialWeapons=['Épée','Épée à deux mains','Katana','Dagues doubles','Hache','Hache à deux mains','Marteau de guerre','Rope Dart / Corde-dard','Lance','Hallebarde','Faux','Bâton','Nunchaku','Chaîne / Kusarigama','Fouet','Gantelets de combat','Bouclier offensif','Arc','Arbalète','Arme improvisée','Arme unique'];
-function martialWeaponOptions(){const each=75/martialWeapons.length;return [W('Aucune arme',25),...martialWeapons.map(w=>W(w,each))]}
+function martialWeaponOptions(){
+ const raw=martialWeapons.map(w=>[w,weaponContextMultiplier(w)]);
+ const total=raw.reduce((a,x)=>a+x[1],0)||1;
+ return [W('Aucune arme',50),...raw.map(([w,m])=>W(w,50*m/total))];
+}
 const chiRanks=['Disciple','Débutant','Avancé','Maître','Expert','Grand Maître','Martial King','Transcendant','Demi-dieu','Martial God','Martial Ascendant','Martial Immortal','Martial Sovereign','Martial Emperor','Celestial Martial','Martial Eternal','Martial Primordial','Martial Origin','Martial Absolute','Martial Supreme'];
 const statRanks=['Inapte','Catastrophique','Très faible','Faible','Médiocre','Moyen','Bon','Excellent','Exceptionnel','Légendaire','Monstrueux','Surhumain','Mythique','Cataclysmique','Transcendant','Divin','Cosmique','Incommensurable','Inconcevable','Absolu','Ultime'];
 const masteryRanks=['Inapte','Inexpérimenté','Novice','Apprenti','Compétent','Confirmé','Avancé','Expert','Maître','Grand Maître','Maître suprême','Prodige','Virtuose','Légendaire','Transcendant','Divin','Cosmique','Incommensurable','Inconcevable','Absolu','Ultime'];
