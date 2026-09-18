@@ -923,6 +923,19 @@ if(characterNumber>CHARACTERS_PER_SEASON){
 }
 
 function currentCharacterId(){return `S${seasonNumber}-${String(characterNumber).padStart(3,'0')}`}
+function firstEmptyCharacterNumber(season=seasonNumber,roster=loadRoster()){
+  const used=new Set(Object.keys(roster||{}).map(id=>String(id).match(/^S(\d+)-(\d+)$/)).filter(Boolean).filter(m=>Number(m[1])===Number(season)).map(m=>Number(m[2])).filter(n=>n>=1&&n<=CHARACTERS_PER_SEASON));
+  for(let n=1;n<=CHARACTERS_PER_SEASON;n++) if(!used.has(n)) return n;
+  return null;
+}
+function moveCursorToFirstEmptySlot(season=seasonNumber){
+  const n=firstEmptyCharacterNumber(season);
+  if(n==null) return false;
+  seasonNumber=Number(season);characterNumber=n;
+  localStorage.setItem(STORAGE_SEASON,String(seasonNumber));
+  localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
+  return true;
+}
 
 function newCharacterInstanceId(){
   try{return crypto.randomUUID()}catch(e){return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,12)}`}
@@ -1263,18 +1276,26 @@ function blockGenerationIfPreviousTournamentIncomplete(){
   return true;
 }
 function advanceCharacter(){
-  if(characterNumber>=CHARACTERS_PER_SEASON){
-    saveCurrentCharacter();
-    if(blockSeasonAdvanceForBirths()) return;
-    if(blockSeasonAdvanceForTournament(seasonNumber)) return;
-    seasonNumber++;
-    characterNumber=1;
-    localStorage.setItem(STORAGE_SEASON,String(seasonNumber));
+  saveCurrentCharacter();
+
+  // Tant qu'il existe un trou dans la saison, on le remplit avant toute autre chose.
+  // Cela évite notamment de rester bloqué sur l'ID recréé après une suppression.
+  const firstFree=firstEmptyCharacterNumber(seasonNumber);
+  if(firstFree!=null){
+    characterNumber=firstFree;
     localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
-    if(!loadCharacterById(currentCharacterId())) newCharacterAtCurrentId();
+    newCharacterAtCurrentId();
     return;
   }
-  goToCharacterNumber(characterNumber+1);
+
+  // Les 64 emplacements sont occupés : aucune 65e génération dans cette saison.
+  if(blockSeasonAdvanceForBirths()) return;
+  if(blockSeasonAdvanceForTournament(seasonNumber)) return;
+  seasonNumber++;
+  characterNumber=1;
+  localStorage.setItem(STORAGE_SEASON,String(seasonNumber));
+  localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
+  if(!loadCharacterById(currentCharacterId())) newCharacterAtCurrentId();
 }
 function relationSummary(s){
   const bits=[];
@@ -2265,21 +2286,29 @@ Cette action retire le personnage de la liste et efface ses références locales
     if(current===id) localStorage.removeItem('roue_currentCharacterId_v16');
   }catch(e){}
 
-  // Keep numbering monotonic: deleting S1-005 must not make a future fighter reuse S1-005.
+  // Après une suppression, la prochaine création reprend toujours le premier numéro libre
+  // de la saison concernée (ex. S1-005), même si S1 avait déjà atteint 64 personnages.
   try{
-    const stored=Number(localStorage.getItem('roue_characterNumber_v16'))||1;
-    const nums=Object.keys(rosterObj)
-      .map(k=>Number((k||'').match(/^S1-(\d+)$/)?.[1]))
-      .filter(Number.isFinite);
-    const minimumNext=nums.length?Math.max(...nums)+1:1;
-    characterNumber=Math.max(stored,minimumNext);
-    localStorage.setItem('roue_characterNumber_v16',String(characterNumber));
+    const deleted=parseCharacterCode(id);
+    if(deleted.season===seasonNumber){
+      const firstFree=firstEmptyCharacterNumber(seasonNumber,rosterObj);
+      if(firstFree!=null){
+        characterNumber=firstFree;
+        localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
+      }
+    }
   }catch(e){}
 
+  // Si le personnage supprimé était chargé dans le générateur, préparer immédiatement
+  // le premier emplacement libre afin qu'un clic ne puisse pas le sauvegarder à nouveau.
+  const deletedWasActive=state?.id===id;
+
+  // L'identité d'image utilise encore state pour le personnage actif supprimé.
   deleteIllustration(id).catch(()=>{});
   if(typeof cloudDeleteCharacter==='function') cloudDeleteCharacter(id);
   if(typeof queueCloudUniverseSync==='function') queueCloudUniverseSync();
   closeCharacterDetail();
+  if(deletedWasActive) newCharacterAtCurrentId();
   renderRoster();
   renderGenealogy();
 }
@@ -3331,18 +3360,7 @@ spinBtn.onclick=()=>{
   if(blockGenerationIfPreviousTournamentIncomplete()) return;
   if(index>=queue.length){
     auto=false;autoBtn.textContent='Auto : OFF';
-    if(characterNumber>=CHARACTERS_PER_SEASON){
-      if(blockSeasonAdvanceForBirths()) return;
-      advanceCharacter();
-      return;
-    }
-    reset();
-    spinBtn.disabled=false;
-    spinBtn.textContent='Commencer';
-    resetBtn.textContent='Réinitialiser';
-    taskTitle.textContent='Prêt';
-    count.textContent='0 roue';
-    result.innerHTML='Clique sur « Commencer »<small>Nouveau personnage prêt à être généré.</small>';
+    advanceCharacter();
     return;
   }
   next()
