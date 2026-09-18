@@ -3433,17 +3433,22 @@ function ensureTournamentChampion(t){
   if(!t)return null;
   const roster=loadRoster();
   let championId=null;
-  const last=t?.rounds?.[t.rounds.length-1];
-  if(last?.length===1) championId=last[0];
-  if(!championId && last?.length===2){
-    const ri=t.rounds.length-1;
-    championId=t.winners?.[`${ri}-0`]||t.battles?.[`${ri}-0`]?.winner||null;
+  // Source la plus fiable : le combat de finale (tour à 2 combattants).
+  // On ne dépend donc plus de la création éventuelle du tour singleton [champion].
+  let finalRi=-1;
+  for(let ri=(t.rounds?.length||0)-1;ri>=0;ri--){
+    if(Array.isArray(t.rounds[ri])&&t.rounds[ri].length===2){finalRi=ri;break}
+  }
+  if(finalRi>=0)championId=t.winners?.[`${finalRi}-0`]||t.battles?.[`${finalRi}-0`]?.winner||null;
+  if(!championId){
+    const last=t?.rounds?.[t.rounds.length-1];
+    if(last?.length===1)championId=last[0];
   }
   if(!championId)return null;
   const meta=universeMeta();meta.champions??={};
   const old=meta.champions[String(t.season)];
   if(!old||old.id!==championId){
-    meta.champions[String(t.season)]={id:championId,name:roster[championId]?.name||'Sans nom',season:Number(t.season),wonAt:old?.wonAt||new Date().toISOString()};
+    meta.champions[String(t.season)]={id:championId,name:roster[championId]?.name||old?.name||'Sans nom',season:Number(t.season),wonAt:old?.wonAt||new Date().toISOString()};
     saveUniverseMeta(meta);
     if(typeof queueCloudGameStateSave==='function')queueCloudGameStateSave();
     setTimeout(()=>ensureChampionPortrait(championId,t.season).catch(console.error),250);
@@ -3539,7 +3544,7 @@ function renderTournament(){
       const box=document.createElement('div');box.className='tournament-match';box.dataset.matchKey=key;
       [round[mi*2],round[mi*2+1]].filter(Boolean).forEach(id=>{const c=roster[id]||{},win=t.winners[key]===id,row=document.createElement('div');row.className='tournament-fighter'+(win?' winner':'')+(t.deaths.includes(id)?' battle-dead':'');row.innerHTML=`<span class="ph">⚔️</span><span><b>${escapeHtml(id)}</b><br>${escapeHtml(c.name||'Sans nom')}</span>`;box.appendChild(row);tournamentPortrait(row.querySelector('.ph'),id)});
       const actions=document.createElement('div');actions.className='tournament-actions';actions.innerHTML=`<button type="button" class="smallbtn" ${battle?'disabled':''}>${battle?'✓ Terminé':'🎲 Simuler'}</button>`;if(!battle)actions.firstChild.onclick=()=>simulateTournamentBattle(ri,mi);box.appendChild(actions);
-      if(battle){const rep=document.createElement('div');rep.className='battle-report';const wc=roster[battle.winner]||{};rep.innerHTML=`<div class="combat-summary-line"><div class="combat-summary-winner">🏆 <b>${escapeHtml(battle.winner)} — ${escapeHtml(wc.name||'Sans nom')}</b>${battle.death?' <span title="Mort pendant le combat">☠️</span>':''}</div><button type="button" class="secondary combat-view-btn">🎬 Voir</button></div>`;rep.querySelector('.combat-view-btn').onclick=()=>openCombatScene(battle,roster);box.appendChild(rep)}
+      if(battle){const rep=document.createElement('div');rep.className='battle-report';const wc=roster[battle.winner]||{};rep.innerHTML=`<div class="combat-summary-line"><div class="combat-summary-winner">🏆 <b>${escapeHtml(battle.winner)} — ${escapeHtml(wc.name||'Sans nom')}</b>${battle.death?' <span title="Mort pendant le combat">☠️</span>':''}</div><button type="button" class="secondary combat-view-btn">🎬 Voir le combat</button></div>`;rep.querySelector('.combat-view-btn').onclick=()=>openCombatScene(battle,roster);box.appendChild(rep)}
       slot.appendChild(box);body.appendChild(slot);
     }
     root.appendChild(col);
@@ -3607,10 +3612,10 @@ async function refreshOnlineDuelStats(){
 function stopOnlineDuelPoll(){if(__onlineDuelPoll){clearInterval(__onlineDuelPoll);__onlineDuelPoll=null}}
 function startOnlineDuelPoll(){stopOnlineDuelPoll();__onlineDuelPoll=setInterval(async()=>{try{const d=await multiplayerDuelCall('status');__onlineDuelMatch=d.match||null;if(d.status==='matched'||d.status==='ready'){stopOnlineDuelPoll();renderHallOfFame()}else if(d.status==='idle'&&d.stats){renderHallOfFame()}}catch(e){console.warn(e)}},1800)}
 function renderOnlineDuelPanel(panel,champs,roster){
-  const box=document.createElement('div');box.className='duel-panel';box.innerHTML=`<div class="title">🌐 Duel multijoueur 1 vs 1</div><div class="muted">Recherche un joueur en ligne. Après association, chacun choisit un de ses champions ; les paramètres et le résultat sont déterminés côté serveur.</div><div id="onlineDuelBody" style="margin-top:10px"></div>`;panel.appendChild(box);
+  const box=document.createElement('div');box.className='duel-panel';box.id='multiplayerPanel';box.innerHTML=`<div class="title">🌐 Duel multijoueur 1 vs 1</div><div class="muted">Recherche un joueur en ligne. Après association, chacun choisit un de ses champions ; les paramètres et le résultat sont déterminés côté serveur.</div><div id="onlineDuelBody" style="margin-top:10px"></div>`;panel.appendChild(box);
   const body=box.querySelector('#onlineDuelBody'),m=__onlineDuelMatch;
-  if(!cloudUser){body.innerHTML='<div class="duel-lock">🔒 Connecte-toi à ton compte pour jouer en ligne.</div>';return}
-  if(!champs.length){body.innerHTML='<div class="duel-lock">🔒 Termine au moins le tournoi S1 pour obtenir un champion.</div>';return}
+  if(!champs.length){body.innerHTML='<div class="duel-lock">🔒 Il faut attendre la fin de la saison 1 et obtenir son Champion pour débloquer le duel multijoueur.</div>';return}
+  if(!cloudUser){body.innerHTML='<div class="duel-lock">🔒 Duel multijoueur débloqué. Connecte-toi à ton compte pour jouer en ligne.</div>';return}
   if(!m){body.innerHTML='<div class="team-actions"><button id="onlineSearchBtn">🔎 Recherche en ligne</button></div>';body.querySelector('#onlineSearchBtn').onclick=async()=>{const b=body.querySelector('button');b.disabled=true;b.textContent='Recherche…';try{const d=await multiplayerDuelCall('search');__onlineDuelMatch=d.match||null;if(d.status==='waiting'){b.textContent='⏳ Adversaire recherché…';startOnlineDuelPoll()}else renderHallOfFame()}catch(e){alert(e.message);b.disabled=false;b.textContent='🔎 Recherche en ligne'}};return}
   if(m.status==='waiting'){body.innerHTML='<div class="duel-result">⏳ Recherche d’un adversaire…</div><div class="team-actions" style="margin-top:8px"><button class="secondary" id="onlineCancelBtn">Annuler</button></div>';body.querySelector('#onlineCancelBtn').onclick=async()=>{await multiplayerDuelCall('cancel');__onlineDuelMatch=null;stopOnlineDuelPoll();renderHallOfFame()};startOnlineDuelPoll();return}
   if(m.status==='matched'||m.status==='ready'){
@@ -3621,9 +3626,9 @@ function renderOnlineDuelPanel(panel,champs,roster){
   }
 }
 function renderDuelPanel(panel,champs,roster,meta){
-  const old=panel.querySelector('.duel-panel');if(old)old.remove();
-  const box=document.createElement('div');box.className='duel-panel';
-  if(champs.length<2){box.innerHTML='<div class="title">⚔️ Duel local 1 vs 1</div><div class="duel-lock">🔒 Disponible à partir de la saison 2, lorsque deux champions existent.</div>';panel.appendChild(box);return}
+  const old=panel.querySelector('#duelLocalPanel');if(old)old.remove();
+  const box=document.createElement('div');box.className='duel-panel';box.id='duelLocalPanel';
+  if(champs.length<2){box.innerHTML='<div class="title">⚔️ Duel local 1 vs 1</div><div class="duel-lock">🔒 Il faut attendre la fin de la saison 2 et posséder deux Champions pour débloquer le duel local.</div>';panel.appendChild(box);return}
   const opts=champs.map(ch=>`<option value="${escapeHtml(ch.id)}">S${ch.season} — ${escapeHtml(roster[ch.id]?.name||ch.name||ch.id)}</option>`).join('');
   box.innerHTML=`<div class="title">⚔️ Duel local 1 vs 1</div><div class="muted">Disponible à partir de S2 : choisis deux champions différents. Les paramètres du combat sont tirés aléatoirement avant la simulation.</div><div class="duel-grid"><label>Champion 1<select id="duelP1">${opts}</select></label><div class="duel-vs">VS</div><label>Champion 2<select id="duelP2">${opts}</select></label></div><div class="team-actions" style="margin-top:10px"><button id="duelFightBtn">⚔️ Lancer le duel local</button></div><div id="duelResult"></div>`;
   panel.appendChild(box);const p1=box.querySelector('#duelP1'),p2=box.querySelector('#duelP2');p2.selectedIndex=1;
