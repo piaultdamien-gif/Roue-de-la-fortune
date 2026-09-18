@@ -479,6 +479,32 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
 .combat-params{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:10px}.combat-param{padding:8px;border:1px solid #44303a;border-radius:9px;background:#100c11}.combat-param b{display:block;color:#d9b56d;font-size:11px}.combat-view-btn{margin-top:7px;width:100%}
 @media(max-width:600px){.combat-scene-card{padding:8px}.combat-fighter-scene{width:47%}.combat-fighter-name{font-size:10px}.combat-params{grid-template-columns:1fr 1fr}}
 </style>
+
+<style id="tournamentModalRefactorV2">
+/* Tournoi : cartes compactes, détails exclusivement dans la fenêtre de combat */
+.tournament-match-slot{min-height:150px!important}
+.tournament-match{padding:8px!important}
+.tournament-fighter{min-height:38px!important;padding:5px 7px!important}
+.tournament-fighter .ph{width:30px!important;height:42px!important;min-width:30px!important}
+.tournament-actions{margin-top:7px!important}
+.tournament-actions button{min-height:38px!important}
+.battle-report{margin-top:7px!important;padding:7px!important;font-size:12px!important;line-height:1.25!important}
+.battle-report .combat-summary-line{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.battle-report .combat-summary-winner{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.battle-report .combat-view-btn{width:auto!important;min-height:34px!important;margin:0!important;padding:6px 9px!important;flex:0 0 auto}
+/* La fiche détaillée est une vraie fenêtre séparée visuellement de l'Arène. */
+.combat-scene-modal{z-index:20000!important;background:rgba(0,0,0,.92)!important;padding:0!important;backdrop-filter:blur(8px)}
+.combat-scene-card{width:min(1100px,96vw)!important;max-height:94dvh!important;border-radius:18px!important;padding:14px!important;background:#09070b!important}
+.combat-scene-top{position:sticky;top:0;z-index:20;background:#09070bf2;padding:4px 0 10px}
+.combat-stage{min-height:min(58vw,560px)}
+@media(max-width:700px){
+ .tournament-match-slot{min-height:142px!important}
+ .combat-scene-modal{align-items:stretch!important}
+ .combat-scene-card{width:100%!important;max-height:none!important;height:100dvh!important;border:0!important;border-radius:0!important;padding:10px!important}
+ .combat-stage{min-height:56vw;margin-top:4px}
+ .combat-params{grid-template-columns:1fr!important}
+}
+</style>
 </head><body><header><div><h1>⚔️ Hazard Game Tournament</h1><div class="muted">Chaque donnée aléatoire affichée provient de la roue que tu vois tourner.</div></div><div class="pill" id="charId">S1-001</div></header>
 <div class="neuron-bar" id="neuronBar"><span class="neuron-chip">🧠 Neurons : <b id="neuronRemaining">10 000 max/jour</b></span><span class="neuron-chip">Portrait 4B : <b>≈ 52,1 + références</b></span><span class="neuron-chip">Champion 9B : <b>jusqu’à ≈ 1 363,6 + références</b></span></div>
 <div class="cloud-bar">
@@ -3483,7 +3509,7 @@ function renderTournament(){
   t.battles??={};t.deaths??=[];const first=t.rounds[0]||[];status.textContent=`S${t.season} • ${first.length} combattants • combats et progression sauvegardés automatiquement.`;root.innerHTML='';
   t.rounds.forEach((round,ri)=>{const col=document.createElement('div');col.className='tournament-round';col.innerHTML=`<h3>${tournamentRoundName(ri)}</h3><div class="tournament-round-body"></div>`;const body=col.lastElementChild,slotHeight=Math.max(210,210*Math.pow(2,ri));for(let mi=0;mi<Math.ceil(round.length/2);mi++){const key=`${ri}-${mi}`,battle=t.battles[key],slot=document.createElement('div');slot.className='tournament-match-slot';slot.style.height=`${slotHeight}px`;const box=document.createElement('div');box.className='tournament-match';box.dataset.matchKey=key;[round[mi*2],round[mi*2+1]].filter(Boolean).forEach(id=>{const c=roster[id]||{},win=t.winners[key]===id,row=document.createElement('div');row.className='tournament-fighter'+(win?' winner':'')+(t.deaths.includes(id)?' battle-dead':'');row.innerHTML=`<span class="ph">⚔️</span><span><b>${id}</b><br>${c.name||'Sans nom'}</span>`;box.appendChild(row);tournamentPortrait(row.querySelector('.ph'),id)});
     if(round[mi*2]&&round[mi*2+1]){const actions=document.createElement('div');actions.className='tournament-actions';actions.innerHTML=`<button type="button" class="smallbtn" ${battle?'disabled':''}>${battle?'✓ Combat simulé':'🎲 Simuler ce combat'}</button>`;if(!battle)actions.firstChild.onclick=()=>simulateTournamentBattle(ri,mi);box.appendChild(actions)}
-    if(battle){const rep=document.createElement('div');rep.className='battle-report';const pa=Math.round(battle.probA*100),pb=100-pa,wc=roster[battle.winner]||{};rep.innerHTML=`<b>${battle.region||'Vaeloria'} — ${battle.terrain}</b> • ${battle.distanceLabel} (${battle.distance} m)<br>Infos : ${battle.a} — ${battle.knowledgeA} / ${battle.b} — ${battle.knowledgeB}<div class="battle-chance">Chances estimées avant tirage : ${battle.a} ${pa}% • ${battle.b} ${pb}%</div>🏆 <b>${battle.winner} — ${wc.name||'Sans nom'}</b>${battle.death?`<br>☠️ ${battle.death} est mort pendant le combat.`:''}<button type="button" class="secondary combat-view-btn">🎬 Voir le combat</button>`;rep.querySelector('.combat-view-btn').onclick=()=>openCombatScene(battle,roster);box.appendChild(rep)}slot.appendChild(box);body.appendChild(slot)}root.appendChild(col)});
+    if(battle){const rep=document.createElement('div');rep.className='battle-report';const wc=roster[battle.winner]||{};rep.innerHTML=`<div class="combat-summary-line"><div class="combat-summary-winner">🏆 <b>${battle.winner} — ${wc.name||'Sans nom'}</b>${battle.death?` <span title="Mort pendant le combat">☠️</span>`:''}</div><button type="button" class="secondary combat-view-btn">🎬 Voir</button></div>`;rep.querySelector('.combat-view-btn').onclick=()=>openCombatScene(battle,roster);box.appendChild(rep)}slot.appendChild(box);body.appendChild(slot)}root.appendChild(col)});
   const last=t.rounds[t.rounds.length-1];if(last?.length===1){status.innerHTML=`🏆 Champion de S${t.season} : <b>${last[0]} — ${(roster[last[0]]||{}).name||'Sans nom'}</b>${t.deaths.length?` • ☠️ ${t.deaths.length} mort${t.deaths.length>1?'s':''}`:''}`}
   requestAnimationFrame(()=>requestAnimationFrame(drawTournamentConnectors));
 }
@@ -3563,7 +3589,7 @@ function renderDuelPanel(panel,champs,roster,meta){
   const opts=champs.map(ch=>`<option value="${escapeHtml(ch.id)}">S${ch.season} — ${escapeHtml(roster[ch.id]?.name||ch.name||ch.id)}</option>`).join('');
   box.innerHTML=`<div class="title">⚔️ Duel local 1 vs 1</div><div class="muted">Disponible à partir de S2 : choisis deux champions différents. Les paramètres du combat sont tirés aléatoirement avant la simulation.</div><div class="duel-grid"><label>Champion 1<select id="duelP1">${opts}</select></label><div class="duel-vs">VS</div><label>Champion 2<select id="duelP2">${opts}</select></label></div><div class="team-actions" style="margin-top:10px"><button id="duelFightBtn">⚔️ Lancer le duel local</button></div><div id="duelResult"></div>`;
   panel.appendChild(box);const p1=box.querySelector('#duelP1'),p2=box.querySelector('#duelP2');p2.selectedIndex=1;
-  box.querySelector('#duelFightBtn').onclick=()=>{if(p1.value===p2.value){alert('Choisis deux champions différents.');return}const battle=hallDuelBattle(p1.value,p2.value);if(!battle)return;const pa=Math.round(battle.probA*100),wc=roster[battle.winner]||{};box.querySelector('#duelResult').innerHTML=`<div class="duel-result"><b>${escapeHtml(battle.region)} — ${escapeHtml(battle.terrain)}</b> • ${escapeHtml(battle.distanceLabel)} (${battle.distance} m)<br>Chances : ${escapeHtml(battle.a)} ${pa}% • ${escapeHtml(battle.b)} ${100-pa}%<br>🏆 <b>${escapeHtml(battle.winner)} — ${escapeHtml(wc.name||'Sans nom')}</b><button type="button" class="secondary combat-view-btn">🎬 Voir le combat</button></div>`;box.querySelector('.combat-view-btn').onclick=()=>openCombatScene(battle,roster)};
+  box.querySelector('#duelFightBtn').onclick=()=>{if(p1.value===p2.value){alert('Choisis deux champions différents.');return}const battle=hallDuelBattle(p1.value,p2.value);if(!battle)return;const wc=roster[battle.winner]||{};box.querySelector('#duelResult').innerHTML=`<div class="duel-result"><b>🏆 ${escapeHtml(battle.winner)} — ${escapeHtml(wc.name||'Sans nom')}</b><button type="button" class="secondary combat-view-btn">🎬 Voir le combat</button></div>`;box.querySelector('.combat-view-btn').onclick=()=>openCombatScene(battle,roster)};
 }
 function renderHallOfFame(){
   const root=document.getElementById('hallChampions'),panel=document.getElementById('championTeamPanel'),count=document.getElementById('hallCount');if(!root||!panel)return;
