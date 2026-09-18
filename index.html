@@ -526,6 +526,8 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
   <div id="arenaMenu" class="arena-menu" hidden>
     <button id="tournamentTabBtn" class="arena-item" type="button">⚔️ Tournoi</button>
     <button id="hallTabBtn" class="arena-item" type="button">🏆 Hall of Fame</button>
+    <button id="duelLocalTabBtn" class="arena-item" type="button">🥊 Duel local</button>
+    <button id="multiplayerTabBtn" class="arena-item" type="button">🌐 Multijoueur</button>
   </div>
 </div>
 <button id="universeTabBtn" class="tabbtn">🌌 Univers</button>
@@ -3649,6 +3651,10 @@ genealogyTabBtn.onclick=()=>showTab('genealogy');
 arenaTabBtn.onclick=(e)=>{e.stopPropagation();const open=arenaMenu.hidden;arenaMenu.hidden=!open;arenaTabBtn.setAttribute('aria-expanded',String(open))};
 tournamentTabBtn.onclick=()=>{arenaMenu.hidden=true;arenaTabBtn.setAttribute('aria-expanded','false');showTab('tournament')};
 hallTabBtn.onclick=()=>{arenaMenu.hidden=true;arenaTabBtn.setAttribute('aria-expanded','false');showTab('hall')};
+const duelLocalTabBtn=document.getElementById('duelLocalTabBtn'),multiplayerTabBtn=document.getElementById('multiplayerTabBtn');
+function openArenaHallPanel(id){arenaMenu.hidden=true;arenaTabBtn.setAttribute('aria-expanded','false');showTab('hall');setTimeout(()=>document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'}),50)}
+if(duelLocalTabBtn)duelLocalTabBtn.onclick=()=>openArenaHallPanel('duelLocalPanel');
+if(multiplayerTabBtn)multiplayerTabBtn.onclick=()=>openArenaHallPanel('multiplayerPanel');
 document.addEventListener('click',(e)=>{if(!e.target.closest('.arena-nav')){arenaMenu.hidden=true;arenaTabBtn.setAttribute('aria-expanded','false')}});
 universeTabBtn.onclick=()=>showTab('universe');
 document.getElementById('createTournamentBtn').onclick=createTournament;
@@ -3692,7 +3698,7 @@ function openCloudModal(){document.getElementById('cloudModal')?.classList.add('
 function closeCloudModal(){document.getElementById('cloudModal')?.classList.remove('active')}
 function hasLocalUniverse(){return Object.keys(loadRoster()).length>0||Object.keys(descendants()).length>0||Object.keys(npcs()).length>0||!!loadTournament()}
 function localUniverseSnapshot(){return {at:new Date().toISOString(),season:seasonNumber,characterNumber,roster:loadRoster(),descendants:descendants(),npcs:npcs(),meta:universeMeta(),tournament:loadTournament()}}
-function saveEmergencyLocalBackup(){try{localStorage.setItem(CLOUD_BACKUP_KEY,JSON.stringify(localUniverseSnapshot()))}catch(e){console.warn('Backup local impossible',e)}}
+function saveEmergencyLocalBackup(){try{const snap=localUniverseSnapshot(),old=loadEmergencyLocalBackup();const useful=Object.keys(snap.roster||{}).length>0||!!snap.tournament||Object.keys(snap.meta?.champions||{}).length>0;if(useful||!old)localStorage.setItem(CLOUD_BACKUP_KEY,JSON.stringify(snap))}catch(e){console.warn('Backup local impossible',e)}}
 function loadEmergencyLocalBackup(){
   try{const x=JSON.parse(localStorage.getItem(CLOUD_BACKUP_KEY)||'null');return x&&typeof x==='object'?x:null}catch(e){return null}
 }
@@ -3797,27 +3803,56 @@ async function cloudOpenGame(id,justCreated=false){
 }
 async function cloudLoadGameToLocal(id){
   cloudStatus('☁️ Chargement…','syncing');
+  // IMPORTANT : on capture l’état local en mémoire AVANT tout chargement cloud.
+  // On ne détruit plus jamais une partie locale valide pour la remplacer par une réponse cloud partielle.
+  const before=localUniverseSnapshot();
+  if(Object.keys(before.roster||{}).length||before.tournament||Object.keys(before.meta?.champions||{}).length){
+    try{localStorage.setItem(CLOUD_BACKUP_KEY,JSON.stringify(before))}catch(e){}
+  }
   const [gr,cr,dr,nr,tr]=await Promise.all([
     cloudClient.from('games').select('*').eq('id',id).single(),
     cloudClient.from('characters').select('*').eq('game_id',id),
     cloudClient.from('descendants').select('*').eq('game_id',id),
     cloudClient.from('npcs').select('*').eq('game_id',id),
-    cloudClient.from('tournaments').select('*').eq('game_id',id).order('season',{ascending:false}).limit(1)
+    cloudClient.from('tournaments').select('*').eq('game_id',id).order('season',{ascending:false})
   ]);
   for(const r of [gr,cr,dr,nr,tr])if(r.error)throw r.error;
-  clearLocalUniverse();
-  const roster={};for(const r of cr.data||[]){const c=r.data||{};const code=r.character_code||c.id;if(code)roster[code]=c}saveRoster(roster);
-  const ds={};for(const r of dr.data||[]){const x=r.data||{};const code=r.descendant_code||x.id;if(code)ds[code]=x}localStorage.setItem(STORAGE_DESC,JSON.stringify(ds));
-  const ns={};for(const r of nr.data||[]){const x=r.data||{};const code=r.npc_code||x.id;if(code)ns[code]=x}localStorage.setItem(STORAGE_NPCS,JSON.stringify(ns));
-  localStorage.setItem(STORAGE_META,JSON.stringify(gr.data?.universe_meta||{nextDesc:1,nextNpc:1,selectedBySeason:{},champions:{},championTeam:[]}));
-  localStorage.setItem(STORAGE_SEASON,String(gr.data?.current_season||1));localStorage.setItem(STORAGE_CURRENT,String(gr.data?.current_character_number||1));
-  if(tr.data?.[0]?.data)localStorage.setItem(TOURNAMENT_KEY,JSON.stringify(tr.data[0].data));
-  // Auto-réparation des données critiques si le cloud a renvoyé un état partiel.
-  // Le backup est créé AVANT clearLocalUniverse(), donc il peut sauver un tournoi/champion/roster local valide.
+
+  const remoteRoster={};for(const r of cr.data||[]){const c=r.data||{};const code=r.character_code||c.id;if(code)remoteRoster[code]=c}
+  const roster={...(before.roster||{}),...remoteRoster};saveRoster(roster);
+  const remoteDesc={};for(const r of dr.data||[]){const x=r.data||{};const code=r.descendant_code||x.id;if(code)remoteDesc[code]=x}
+  localStorage.setItem(STORAGE_DESC,JSON.stringify({...(before.descendants||{}),...remoteDesc}));
+  const remoteNpcs={};for(const r of nr.data||[]){const x=r.data||{};const code=r.npc_code||x.id;if(code)remoteNpcs[code]=x}
+  localStorage.setItem(STORAGE_NPCS,JSON.stringify({...(before.npcs||{}),...remoteNpcs}));
+
+  const remoteMeta=(gr.data?.universe_meta&&typeof gr.data.universe_meta==='object')?gr.data.universe_meta:{};
+  const localMeta=(before.meta&&typeof before.meta==='object')?before.meta:{};
+  const mergedMeta={...localMeta,...remoteMeta};
+  mergedMeta.champions={...(localMeta.champions||{}),...(remoteMeta.champions||{})};
+  mergedMeta.championTeam=(remoteMeta.championTeam?.length?remoteMeta.championTeam:(localMeta.championTeam||[]));
+  mergedMeta.championTeamDraft=(remoteMeta.championTeamDraft?.length?remoteMeta.championTeamDraft:(localMeta.championTeamDraft||[]));
+  mergedMeta.multiplayerStats={...(localMeta.multiplayerStats||{}),...(remoteMeta.multiplayerStats||{})};
+  localStorage.setItem(STORAGE_META,JSON.stringify(mergedMeta));
+
+  // Choisit le tournoi cloud le plus utile : priorité à celui qui possède une vraie progression,
+  // sinon conserve le tournoi local existant.
+  const cloudTs=(tr.data||[]).map(r=>r.data).filter(Boolean);
+  const scoreT=t=>{const first=Array.isArray(t?.rounds?.[0])?t.rounds[0].length:0;const wins=Object.keys(t?.winners||{}).length;return first*100+wins};
+  let chosen=before.tournament||null;
+  for(const ct of cloudTs)if(!chosen||scoreT(ct)>scoreT(chosen))chosen=ct;
+  if(chosen)localStorage.setItem(TOURNAMENT_KEY,JSON.stringify(chosen));
+
+  // Le curseur cloud n’est accepté que s’il ne ferait pas régresser une partie locale existante.
+  const remoteSeason=Number(gr.data?.current_season||1),remoteChar=Number(gr.data?.current_character_number||1);
+  const localSeason=Number(before.season||1),localChar=Number(before.characterNumber||1);
+  const useRemote=remoteSeason>localSeason||(remoteSeason===localSeason&&remoteChar>=localChar);
+  localStorage.setItem(STORAGE_SEASON,String(useRemote?remoteSeason:localSeason));
+  localStorage.setItem(STORAGE_CURRENT,String(useRemote?remoteChar:localChar));
+
   recoverCriticalHgtStateFromBackup();
-  // Migration rétroactive : recréer les événements Enfant manquants dans les anciennes sauvegardes.
+  const activeT=loadTournament();if(activeT)ensureTournamentChampion(activeT);
   const repairedBirths=repairMissingBirthEvents(loadRoster(),descendants());
-  if(repairedBirths.changed && typeof cloudSyncAllData==='function') setTimeout(()=>cloudSyncAllData().catch(cloudSyncError),250);
+  if((repairedBirths.changed||Object.keys(remoteRoster).length<Object.keys(roster).length) && typeof cloudSyncAllData==='function') setTimeout(()=>cloudSyncAllData().catch(cloudSyncError),350);
 }
 function queueCloudCharacterSave(character){if(!cloudReady()||!character?.id)return;const copy=JSON.parse(JSON.stringify(character));clearTimeout(__cloudCharacterTimers.get(character.id));__cloudCharacterTimers.set(character.id,setTimeout(()=>cloudSaveCharacter(copy).catch(cloudSyncError),900))}
 async function cloudSaveCharacter(character){
@@ -4150,7 +4185,7 @@ document.getElementById('cloudModal').onclick=e=>{if(e.target.id==='cloudModal')
 initCloud().catch(cloudSyncError);
 
 // Répare aussi une session déjà touchée par l'ancienne synchro, sans attendre une nouvelle ouverture cloud.
-try{recoverCriticalHgtStateFromBackup()}catch(e){console.warn('Auto-réparation HGT',e)}
+try{recoverCriticalHgtStateFromBackup();const __t=loadTournament();if(__t)ensureTournamentChampion(__t)}catch(e){console.warn('Auto-réparation HGT',e)}
 if(!loadCharacterById(currentCharacterId())) reset();
 renderRoster();
 showTab('wheel');
