@@ -1145,6 +1145,25 @@ function loadCharacterById(id){
   }
   state=ensureGenealogyShape(rebuilt);
 
+  // Réparation/garantie d'identité des descendants déjà matérialisés :
+  // le combattant garde le prénom canonique de DESC-xxxx, même si une ancienne version
+  // de la roue avait tiré un nouveau prénom (ex. DESC-0004 Raoros devenu Ophir).
+  if(state.descendantSourceId){
+    const source=descendants()[state.descendantSourceId];
+    if(source){
+      state.isDescendant=true;
+      state.name=source.name||state.name;
+      state.genealogy=JSON.parse(JSON.stringify(source.genealogy||state.genealogy||{}));
+      state.genealogy.parents=[...(source.parentIds||source.genealogy?.parents||[])];
+      source.fighterDataGenerated=true;
+      source.fighterId=state.id;
+      source.selectedForSeason=seasonNumber;
+      source.status=`Combattant S${seasonNumber} — ${state.id}`;
+      const ds=descendants();ds[source.id]=source;saveStore(STORAGE_DESC,ds);
+      const rr=loadRoster();rr[state.id]=JSON.parse(JSON.stringify(state));saveRoster(rr);
+    }
+  }
+
   auto=false;spinning=false;autoBtn.textContent='Auto : OFF';spinBtn.disabled=false;
   const complete=!!state.name && !!state.title && index>=queue.length;
   if(complete){
@@ -1174,7 +1193,10 @@ function selectedDescendantForCurrentSlot(){
       const linked=descendants()[existing.descendantSourceId];
       if(linked&&!linked.fighterDataGenerated)return linked;
     }
-    return null;
+    // Un slot créé automatiquement mais jamais réellement commencé ne doit pas bloquer
+    // la priorité des descendants. On le considère comme libre tant qu'aucun tirage n'a eu lieu.
+    const genuinelyStarted=!!existing._generationComplete || (Array.isArray(existing.logs)&&existing.logs.length>0) || !!existing.name;
+    if(genuinelyStarted)return null;
   }
 
   const meta=universeMeta();
@@ -1202,6 +1224,8 @@ function prepareSelectedDescendantForWheel(d){
   if(!d)return false;
   state.descendantSourceId=d.id;
   state.isDescendant=true;
+  // L'identité du descendant est canonique : la roue ne doit jamais lui attribuer un nouveau prénom.
+  state.name=d.name||state.name||'';
   state.genealogy=JSON.parse(JSON.stringify(d.genealogy||state.genealogy));
   state.genealogy.parents=[...(d.parentIds||d.genealogy?.parents||[])];
   state.race=d.race||'';
@@ -1219,7 +1243,8 @@ function prepareSelectedDescendantForWheel(d){
     'Corpulence':d.appearance?.body,
     'Couleur dominante 1':d.appearance?.c1,
     'Couleur dominante 2':d.appearance?.c2,
-    'Signe distinctif':d.appearance?.sign
+    'Signe distinctif':d.appearance?.sign,
+    'Prénom — Structure':d.name
   };
   for(const t of queue){
     if(!fixed[t.title])continue;
@@ -1231,6 +1256,7 @@ function prepareSelectedDescendantForWheel(d){
     else if(t.title==='Couleur dominante 1')t.apply=()=>{state.appearance.c1=value};
     else if(t.title==='Couleur dominante 2')t.apply=()=>{state.appearance.c2=value};
     else if(t.title==='Signe distinctif')t.apply=()=>{state.appearance.sign=value};
+    else if(t.title==='Prénom — Structure')t.apply=()=>{state.name=d.name||value;delete state._nameParts};
   }
   return true;
 }
@@ -2599,6 +2625,9 @@ function renderRoster(){
   const meta=universeMeta();
   const selectedBySeason=meta?.selectedBySeason||{};
   for(const x of dlist){
+    // Dès qu'un descendant possède sa fiche combattant, il est représenté par cette fiche uniquement.
+    // Cela évite le doublon DESC-xxxx + Sx-xxx dans la liste des personnages.
+    if(x?.fighterDataGenerated&&x?.fighterId) continue;
     const target=Number(x?.selectedForSeason);
     if(!Number.isFinite(target)||target<=0) continue;
     (groups[target]??={fighters:[],descendants:[]}).descendants.push(x);
