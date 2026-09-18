@@ -3634,7 +3634,8 @@ function renderHallOfFame(){
   panel.innerHTML=unlocked?`<div class="title">⚔️ Équipe des champions</div><div class="muted">Choisis exactement 5 champions. Tu pourras modifier cette équipe après chaque nouvelle saison.</div><div class="team-slots" id="teamSlots"></div><div class="team-actions"><button id="saveChampionTeamBtn" ${draft.length===5?'':'disabled'}>💾 Enregistrer l’équipe (${draft.length}/5)</button></div>`:`<div class="title">⚔️ Équipe des champions</div><div class="team-lock">🔒 Débloquée après l’obtention du champion de S5. Champions actuels : ${champs.length}/5.</div>`;
   const onlineV=Number(__onlineDuelStats?.victories)||0,onlineD=Number(__onlineDuelStats?.defeats)||0;let teamHist='',onlineHist='';try{teamHist=multiplayerHistoryHtml(meta,'team')}catch(e){console.warn('Historique équipe',e)}try{onlineHist=onlineDuelHistoryHtml()}catch(e){console.warn('Historique duel',e)}panel.insertAdjacentHTML('beforeend',`<div class="hall-stats"><span class="hall-stat">👥 Équipes : ${meta.multiplayerStats.teamWins} V / ${meta.multiplayerStats.teamLosses} D</span><span class="hall-stat">⚔️ Duels en ligne : ${onlineV} V / ${onlineD} D</span></div>${teamHist}${onlineHist}`);
   panel.querySelectorAll('[data-online-history]').forEach(btn=>btn.onclick=()=>{const x=__onlineDuelStats?.recent_duels?.[Number(btn.dataset.onlineHistory)];if(x?.battle)openCombatScene(x.battle,{[x.battle.a]:x.battle.characterA||{},[x.battle.b]:x.battle.characterB||{}})});
-  renderDuelPanel(panel,champs,roster,meta);renderOnlineDuelPanel(panel,champs,roster);
+  try{renderDuelPanel(panel,champs,roster,meta)}catch(e){console.error('Duel local',e);panel.insertAdjacentHTML('beforeend','<div class="duel-panel"><div class="title">⚔️ Duel local 1 vs 1</div><div class="duel-lock">Erreur de chargement du duel local. Recharge la page.</div></div>')}
+  try{renderOnlineDuelPanel(panel,champs,roster)}catch(e){console.error('Duel multijoueur',e);panel.insertAdjacentHTML('beforeend','<div class="duel-panel"><div class="title">🌐 Duel multijoueur 1 vs 1</div><div class="duel-lock">Erreur de chargement du multijoueur. Recharge la page.</div></div>')}
   root.innerHTML=champs.length?'':'<div class="tournament-empty">Aucun champion pour le moment. Termine le tournoi d’une saison pour inaugurer le Hall of Fame.</div>';
   const drawSlots=()=>{const slots=document.getElementById('teamSlots');if(!slots)return;slots.innerHTML=Array.from({length:5},(_,i)=>{const id=draft[i],c=id?roster[id]:null;return `<div class="team-slot ${id?'filled':''}">${id?`<b>${escapeHtml(c?.name||id)}</b><small>${escapeHtml(id)}</small>`:`Place ${i+1}`}</div>`}).join('');const b=document.getElementById('saveChampionTeamBtn');if(b){b.disabled=draft.length!==5;b.textContent=`💾 Enregistrer l’équipe (${draft.length}/5)`}};
   if(unlocked)drawSlots();
@@ -3692,6 +3693,38 @@ function closeCloudModal(){document.getElementById('cloudModal')?.classList.remo
 function hasLocalUniverse(){return Object.keys(loadRoster()).length>0||Object.keys(descendants()).length>0||Object.keys(npcs()).length>0||!!loadTournament()}
 function localUniverseSnapshot(){return {at:new Date().toISOString(),season:seasonNumber,characterNumber,roster:loadRoster(),descendants:descendants(),npcs:npcs(),meta:universeMeta(),tournament:loadTournament()}}
 function saveEmergencyLocalBackup(){try{localStorage.setItem(CLOUD_BACKUP_KEY,JSON.stringify(localUniverseSnapshot()))}catch(e){console.warn('Backup local impossible',e)}}
+function loadEmergencyLocalBackup(){
+  try{const x=JSON.parse(localStorage.getItem(CLOUD_BACKUP_KEY)||'null');return x&&typeof x==='object'?x:null}catch(e){return null}
+}
+function tournamentReferencedIds(t){
+  const ids=new Set();
+  (t?.rounds||[]).forEach(r=>(Array.isArray(r)?r:[]).forEach(id=>{if(id)ids.add(id)}));
+  Object.values(t?.battles||{}).forEach(b=>{if(!b)return;[b.a,b.b,b.winner,b.loser,b.death].forEach(id=>{if(id)ids.add(id)})});
+  return ids;
+}
+// Filet de sécurité V2 : une synchro cloud incomplète ne doit plus faire disparaître
+// les combattants du tournoi, le champion ou les modes du Hall of Fame.
+function recoverCriticalHgtStateFromBackup(){
+  const backup=loadEmergencyLocalBackup();if(!backup)return false;
+  let changed=false,roster=loadRoster(),meta=universeMeta(),t=loadTournament();
+  const broster=backup.roster&&typeof backup.roster==='object'?backup.roster:{};
+  const bmeta=backup.meta&&typeof backup.meta==='object'?backup.meta:{};
+  const bt=backup.tournament&&typeof backup.tournament==='object'?backup.tournament:null;
+  if(!t&&bt){t=bt;localStorage.setItem(TOURNAMENT_KEY,JSON.stringify(bt));changed=true}
+  const needed=tournamentReferencedIds(t);
+  if(!Object.keys(roster).length&&Object.keys(broster).length){roster={...broster};changed=true}
+  else needed.forEach(id=>{if(!roster[id]&&broster[id]){roster[id]=broster[id];changed=true}});
+  if(changed)saveRoster(roster);
+  const currentChampions=meta.champions&&typeof meta.champions==='object'?meta.champions:{};
+  const backupChampions=bmeta.champions&&typeof bmeta.champions==='object'?bmeta.champions:{};
+  if(Object.keys(backupChampions).length){
+    const merged={...backupChampions,...currentChampions};
+    if(JSON.stringify(merged)!==JSON.stringify(currentChampions)){meta.champions=merged;changed=true}
+  }
+  if((!meta.championTeam||!meta.championTeam.length)&&Array.isArray(bmeta.championTeam)&&bmeta.championTeam.length){meta.championTeam=[...bmeta.championTeam];changed=true}
+  if(changed){localStorage.setItem(STORAGE_META,JSON.stringify(meta));ensureTournamentChampion(t)}
+  return changed;
+}
 function clearLocalUniverse(){
   [STORAGE_ROSTER,STORAGE_DESC,STORAGE_NPCS,STORAGE_META,TOURNAMENT_KEY].forEach(k=>localStorage.removeItem(k));
   localStorage.setItem(STORAGE_SEASON,'1');localStorage.setItem(STORAGE_CURRENT,'1');
@@ -3779,6 +3812,9 @@ async function cloudLoadGameToLocal(id){
   localStorage.setItem(STORAGE_META,JSON.stringify(gr.data?.universe_meta||{nextDesc:1,nextNpc:1,selectedBySeason:{},champions:{},championTeam:[]}));
   localStorage.setItem(STORAGE_SEASON,String(gr.data?.current_season||1));localStorage.setItem(STORAGE_CURRENT,String(gr.data?.current_character_number||1));
   if(tr.data?.[0]?.data)localStorage.setItem(TOURNAMENT_KEY,JSON.stringify(tr.data[0].data));
+  // Auto-réparation des données critiques si le cloud a renvoyé un état partiel.
+  // Le backup est créé AVANT clearLocalUniverse(), donc il peut sauver un tournoi/champion/roster local valide.
+  recoverCriticalHgtStateFromBackup();
   // Migration rétroactive : recréer les événements Enfant manquants dans les anciennes sauvegardes.
   const repairedBirths=repairMissingBirthEvents(loadRoster(),descendants());
   if(repairedBirths.changed && typeof cloudSyncAllData==='function') setTimeout(()=>cloudSyncAllData().catch(cloudSyncError),250);
@@ -4113,6 +4149,8 @@ document.getElementById('cloudCloseBtn').onclick=closeCloudModal;
 document.getElementById('cloudModal').onclick=e=>{if(e.target.id==='cloudModal')closeCloudModal()};
 initCloud().catch(cloudSyncError);
 
+// Répare aussi une session déjà touchée par l'ancienne synchro, sans attendre une nouvelle ouverture cloud.
+try{recoverCriticalHgtStateFromBackup()}catch(e){console.warn('Auto-réparation HGT',e)}
 if(!loadCharacterById(currentCharacterId())) reset();
 renderRoster();
 showTab('wheel');
