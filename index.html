@@ -604,7 +604,7 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
         <button class="secondary" id="simulateTournamentPhaseBtn">⚔️ Simuler la phase</button>
         <button class="secondary" id="resetTournamentBtn">🗑️ Réinitialiser le tournoi</button>
       </div>
-      <div id="tournamentStatus" class="note">Le tournoi sera disponible dès que la saison contient 64 personnages.</div>
+      <div id="tournamentStatus" class="note">Le tournoi sera disponible dès que la saison contient 64 personnages. <span style="opacity:.55">• FIX D</span></div>
     </div>
     <div class="tournament-tree-wrap" id="tournamentTreeWrap">
       <svg id="tournamentConnectors" class="tournament-connectors" aria-hidden="true"></svg>
@@ -1361,11 +1361,23 @@ function relationSummary(s){
   return bits.join(' • ');
 }
 function showTab(which){
-  const isWheel=which==='wheel',isList=which==='list',isGenealogy=which==='genealogy',isTournament=which==='tournament',isHall=which==='hall',isUniverse=which==='universe';
-  wheelTab.classList.toggle('active',isWheel);listTab.classList.toggle('active',isList);genealogyTab.classList.toggle('active',isGenealogy);tournamentTab.classList.toggle('active',isTournament);hallTab.classList.toggle('active',isHall);universeTab.classList.toggle('active',isUniverse);
-  wheelTabBtn.classList.toggle('active',isWheel);listTabBtn.classList.toggle('active',isList);genealogyTabBtn.classList.toggle('active',isGenealogy);tournamentTabBtn.classList.toggle('active',isTournament);hallTabBtn.classList.toggle('active',isHall);arenaTabBtn.classList.toggle('active',isTournament||isHall);universeTabBtn.classList.toggle('active',isUniverse);
-  if(isList)renderRoster();if(isGenealogy)renderGenealogy();if(isTournament)renderTournament();if(isHall)renderHallOfFame();
+  const pages={wheel:'wheelTab',list:'listTab',genealogy:'genealogyTab',tournament:'tournamentTab',hall:'hallTab',universe:'universeTab'};
+  Object.entries(pages).forEach(([key,id])=>{const el=document.getElementById(id);if(el)el.classList.toggle('active',key===which)});
+  const buttons={wheel:'wheelTabBtn',list:'listTabBtn',genealogy:'genealogyTabBtn',tournament:'tournamentTabBtn',hall:'hallTabBtn',universe:'universeTabBtn'};
+  Object.entries(buttons).forEach(([key,id])=>{const el=document.getElementById(id);if(el)el.classList.toggle('active',key===which)});
+  const arena=document.getElementById('arenaTabBtn');if(arena)arena.classList.toggle('active',['tournament','hall'].includes(which));
+  try{
+    if(which==='list')renderRoster();
+    else if(which==='genealogy')renderGenealogy();
+    else if(which==='tournament')renderTournament();
+    else if(which==='hall')renderHallOfFame();
+  }catch(e){
+    console.error('Affichage onglet '+which,e);
+    const target=document.getElementById(pages[which]);
+    if(target){let err=target.querySelector('.arena-runtime-error');if(!err){err=document.createElement('div');err.className='panel arena-runtime-error';err.style.margin='12px';target.prepend(err)}err.innerHTML='<div class="title">⚠️ Erreur de chargement</div><div class="note">'+escapeHtml(e?.message||String(e))+'</div>'}
+  }
 }
+
 function mysticLinkDetail(s){
   return (s?.extraDetail||[]).find(x=>x&&x.kind==='Lien mystique'&&x.target==='Un autre personnage')||null;
 }
@@ -3422,8 +3434,18 @@ const COMBAT_REGIONS=[
 ];
 function randomCombatRegion(){return COMBAT_REGIONS[Math.floor(Math.random()*COMBAT_REGIONS.length)]}
 
+function tournamentRoster(){
+  const raw=loadRoster()||{}, out={};
+  Object.entries(raw).forEach(([key,c])=>{
+    if(!c||typeof c!=='object')return;
+    const candidates=[key,c.id,c.character_code,c.characterCode].filter(Boolean).map(String);
+    const id=candidates.find(x=>/^S\d+-\d+$/.test(x));
+    if(id)out[id]={...c,id};
+  });
+  return out;
+}
 function tournamentSeason(){
-  const roster=loadRoster(), seasons={};
+  const roster=tournamentRoster(), seasons={};
   Object.keys(roster).forEach(id=>{const m=id.match(/^S(\d+)-(\d+)$/);if(m)(seasons[+m[1]]??=[]).push(id)});
   const complete=Object.keys(seasons).map(Number).filter(n=>seasons[n].length>=64).sort((a,b)=>b-a);
   return complete[0]||1;
@@ -3462,7 +3484,7 @@ function saveTournament(t){
 }
 function shuffleTournament(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function createTournament(){
-  const season=tournamentSeason(), roster=loadRoster();
+  const season=tournamentSeason(), roster=tournamentRoster();
   const ids=Object.keys(roster).filter(id=>id.startsWith(`S${season}-`)).sort((a,b)=>Number(a.split('-')[1])-Number(b.split('-')[1])).slice(0,64);
   if(ids.length<64){alert(`La saison S${season} ne contient que ${ids.length}/64 personnages.`);return}
   const old=loadTournament();
@@ -3526,7 +3548,7 @@ function drawTournamentConnectors(){
 }
 function renderTournament(){
   const root=document.getElementById('tournamentRounds'),status=document.getElementById('tournamentStatus'),lab=document.getElementById('tournamentSeasonLabel');if(!root)return;
-  const t=loadTournament(),roster=loadRoster(),season=t?.season||tournamentSeason();lab.textContent=`S${season}`;
+  const t=loadTournament(),roster=tournamentRoster(),season=t?.season||tournamentSeason();if(lab)lab.textContent=`S${season}`;
   if(!t){const n=Object.keys(roster).filter(id=>id.startsWith(`S${season}-`)).length;status.textContent=n>=64?'64 personnages disponibles : tu peux créer le tirage du tournoi.':`S${season} : ${n}/64 personnages.`;root.innerHTML='<div class="tournament-empty">Aucun tournoi créé.</div>';return}
   t.battles??={};t.deaths??=[];t.winners??={};
   const championId=ensureTournamentChampion(t);
@@ -3657,7 +3679,7 @@ arenaTabBtn.onclick=(e)=>{e.stopPropagation();const open=arenaMenu.hidden;arenaM
 tournamentTabBtn.onclick=()=>{arenaMenu.hidden=true;arenaTabBtn.setAttribute('aria-expanded','false');showTab('tournament')};
 hallTabBtn.onclick=()=>{arenaMenu.hidden=true;arenaTabBtn.setAttribute('aria-expanded','false');showTab('hall')};
 const duelLocalTabBtn=document.getElementById('duelLocalTabBtn'),multiplayerTabBtn=document.getElementById('multiplayerTabBtn');
-function openArenaHallPanel(id){arenaMenu.hidden=true;arenaTabBtn.setAttribute('aria-expanded','false');showTab('hall');setTimeout(()=>document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'}),50)}
+function openArenaHallPanel(id){if(arenaMenu)arenaMenu.hidden=true;if(arenaTabBtn)arenaTabBtn.setAttribute('aria-expanded','false');showTab('hall');try{renderHallOfFame()}catch(e){console.error(e)}setTimeout(()=>document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'}),80)}
 if(duelLocalTabBtn)duelLocalTabBtn.onclick=()=>openArenaHallPanel('duelLocalPanel');
 if(multiplayerTabBtn)multiplayerTabBtn.onclick=()=>openArenaHallPanel('multiplayerPanel');
 document.addEventListener('click',(e)=>{if(!e.target.closest('.arena-nav')){arenaMenu.hidden=true;arenaTabBtn.setAttribute('aria-expanded','false')}});
