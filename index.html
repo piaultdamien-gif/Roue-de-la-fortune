@@ -1620,6 +1620,7 @@ function loadStore(key,fallback){try{const x=JSON.parse(localStorage.getItem(key
 function saveStore(key,v){localStorage.setItem(key,JSON.stringify(v)); if(typeof queueCloudUniverseSync==='function') queueCloudUniverseSync()}
 function descendants(){return loadStore(STORAGE_DESC,{})}
 function npcs(){return loadStore(STORAGE_NPCS,{})}
+function saveUniverseMeta(meta){saveStore(STORAGE_META,meta)}
 function universeMeta(){const m=loadStore(STORAGE_META,{nextDesc:1,nextNpc:1,selectedBySeason:{},champions:{},championTeam:[],multiplayerStats:{}});m.selectedBySeason??={};m.champions??={};m.championTeam=Array.isArray(m.championTeam)?m.championTeam:[];m.championTeamDraft=Array.isArray(m.championTeamDraft)?m.championTeamDraft:[];m.multiplayerStats=(m.multiplayerStats&&typeof m.multiplayerStats==='object')?m.multiplayerStats:{};m.multiplayerStats.teamWins=Number(m.multiplayerStats.teamWins)||0;m.multiplayerStats.teamLosses=Number(m.multiplayerStats.teamLosses)||0;m.multiplayerStats.duelWins=Number(m.multiplayerStats.duelWins)||0;m.multiplayerStats.duelLosses=Number(m.multiplayerStats.duelLosses)||0;m.multiplayerStats.teamHistory=Array.isArray(m.multiplayerStats.teamHistory)?m.multiplayerStats.teamHistory.slice(0,10):[];m.multiplayerStats.duelHistory=Array.isArray(m.multiplayerStats.duelHistory)?m.multiplayerStats.duelHistory.slice(0,10):[];return m}
 function rpick(a){return a[Math.floor(Math.random()*a.length)]}
 function chance(p){return Math.random()*100<p}
