@@ -619,6 +619,18 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
     <div id="hallChampions" class="hall-grid"></div>
   </div>
 </section>
+<section id="duelLocalTab" class="tabpage">
+  <div class="hall-shell">
+    <div class="panel hall-head"><div class="top"><div><div class="title">🥊 Duel local</div><div class="muted">Affronte deux Champions de tes saisons en 1 contre 1.</div></div></div></div>
+    <div id="duelLocalPageContent" class="panel champion-team-panel"></div>
+  </div>
+</section>
+<section id="multiplayerTab" class="tabpage">
+  <div class="hall-shell">
+    <div class="panel hall-head"><div class="top"><div><div class="title">🌐 Duel multijoueur</div><div class="muted">Affronte en ligne le Champion d’un autre joueur.</div></div></div></div>
+    <div id="multiplayerPageContent" class="panel champion-team-panel"></div>
+  </div>
+</section>
 
 <section id="universeTab" class="tabpage">
   <div class="roster-page">
@@ -1361,16 +1373,18 @@ function relationSummary(s){
   return bits.join(' • ');
 }
 function showTab(which){
-  const pages={wheel:'wheelTab',list:'listTab',genealogy:'genealogyTab',tournament:'tournamentTab',hall:'hallTab',universe:'universeTab'};
+  const pages={wheel:'wheelTab',list:'listTab',genealogy:'genealogyTab',tournament:'tournamentTab',hall:'hallTab',duelLocal:'duelLocalTab',multiplayer:'multiplayerTab',universe:'universeTab'};
   Object.entries(pages).forEach(([key,id])=>{const el=document.getElementById(id);if(el)el.classList.toggle('active',key===which)});
-  const buttons={wheel:'wheelTabBtn',list:'listTabBtn',genealogy:'genealogyTabBtn',tournament:'tournamentTabBtn',hall:'hallTabBtn',universe:'universeTabBtn'};
+  const buttons={wheel:'wheelTabBtn',list:'listTabBtn',genealogy:'genealogyTabBtn',tournament:'tournamentTabBtn',hall:'hallTabBtn',duelLocal:'duelLocalTabBtn',multiplayer:'multiplayerTabBtn',universe:'universeTabBtn'};
   Object.entries(buttons).forEach(([key,id])=>{const el=document.getElementById(id);if(el)el.classList.toggle('active',key===which)});
-  const arena=document.getElementById('arenaTabBtn');if(arena)arena.classList.toggle('active',['tournament','hall'].includes(which));
+  const arena=document.getElementById('arenaTabBtn');if(arena)arena.classList.toggle('active',['tournament','hall','duelLocal','multiplayer'].includes(which));
   try{
     if(which==='list')renderRoster();
     else if(which==='genealogy')renderGenealogy();
     else if(which==='tournament')renderTournament();
     else if(which==='hall')renderHallOfFame();
+    else if(which==='duelLocal')renderDuelLocalPage();
+    else if(which==='multiplayer')renderMultiplayerPage();
   }catch(e){
     console.error('Affichage onglet '+which,e);
     const target=document.getElementById(pages[which]);
@@ -3630,21 +3644,21 @@ function onlineDuelHistoryHtml(){
   return `<details class="duel-history"><summary>📜 10 derniers duels en ligne</summary><div class="duel-history-list">${arr.length?arr.slice(0,10).map((x,i)=>`<div class="duel-history-item"><b>${x.won?'Victoire':'Défaite'}</b> • ${escapeHtml(x.opponentName||x.opponent||'Adversaire')} • ${escapeHtml(x.championName||x.champion||'Champion')}<br>${escapeHtml(x.region||'')} ${x.terrain?'• '+escapeHtml(x.terrain):''}<br><span class="muted">${x.at?new Date(x.at).toLocaleString('fr-FR'):''}</span>${x.battle?`<button type="button" class="secondary combat-view-btn" data-online-history="${i}">🎬 Voir le combat</button>`:''}</div>`).join(''):'<div class="muted">Aucun duel enregistré.</div>'}</div></details>`;
 }
 async function refreshOnlineDuelStats(){
-  if(!cloudClient||!cloudUser)return;try{await multiplayerDuelCall('status');renderHallOfFame()}catch(e){console.warn(e)}
+  if(!cloudClient||!cloudUser)return;try{await multiplayerDuelCall('status');renderMultiplayerPage()}catch(e){console.warn(e)}
 }
 function stopOnlineDuelPoll(){if(__onlineDuelPoll){clearInterval(__onlineDuelPoll);__onlineDuelPoll=null}}
-function startOnlineDuelPoll(){stopOnlineDuelPoll();__onlineDuelPoll=setInterval(async()=>{try{const d=await multiplayerDuelCall('status');__onlineDuelMatch=d.match||null;if(d.status==='matched'||d.status==='ready'){stopOnlineDuelPoll();renderHallOfFame()}else if(d.status==='idle'&&d.stats){renderHallOfFame()}}catch(e){console.warn(e)}},1800)}
+function startOnlineDuelPoll(){stopOnlineDuelPoll();__onlineDuelPoll=setInterval(async()=>{try{const d=await multiplayerDuelCall('status');__onlineDuelMatch=d.match||null;if(d.status==='matched'||d.status==='ready'){stopOnlineDuelPoll();renderMultiplayerPage()}else if(d.status==='idle'&&d.stats){renderMultiplayerPage()}}catch(e){console.warn(e)}},1800)}
 function renderOnlineDuelPanel(panel,champs,roster){
   const box=document.createElement('div');box.className='duel-panel';box.id='multiplayerPanel';box.innerHTML=`<div class="title">🌐 Duel multijoueur 1 vs 1</div><div class="muted">Recherche un joueur en ligne. Après association, chacun choisit un de ses champions ; les paramètres et le résultat sont déterminés côté serveur.</div><div id="onlineDuelBody" style="margin-top:10px"></div>`;panel.appendChild(box);
   const body=box.querySelector('#onlineDuelBody'),m=__onlineDuelMatch;
   if(!champs.length){body.innerHTML='<div class="duel-lock">🔒 Il faut attendre la fin de la saison 1 et obtenir son Champion pour débloquer le duel multijoueur.</div>';return}
   if(!cloudUser){body.innerHTML='<div class="duel-lock">🔒 Duel multijoueur débloqué. Connecte-toi à ton compte pour jouer en ligne.</div>';return}
-  if(!m){body.innerHTML='<div class="team-actions"><button id="onlineSearchBtn">🔎 Recherche en ligne</button></div>';body.querySelector('#onlineSearchBtn').onclick=async()=>{const b=body.querySelector('button');b.disabled=true;b.textContent='Recherche…';try{const d=await multiplayerDuelCall('search');__onlineDuelMatch=d.match||null;if(d.status==='waiting'){b.textContent='⏳ Adversaire recherché…';startOnlineDuelPoll()}else renderHallOfFame()}catch(e){alert(e.message);b.disabled=false;b.textContent='🔎 Recherche en ligne'}};return}
-  if(m.status==='waiting'){body.innerHTML='<div class="duel-result">⏳ Recherche d’un adversaire…</div><div class="team-actions" style="margin-top:8px"><button class="secondary" id="onlineCancelBtn">Annuler</button></div>';body.querySelector('#onlineCancelBtn').onclick=async()=>{await multiplayerDuelCall('cancel');__onlineDuelMatch=null;stopOnlineDuelPoll();renderHallOfFame()};startOnlineDuelPoll();return}
+  if(!m){body.innerHTML='<div class="team-actions"><button id="onlineSearchBtn">🔎 Recherche en ligne</button></div>';body.querySelector('#onlineSearchBtn').onclick=async()=>{const b=body.querySelector('button');b.disabled=true;b.textContent='Recherche…';try{const d=await multiplayerDuelCall('search');__onlineDuelMatch=d.match||null;if(d.status==='waiting'){b.textContent='⏳ Adversaire recherché…';startOnlineDuelPoll()}else renderMultiplayerPage()}catch(e){alert(e.message);b.disabled=false;b.textContent='🔎 Recherche en ligne'}};return}
+  if(m.status==='waiting'){body.innerHTML='<div class="duel-result">⏳ Recherche d’un adversaire…</div><div class="team-actions" style="margin-top:8px"><button class="secondary" id="onlineCancelBtn">Annuler</button></div>';body.querySelector('#onlineCancelBtn').onclick=async()=>{await multiplayerDuelCall('cancel');__onlineDuelMatch=null;stopOnlineDuelPoll();renderMultiplayerPage()};startOnlineDuelPoll();return}
   if(m.status==='matched'||m.status==='ready'){
     const mine=m.player1_id===cloudUser.id?m.player1_champion:m.player2_champion;
-    if(!mine){const opts=champs.map(ch=>`<option value="${escapeHtml(ch.id)}">S${ch.season} — ${escapeHtml(roster[ch.id]?.name||ch.name||ch.id)}</option>`).join('');body.innerHTML=`<label class="muted">Champion<select id="onlineChampion" style="width:100%;margin-top:5px">${opts}</select></label><div class="team-actions" style="margin-top:8px"><button id="onlineChampionBtn">⚔️ Valider mon champion</button></div>`;body.querySelector('#onlineChampionBtn').onclick=async()=>{try{const d=await multiplayerDuelCall('select_champion',{gameId:cloudCurrentGame?.id,championId:body.querySelector('#onlineChampion').value});__onlineDuelMatch=d.match;renderHallOfFame();startOnlineDuelPoll()}catch(e){alert(e.message)}};return}
-    if(m.status==='ready'){body.innerHTML='<div class="duel-result">⚔️ Les deux champions sont prêts.</div><div class="team-actions" style="margin-top:8px"><button id="onlineResolveBtn">🎲 Simuler le combat</button></div>';body.querySelector('#onlineResolveBtn').onclick=async()=>{try{const d=await multiplayerDuelCall('resolve');__onlineDuelMatch=null;stopOnlineDuelPoll();if(d.battle)openCombatScene(d.battle,{[d.battle.a]:d.battle.characterA||{},[d.battle.b]:d.battle.characterB||{}});renderHallOfFame()}catch(e){alert(e.message)}};return}
+    if(!mine){const opts=champs.map(ch=>`<option value="${escapeHtml(ch.id)}">S${ch.season} — ${escapeHtml(roster[ch.id]?.name||ch.name||ch.id)}</option>`).join('');body.innerHTML=`<label class="muted">Champion<select id="onlineChampion" style="width:100%;margin-top:5px">${opts}</select></label><div class="team-actions" style="margin-top:8px"><button id="onlineChampionBtn">⚔️ Valider mon champion</button></div>`;body.querySelector('#onlineChampionBtn').onclick=async()=>{try{const d=await multiplayerDuelCall('select_champion',{gameId:cloudCurrentGame?.id,championId:body.querySelector('#onlineChampion').value});__onlineDuelMatch=d.match;renderMultiplayerPage();startOnlineDuelPoll()}catch(e){alert(e.message)}};return}
+    if(m.status==='ready'){body.innerHTML='<div class="duel-result">⚔️ Les deux champions sont prêts.</div><div class="team-actions" style="margin-top:8px"><button id="onlineResolveBtn">🎲 Simuler le combat</button></div>';body.querySelector('#onlineResolveBtn').onclick=async()=>{try{const d=await multiplayerDuelCall('resolve');__onlineDuelMatch=null;stopOnlineDuelPoll();if(d.battle)openCombatScene(d.battle,{[d.battle.a]:d.battle.characterA||{},[d.battle.b]:d.battle.characterB||{}});renderMultiplayerPage()}catch(e){alert(e.message)}};return}
     body.innerHTML='<div class="duel-result">✓ Champion enregistré. En attente du champion adverse…</div>';startOnlineDuelPoll();
   }
 }
@@ -3657,15 +3671,27 @@ function renderDuelPanel(panel,champs,roster,meta){
   panel.appendChild(box);const p1=box.querySelector('#duelP1'),p2=box.querySelector('#duelP2');p2.selectedIndex=1;
   box.querySelector('#duelFightBtn').onclick=()=>{if(p1.value===p2.value){alert('Choisis deux champions différents.');return}const battle=hallDuelBattle(p1.value,p2.value);if(!battle)return;const wc=roster[battle.winner]||{};box.querySelector('#duelResult').innerHTML=`<div class="duel-result"><b>🏆 ${escapeHtml(battle.winner)} — ${escapeHtml(wc.name||'Sans nom')}</b><button type="button" class="secondary combat-view-btn">🎬 Voir le combat</button></div>`;box.querySelector('.combat-view-btn').onclick=()=>openCombatScene(battle,roster)};
 }
+function renderDuelLocalPage(){
+  const panel=document.getElementById('duelLocalPageContent');if(!panel)return;
+  panel.innerHTML='';
+  const champs=championHistory(),roster=loadRoster(),meta=universeMeta();
+  try{renderDuelPanel(panel,champs,roster,meta)}catch(e){console.error('Duel local',e);panel.innerHTML='<div class="duel-lock">Erreur de chargement du duel local. Recharge la page.</div>'}
+}
+function renderMultiplayerPage(){
+  const panel=document.getElementById('multiplayerPageContent');if(!panel)return;
+  panel.innerHTML='';
+  const champs=championHistory(),roster=loadRoster();
+  const onlineV=Number(__onlineDuelStats?.victories)||0,onlineD=Number(__onlineDuelStats?.defeats)||0;
+  panel.insertAdjacentHTML('beforeend',`<div class="hall-stats"><span class="hall-stat">⚔️ Duels en ligne : ${onlineV} V / ${onlineD} D</span></div>${onlineDuelHistoryHtml()}`);
+  panel.querySelectorAll('[data-online-history]').forEach(btn=>btn.onclick=()=>{const x=__onlineDuelStats?.recent_duels?.[Number(btn.dataset.onlineHistory)];if(x?.battle)openCombatScene(x.battle,{[x.battle.a]:x.battle.characterA||{},[x.battle.b]:x.battle.characterB||{}})});
+  try{renderOnlineDuelPanel(panel,champs,roster)}catch(e){console.error('Duel multijoueur',e);panel.insertAdjacentHTML('beforeend','<div class="duel-lock">Erreur de chargement du multijoueur. Recharge la page.</div>')}
+}
 function renderHallOfFame(){
   const root=document.getElementById('hallChampions'),panel=document.getElementById('championTeamPanel'),count=document.getElementById('hallCount');if(!root||!panel)return;
   const champs=championHistory(),roster=loadRoster(),meta=universeMeta();let draft=(meta.championTeamDraft?.length?meta.championTeamDraft:meta.championTeam||[]).filter(id=>champs.some(c=>c.id===id));count.textContent=`${champs.length} champion${champs.length>1?'s':''}`;
   const unlocked=champs.length>=5;
   panel.innerHTML=unlocked?`<div class="title">⚔️ Équipe des champions</div><div class="muted">Choisis exactement 5 champions. Tu pourras modifier cette équipe après chaque nouvelle saison.</div><div class="team-slots" id="teamSlots"></div><div class="team-actions"><button id="saveChampionTeamBtn" ${draft.length===5?'':'disabled'}>💾 Enregistrer l’équipe (${draft.length}/5)</button></div>`:`<div class="title">⚔️ Équipe des champions</div><div class="team-lock">🔒 Débloquée après l’obtention du champion de S5. Champions actuels : ${champs.length}/5.</div>`;
-  const onlineV=Number(__onlineDuelStats?.victories)||0,onlineD=Number(__onlineDuelStats?.defeats)||0;let teamHist='',onlineHist='';try{teamHist=multiplayerHistoryHtml(meta,'team')}catch(e){console.warn('Historique équipe',e)}try{onlineHist=onlineDuelHistoryHtml()}catch(e){console.warn('Historique duel',e)}panel.insertAdjacentHTML('beforeend',`<div class="hall-stats"><span class="hall-stat">👥 Équipes : ${meta.multiplayerStats.teamWins} V / ${meta.multiplayerStats.teamLosses} D</span><span class="hall-stat">⚔️ Duels en ligne : ${onlineV} V / ${onlineD} D</span></div>${teamHist}${onlineHist}`);
-  panel.querySelectorAll('[data-online-history]').forEach(btn=>btn.onclick=()=>{const x=__onlineDuelStats?.recent_duels?.[Number(btn.dataset.onlineHistory)];if(x?.battle)openCombatScene(x.battle,{[x.battle.a]:x.battle.characterA||{},[x.battle.b]:x.battle.characterB||{}})});
-  try{renderDuelPanel(panel,champs,roster,meta)}catch(e){console.error('Duel local',e);panel.insertAdjacentHTML('beforeend','<div class="duel-panel"><div class="title">⚔️ Duel local 1 vs 1</div><div class="duel-lock">Erreur de chargement du duel local. Recharge la page.</div></div>')}
-  try{renderOnlineDuelPanel(panel,champs,roster)}catch(e){console.error('Duel multijoueur',e);panel.insertAdjacentHTML('beforeend','<div class="duel-panel"><div class="title">🌐 Duel multijoueur 1 vs 1</div><div class="duel-lock">Erreur de chargement du multijoueur. Recharge la page.</div></div>')}
+  let teamHist='';try{teamHist=multiplayerHistoryHtml(meta,'team')}catch(e){console.warn('Historique équipe',e)}panel.insertAdjacentHTML('beforeend',`<div class="hall-stats"><span class="hall-stat">👥 Équipes : ${meta.multiplayerStats.teamWins} V / ${meta.multiplayerStats.teamLosses} D</span></div>${teamHist}`);
   root.innerHTML=champs.length?'':'<div class="tournament-empty">Aucun champion pour le moment. Termine le tournoi d’une saison pour inaugurer le Hall of Fame.</div>';
   const drawSlots=()=>{const slots=document.getElementById('teamSlots');if(!slots)return;slots.innerHTML=Array.from({length:5},(_,i)=>{const id=draft[i],c=id?roster[id]:null;return `<div class="team-slot ${id?'filled':''}">${id?`<b>${escapeHtml(c?.name||id)}</b><small>${escapeHtml(id)}</small>`:`Place ${i+1}`}</div>`}).join('');const b=document.getElementById('saveChampionTeamBtn');if(b){b.disabled=draft.length!==5;b.textContent=`💾 Enregistrer l’équipe (${draft.length}/5)`}};
   if(unlocked)drawSlots();
@@ -3680,9 +3706,9 @@ arenaTabBtn.onclick=(e)=>{e.stopPropagation();const open=arenaMenu.hidden;arenaM
 tournamentTabBtn.onclick=()=>{arenaMenu.hidden=true;arenaTabBtn.setAttribute('aria-expanded','false');showTab('tournament')};
 hallTabBtn.onclick=()=>{arenaMenu.hidden=true;arenaTabBtn.setAttribute('aria-expanded','false');showTab('hall')};
 const duelLocalTabBtn=document.getElementById('duelLocalTabBtn'),multiplayerTabBtn=document.getElementById('multiplayerTabBtn');
-function openArenaHallPanel(id){if(arenaMenu)arenaMenu.hidden=true;if(arenaTabBtn)arenaTabBtn.setAttribute('aria-expanded','false');showTab('hall');try{renderHallOfFame()}catch(e){console.error(e)}setTimeout(()=>document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'}),80)}
-if(duelLocalTabBtn)duelLocalTabBtn.onclick=()=>openArenaHallPanel('duelLocalPanel');
-if(multiplayerTabBtn)multiplayerTabBtn.onclick=()=>openArenaHallPanel('multiplayerPanel');
+function closeArenaMenu(){if(arenaMenu)arenaMenu.hidden=true;if(arenaTabBtn)arenaTabBtn.setAttribute('aria-expanded','false')}
+if(duelLocalTabBtn)duelLocalTabBtn.onclick=()=>{closeArenaMenu();showTab('duelLocal')};
+if(multiplayerTabBtn)multiplayerTabBtn.onclick=()=>{closeArenaMenu();showTab('multiplayer')};
 document.addEventListener('click',(e)=>{if(!e.target.closest('.arena-nav')){arenaMenu.hidden=true;arenaTabBtn.setAttribute('aria-expanded','false')}});
 universeTabBtn.onclick=()=>showTab('universe');
 document.getElementById('createTournamentBtn').onclick=createTournament;
