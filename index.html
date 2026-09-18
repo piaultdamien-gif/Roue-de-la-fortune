@@ -465,6 +465,20 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
 <style id="hallDuelNeuronV1">
 .neuron-bar{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid #3f2933;background:#0b080c;font-size:12px;color:#cdbfc7}.neuron-bar b{color:#ead3a0}.neuron-chip{padding:5px 9px;border:1px solid #553746;border-radius:999px;background:#120c12}.hall-stats{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}.hall-stat{font-size:11px;padding:4px 7px;border:1px solid #49333d;border-radius:999px;background:#0d090d;color:#cdbfc7}.duel-panel{margin-top:14px;padding:14px;border:1px solid #4a373d;border-radius:12px;background:#0d0b0e}.duel-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:end;margin-top:10px}.duel-grid label{display:grid;gap:5px;color:#b9aa9d;font-size:12px}.duel-grid select{width:100%;padding:9px;border-radius:8px;background:#120f14;color:#eee;border:1px solid #4a373d}.duel-vs{font-family:Cinzel,serif;color:#d6b36a;padding-bottom:10px}.duel-result{margin-top:10px;padding:10px;border:1px solid #49333d;border-radius:9px;line-height:1.45}.duel-lock{margin-top:10px;color:var(--muted)}.duel-history{margin-top:12px;border-top:1px solid #3d2b34;padding-top:10px}.duel-history summary{cursor:pointer;color:#d6b36a;font-family:Cinzel,serif}.duel-history-list{display:grid;gap:7px;margin-top:9px}.duel-history-item{padding:8px;border:1px solid #3d2b34;border-radius:8px;background:#09070a;font-size:12px}.duel-history-item b{color:#ead3a0}@media(max-width:600px){.duel-grid{grid-template-columns:1fr}.duel-vs{text-align:center;padding:0}}
 </style>
+
+<style id="combatSceneV1">
+.combat-scene-modal{position:fixed;inset:0;z-index:10050;background:#000c;display:none;align-items:center;justify-content:center;padding:14px}
+.combat-scene-modal.open{display:flex}.combat-scene-card{width:min(960px,100%);max-height:94vh;overflow:auto;border:1px solid #6d4758;border-radius:16px;background:#0b080c;box-shadow:0 24px 80px #000;padding:12px}
+.combat-scene-top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}.combat-scene-top button{width:auto}
+.combat-stage{position:relative;aspect-ratio:16/9;overflow:hidden;border-radius:12px;background:#080608 center/cover no-repeat;border:1px solid #4b3540}
+.combat-stage:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#08060ab8 0%,transparent 38%,transparent 62%,#08060ab8 100%),linear-gradient(0deg,#08060ad0 0%,transparent 45%)}
+.combat-fighter-scene{position:absolute;z-index:2;bottom:0;width:42%;height:94%;display:flex;align-items:flex-end;justify-content:center}.combat-fighter-scene.a{left:1%}.combat-fighter-scene.b{right:1%}
+.combat-fighter-scene img{max-width:100%;max-height:100%;object-fit:contain;filter:drop-shadow(0 8px 10px #000)}.combat-fighter-scene.b img{transform:scaleX(-1)}
+.combat-fighter-name{position:absolute;z-index:4;bottom:8px;padding:5px 8px;border-radius:8px;background:#09070bd9;border:1px solid #6b4c58;color:#f1dfb5;font-family:Cinzel,serif}.combat-fighter-scene.a .combat-fighter-name{left:8px}.combat-fighter-scene.b .combat-fighter-name{right:8px}
+.combat-scene-result{position:absolute;z-index:5;left:50%;top:9px;transform:translateX(-50%);padding:6px 10px;border-radius:999px;background:#0a070bd9;border:1px solid #a77b58;color:#f0d69f;text-align:center}
+.combat-params{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:10px}.combat-param{padding:8px;border:1px solid #44303a;border-radius:9px;background:#100c11}.combat-param b{display:block;color:#d9b56d;font-size:11px}.combat-view-btn{margin-top:7px;width:100%}
+@media(max-width:600px){.combat-scene-card{padding:8px}.combat-fighter-scene{width:47%}.combat-fighter-name{font-size:10px}.combat-params{grid-template-columns:1fr 1fr}}
+</style>
 </head><body><header><div><h1>⚔️ Hazard Game Tournament</h1><div class="muted">Chaque donnée aléatoire affichée provient de la roue que tu vois tourner.</div></div><div class="pill" id="charId">S1-001</div></header>
 <div class="neuron-bar" id="neuronBar"><span class="neuron-chip">🧠 Neurons : <b id="neuronRemaining">10 000 max/jour</b></span><span class="neuron-chip">Portrait 4B : <b>≈ 52,1 + références</b></span><span class="neuron-chip">Champion 9B : <b>jusqu’à ≈ 1 363,6 + références</b></span></div>
 <div class="cloud-bar">
@@ -3373,6 +3387,13 @@ spinBtn.onclick=()=>{
 const TOURNAMENT_TERRAINS=['Plaine ouverte','Forêt dense','Ruines','Ville','Montagne','Marais','Désert','Caverne','Arène fermée','Zone aquatique'];
 const TOURNAMENT_DISTANCES=[['Corps à corps',2],['Courte distance',8],['Distance moyenne',25],['Longue distance',60]];
 const TOURNAMENT_KNOWLEDGE=['Aucune information','Informations partielles','Bonne connaissance de l’adversaire'];
+const COMBAT_REGIONS=[
+ ['Sylvaeryn','sylvaeryn'],['Kharadryn','kharadryn'],['Avelorn','avelorn'],['Drakhenor','drakhenor'],['Maelora','maelora'],['Iskarya','iskarya'],['Nexara','nexara'],['Kaelora','kaelora'],['Vaerunn','vaerunn'],
+ ['Aetherys','aetherys'],['Thoryndra','thoryndra'],['Liorael','liorael'],['Caelorn','caelorn'],
+ ['Varkhoryn','varkhoryn'],['Kythera','kythera'],['Lumerys','lumerys'],['Naeroth','naeroth'],["Mor'Khal",'morkhal']
+];
+function randomCombatRegion(){return COMBAT_REGIONS[Math.floor(Math.random()*COMBAT_REGIONS.length)]}
+
 function tournamentSeason(){
   const roster=loadRoster(), seasons={};
   Object.keys(roster).forEach(id=>{const m=id.match(/^S(\d+)-(\d+)$/);if(m)(seasons[+m[1]]??=[]).push(id)});
@@ -3420,14 +3441,14 @@ function resolveTournamentBattleInto(t,ri,mi,roster,{replace=false}={}){
   t.battles??={};t.deaths??=[];t.winners??={};
   const round=t.rounds[ri]||[],a=round[mi*2],b=round[mi*2+1];if(!a||!b)return false;
   const key=`${ri}-${mi}`;if(t.winners[key]&&!replace)return false;
-  const terrain=TOURNAMENT_TERRAINS[Math.floor(Math.random()*TOURNAMENT_TERRAINS.length)],d=TOURNAMENT_DISTANCES[Math.floor(Math.random()*TOURNAMENT_DISTANCES.length)];
-  const ctx={terrain,distanceLabel:d[0],distance:d[1],knowledgeA:TOURNAMENT_KNOWLEDGE[Math.floor(Math.random()*3)],knowledgeB:TOURNAMENT_KNOWLEDGE[Math.floor(Math.random()*3)]};
+  const terrain=TOURNAMENT_TERRAINS[Math.floor(Math.random()*TOURNAMENT_TERRAINS.length)],d=TOURNAMENT_DISTANCES[Math.floor(Math.random()*TOURNAMENT_DISTANCES.length)],region=randomCombatRegion();
+  const ctx={terrain,distanceLabel:d[0],distance:d[1],region:region[0],regionSlug:region[1],knowledgeA:TOURNAMENT_KNOWLEDGE[Math.floor(Math.random()*3)],knowledgeB:TOURNAMENT_KNOWLEDGE[Math.floor(Math.random()*3)]};
   let va=fighterValue(roster[a],ctx),vb=fighterValue(roster[b],ctx);
   if(ctx.knowledgeA==='Informations partielles')va+=1.5;else if(ctx.knowledgeA==='Bonne connaissance de l’adversaire')va+=3;
   if(ctx.knowledgeB==='Informations partielles')vb+=1.5;else if(ctx.knowledgeB==='Bonne connaissance de l’adversaire')vb+=3;
   const diff=va-vb,probA=Math.max(.1,Math.min(.9,1/(1+Math.exp(-diff/10)))),roll=Math.random(),winner=roll<probA?a:b,loser=winner===a?b:a;
   const lr=Number(roster[loser]?.stats?.['Résilience'])||0,deathChance=Math.max(.01,Math.min(.18,.10-lr*.006+Math.abs(diff)*.002)),died=Math.random()<deathChance;
-  t.battles[key]={a,b,winner,loser,terrain,distanceLabel:d[0],distance:d[1],knowledgeA:ctx.knowledgeA,knowledgeB:ctx.knowledgeB,probA:+probA.toFixed(4),roll:+roll.toFixed(4),death:died?loser:null,at:new Date().toISOString()};
+  t.battles[key]={a,b,winner,loser,region:ctx.region,regionSlug:ctx.regionSlug,terrain,distanceLabel:d[0],distance:d[1],knowledgeA:ctx.knowledgeA,knowledgeB:ctx.knowledgeB,probA:+probA.toFixed(4),roll:+roll.toFixed(4),death:died?loser:null,at:new Date().toISOString()};
   if(died&&!t.deaths.includes(loser))t.deaths.push(loser);t.winners[key]=winner;return true;
 }
 function simulateTournamentBattle(ri,mi){
@@ -3462,7 +3483,7 @@ function renderTournament(){
   t.battles??={};t.deaths??=[];const first=t.rounds[0]||[];status.textContent=`S${t.season} • ${first.length} combattants • combats et progression sauvegardés automatiquement.`;root.innerHTML='';
   t.rounds.forEach((round,ri)=>{const col=document.createElement('div');col.className='tournament-round';col.innerHTML=`<h3>${tournamentRoundName(ri)}</h3><div class="tournament-round-body"></div>`;const body=col.lastElementChild,slotHeight=Math.max(210,210*Math.pow(2,ri));for(let mi=0;mi<Math.ceil(round.length/2);mi++){const key=`${ri}-${mi}`,battle=t.battles[key],slot=document.createElement('div');slot.className='tournament-match-slot';slot.style.height=`${slotHeight}px`;const box=document.createElement('div');box.className='tournament-match';box.dataset.matchKey=key;[round[mi*2],round[mi*2+1]].filter(Boolean).forEach(id=>{const c=roster[id]||{},win=t.winners[key]===id,row=document.createElement('div');row.className='tournament-fighter'+(win?' winner':'')+(t.deaths.includes(id)?' battle-dead':'');row.innerHTML=`<span class="ph">⚔️</span><span><b>${id}</b><br>${c.name||'Sans nom'}</span>`;box.appendChild(row);tournamentPortrait(row.querySelector('.ph'),id)});
     if(round[mi*2]&&round[mi*2+1]){const actions=document.createElement('div');actions.className='tournament-actions';actions.innerHTML=`<button type="button" class="smallbtn" ${battle?'disabled':''}>${battle?'✓ Combat simulé':'🎲 Simuler ce combat'}</button>`;if(!battle)actions.firstChild.onclick=()=>simulateTournamentBattle(ri,mi);box.appendChild(actions)}
-    if(battle){const rep=document.createElement('div');rep.className='battle-report';const pa=Math.round(battle.probA*100),pb=100-pa,wc=roster[battle.winner]||{};rep.innerHTML=`<b>${battle.terrain}</b> • ${battle.distanceLabel} (${battle.distance} m)<br>Infos : ${battle.a} — ${battle.knowledgeA} / ${battle.b} — ${battle.knowledgeB}<div class="battle-chance">Chances estimées avant tirage : ${battle.a} ${pa}% • ${battle.b} ${pb}%</div>🏆 <b>${battle.winner} — ${wc.name||'Sans nom'}</b>${battle.death?`<br>☠️ ${battle.death} est mort pendant le combat.`:''}`;box.appendChild(rep)}slot.appendChild(box);body.appendChild(slot)}root.appendChild(col)});
+    if(battle){const rep=document.createElement('div');rep.className='battle-report';const pa=Math.round(battle.probA*100),pb=100-pa,wc=roster[battle.winner]||{};rep.innerHTML=`<b>${battle.region||'Vaeloria'} — ${battle.terrain}</b> • ${battle.distanceLabel} (${battle.distance} m)<br>Infos : ${battle.a} — ${battle.knowledgeA} / ${battle.b} — ${battle.knowledgeB}<div class="battle-chance">Chances estimées avant tirage : ${battle.a} ${pa}% • ${battle.b} ${pb}%</div>🏆 <b>${battle.winner} — ${wc.name||'Sans nom'}</b>${battle.death?`<br>☠️ ${battle.death} est mort pendant le combat.`:''}<button type="button" class="secondary combat-view-btn">🎬 Voir le combat</button>`;rep.querySelector('.combat-view-btn').onclick=()=>openCombatScene(battle,roster);box.appendChild(rep)}slot.appendChild(box);body.appendChild(slot)}root.appendChild(col)});
   const last=t.rounds[t.rounds.length-1];if(last?.length===1){status.innerHTML=`🏆 Champion de S${t.season} : <b>${last[0]} — ${(roster[last[0]]||{}).name||'Sans nom'}</b>${t.deaths.length?` • ☠️ ${t.deaths.length} mort${t.deaths.length>1?'s':''}`:''}`}
   requestAnimationFrame(()=>requestAnimationFrame(drawTournamentConnectors));
 }
@@ -3470,20 +3491,70 @@ function renderTournament(){
 function championHistory(){const m=universeMeta(),r=loadRoster(),t=loadTournament(),last=t?.rounds?.[t.rounds.length-1];if(last?.length===1&&!m.champions?.[String(t.season)]){m.champions??={};m.champions[String(t.season)]={id:last[0],name:r[last[0]]?.name||'Sans nom',season:Number(t.season),wonAt:new Date().toISOString()};saveUniverseMeta(m);if(typeof queueCloudGameStateSave==='function')queueCloudGameStateSave()}return Object.values(m.champions||{}).filter(x=>x?.id).map(x=>({...x,name:r[x.id]?.name||x.name||'Sans nom'})).sort((a,b)=>Number(a.season)-Number(b.season))}
 async function hallPortrait(el,id){try{const f=await getIllustration(id);if(!f)return;const u=URL.createObjectURL(f),img=document.createElement('img');img.src=u;img.onload=()=>URL.revokeObjectURL(u);el.replaceChildren(img)}catch(e){}}
 function saveChampionTeam(ids){const champs=new Set(championHistory().map(x=>x.id));ids=[...new Set(ids)].filter(id=>champs.has(id));if(ids.length!==5){alert('L’équipe doit contenir exactement 5 champions.');return false}const m=universeMeta();m.championTeam=ids;m.championTeamDraft=[];saveUniverseMeta(m);if(typeof queueCloudGameStateSave==='function')queueCloudGameStateSave();renderHallOfFame();return true}
+let __combatSceneUrls=[];
+function closeCombatScene(){
+  const m=document.getElementById('combatSceneModal');if(m)m.remove();
+  __combatSceneUrls.forEach(u=>URL.revokeObjectURL(u));__combatSceneUrls=[];
+}
+async function combatScenePortrait(target,id){
+  try{const f=await getIllustration(id);if(!f)return;const u=URL.createObjectURL(f);__combatSceneUrls.push(u);const img=document.createElement('img');img.src=u;target.prepend(img)}catch(e){}
+}
+function openCombatScene(battle,roster=loadRoster()){
+  closeCombatScene();if(!battle)return;
+  const regionSlug=battle.regionSlug||String(battle.region||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const m=document.createElement('div');m.id='combatSceneModal';m.className='combat-scene-modal open';
+  const a=roster[battle.a]||battle.characterA||{},b=roster[battle.b]||battle.characterB||{};
+  const pa=Math.round((Number(battle.probA)||.5)*100);
+  m.innerHTML=`<div class="combat-scene-card"><div class="combat-scene-top"><div class="title">⚔️ ${escapeHtml(battle.region||'Combat')}</div><button class="secondary" type="button">✕ Fermer</button></div><div class="combat-stage" style="background-image:url('assets/universe/regions/${escapeHtml(regionSlug)}.webp')"><div class="combat-scene-result">🏆 ${escapeHtml(battle.winner||'')}</div><div class="combat-fighter-scene a"><span class="combat-fighter-name">${escapeHtml(a.name||battle.a||'Combattant 1')}</span></div><div class="combat-fighter-scene b"><span class="combat-fighter-name">${escapeHtml(b.name||battle.b||'Combattant 2')}</span></div></div><div class="combat-params"><div class="combat-param"><b>Région</b>${escapeHtml(battle.region||'—')}</div><div class="combat-param"><b>Terrain</b>${escapeHtml(battle.terrain||'—')}</div><div class="combat-param"><b>Distance</b>${escapeHtml(battle.distanceLabel||'—')}${battle.distance!=null?` • ${battle.distance} m`:''}</div><div class="combat-param"><b>Informations</b>${escapeHtml(battle.knowledgeA||'—')} / ${escapeHtml(battle.knowledgeB||'—')}</div><div class="combat-param"><b>Chances avant tirage</b>${escapeHtml(battle.a||'A')} ${pa}% • ${escapeHtml(battle.b||'B')} ${100-pa}%</div></div></div>`;
+  document.body.appendChild(m);m.querySelector('.combat-scene-top button').onclick=closeCombatScene;m.onclick=e=>{if(e.target===m)closeCombatScene()};
+  combatScenePortrait(m.querySelector('.combat-fighter-scene.a'),battle.a);combatScenePortrait(m.querySelector('.combat-fighter-scene.b'),battle.b);
+}
 function hallDuelBattle(aId,bId){
   const roster=loadRoster(),a=roster[aId],b=roster[bId];if(!a||!b||aId===bId)return null;
-  const terrains=['Terrain ouvert','Ruines','Forêt dense','Caverne','Zone urbaine','Terrain accidenté'];
-  const distances=[['Corps à corps',3],['Courte portée',12],['Moyenne portée',35],['Longue portée',80]];
-  const terrain=terrains[Math.floor(Math.random()*terrains.length)],d=distances[Math.floor(Math.random()*distances.length)];
-  const va=tournamentCombatValue(a,terrain,d[1]),vb=tournamentCombatValue(b,terrain,d[1]);
-  const probA=Math.max(.08,Math.min(.92,va/(va+vb||1))),winner=Math.random()<probA?aId:bId;
-  return {a:aId,b:bId,winner,loser:winner===aId?bId:aId,terrain,distanceLabel:d[0],distance:d[1],probA};
+  const terrain=TOURNAMENT_TERRAINS[Math.floor(Math.random()*TOURNAMENT_TERRAINS.length)],d=TOURNAMENT_DISTANCES[Math.floor(Math.random()*TOURNAMENT_DISTANCES.length)],region=randomCombatRegion();
+  const ctx={terrain,distanceLabel:d[0],distance:d[1],region:region[0],regionSlug:region[1],knowledgeA:TOURNAMENT_KNOWLEDGE[Math.floor(Math.random()*3)],knowledgeB:TOURNAMENT_KNOWLEDGE[Math.floor(Math.random()*3)]};
+  let va=fighterValue(a,ctx),vb=fighterValue(b,ctx);
+  if(ctx.knowledgeA==='Informations partielles')va+=1.5;else if(ctx.knowledgeA==='Bonne connaissance de l’adversaire')va+=3;
+  if(ctx.knowledgeB==='Informations partielles')vb+=1.5;else if(ctx.knowledgeB==='Bonne connaissance de l’adversaire')vb+=3;
+  const diff=va-vb,probA=Math.max(.1,Math.min(.9,1/(1+Math.exp(-diff/10)))),winner=Math.random()<probA?aId:bId;
+  return {a:aId,b:bId,winner,loser:winner===aId?bId:aId,region:ctx.region,regionSlug:ctx.regionSlug,terrain,distanceLabel:d[0],distance:d[1],knowledgeA:ctx.knowledgeA,knowledgeB:ctx.knowledgeB,probA:+probA.toFixed(4),at:new Date().toISOString()};
 }
+
 function recordTeamMultiplayerResult(won){const m=universeMeta();m.multiplayerStats??={};m.multiplayerStats[won?'teamWins':'teamLosses']=(Number(m.multiplayerStats[won?'teamWins':'teamLosses'])||0)+1;saveUniverseMeta(m);if(typeof queueCloudGameStateSave==='function')queueCloudGameStateSave();renderHallOfFame()}
 function multiplayerHistoryHtml(meta,type){
   const arr=(type==='team'?meta.multiplayerStats.teamHistory:meta.multiplayerStats.duelHistory)||[];
   const title=type==='team'?'10 derniers combats en équipe':'10 derniers duels en ligne';
   return `<details class="duel-history"><summary>📜 ${title}</summary><div class="duel-history-list">${arr.length?arr.slice(0,10).map(x=>`<div class="duel-history-item"><b>${x.won?'Victoire':'Défaite'}</b>${x.opponent?` • ${escapeHtml(x.opponent)}`:''}${x.champion?` • ${escapeHtml(x.champion)}`:''}${x.terrain?`<br>${escapeHtml(x.terrain)}${x.distanceLabel?` • ${escapeHtml(x.distanceLabel)}`:''}`:''}<br><span class="muted">${x.at?new Date(x.at).toLocaleString('fr-FR'):''}</span></div>`).join(''):'<div class="muted">Aucun combat enregistré.</div>'}</div></details>`;
+}
+
+let __onlineDuelStats=null,__onlineDuelPoll=null,__onlineDuelMatch=null;
+async function multiplayerDuelCall(action,extra={}){
+  if(!cloudClient||!cloudUser)throw new Error('Connecte-toi à ton compte pour utiliser les duels en ligne.');
+  const {data,error}=await cloudClient.functions.invoke('multiplayer-duel',{body:{action,...extra}});
+  if(error)throw error;if(data?.error)throw new Error(data.error);if(data?.stats)__onlineDuelStats=data.stats;return data;
+}
+function onlineDuelHistoryHtml(){
+  const arr=Array.isArray(__onlineDuelStats?.recent_duels)?__onlineDuelStats.recent_duels:[];
+  return `<details class="duel-history"><summary>📜 10 derniers duels en ligne</summary><div class="duel-history-list">${arr.length?arr.slice(0,10).map((x,i)=>`<div class="duel-history-item"><b>${x.won?'Victoire':'Défaite'}</b> • ${escapeHtml(x.opponentName||x.opponent||'Adversaire')} • ${escapeHtml(x.championName||x.champion||'Champion')}<br>${escapeHtml(x.region||'')} ${x.terrain?'• '+escapeHtml(x.terrain):''}<br><span class="muted">${x.at?new Date(x.at).toLocaleString('fr-FR'):''}</span>${x.battle?`<button type="button" class="secondary combat-view-btn" data-online-history="${i}">🎬 Voir le combat</button>`:''}</div>`).join(''):'<div class="muted">Aucun duel enregistré.</div>'}</div></details>`;
+}
+async function refreshOnlineDuelStats(){
+  if(!cloudClient||!cloudUser)return;try{await multiplayerDuelCall('status');renderHallOfFame()}catch(e){console.warn(e)}
+}
+function stopOnlineDuelPoll(){if(__onlineDuelPoll){clearInterval(__onlineDuelPoll);__onlineDuelPoll=null}}
+function startOnlineDuelPoll(){stopOnlineDuelPoll();__onlineDuelPoll=setInterval(async()=>{try{const d=await multiplayerDuelCall('status');__onlineDuelMatch=d.match||null;if(d.status==='matched'||d.status==='ready'){stopOnlineDuelPoll();renderHallOfFame()}else if(d.status==='idle'&&d.stats){renderHallOfFame()}}catch(e){console.warn(e)}},1800)}
+function renderOnlineDuelPanel(panel,champs,roster){
+  const box=document.createElement('div');box.className='duel-panel';box.innerHTML=`<div class="title">🌐 Duel multijoueur 1 vs 1</div><div class="muted">Recherche un joueur en ligne. Après association, chacun choisit un de ses champions ; les paramètres et le résultat sont déterminés côté serveur.</div><div id="onlineDuelBody" style="margin-top:10px"></div>`;panel.appendChild(box);
+  const body=box.querySelector('#onlineDuelBody'),m=__onlineDuelMatch;
+  if(!cloudUser){body.innerHTML='<div class="duel-lock">🔒 Connecte-toi à ton compte pour jouer en ligne.</div>';return}
+  if(!champs.length){body.innerHTML='<div class="duel-lock">🔒 Termine au moins le tournoi S1 pour obtenir un champion.</div>';return}
+  if(!m){body.innerHTML='<div class="team-actions"><button id="onlineSearchBtn">🔎 Recherche en ligne</button></div>';body.querySelector('#onlineSearchBtn').onclick=async()=>{const b=body.querySelector('button');b.disabled=true;b.textContent='Recherche…';try{const d=await multiplayerDuelCall('search');__onlineDuelMatch=d.match||null;if(d.status==='waiting'){b.textContent='⏳ Adversaire recherché…';startOnlineDuelPoll()}else renderHallOfFame()}catch(e){alert(e.message);b.disabled=false;b.textContent='🔎 Recherche en ligne'}};return}
+  if(m.status==='waiting'){body.innerHTML='<div class="duel-result">⏳ Recherche d’un adversaire…</div><div class="team-actions" style="margin-top:8px"><button class="secondary" id="onlineCancelBtn">Annuler</button></div>';body.querySelector('#onlineCancelBtn').onclick=async()=>{await multiplayerDuelCall('cancel');__onlineDuelMatch=null;stopOnlineDuelPoll();renderHallOfFame()};startOnlineDuelPoll();return}
+  if(m.status==='matched'||m.status==='ready'){
+    const mine=m.player1_id===cloudUser.id?m.player1_champion:m.player2_champion;
+    if(!mine){const opts=champs.map(ch=>`<option value="${escapeHtml(ch.id)}">S${ch.season} — ${escapeHtml(roster[ch.id]?.name||ch.name||ch.id)}</option>`).join('');body.innerHTML=`<label class="muted">Champion<select id="onlineChampion" style="width:100%;margin-top:5px">${opts}</select></label><div class="team-actions" style="margin-top:8px"><button id="onlineChampionBtn">⚔️ Valider mon champion</button></div>`;body.querySelector('#onlineChampionBtn').onclick=async()=>{try{const d=await multiplayerDuelCall('select_champion',{gameId:cloudCurrentGame?.id,championId:body.querySelector('#onlineChampion').value});__onlineDuelMatch=d.match;renderHallOfFame();startOnlineDuelPoll()}catch(e){alert(e.message)}};return}
+    if(m.status==='ready'){body.innerHTML='<div class="duel-result">⚔️ Les deux champions sont prêts.</div><div class="team-actions" style="margin-top:8px"><button id="onlineResolveBtn">🎲 Simuler le combat</button></div>';body.querySelector('#onlineResolveBtn').onclick=async()=>{try{const d=await multiplayerDuelCall('resolve');__onlineDuelMatch=null;stopOnlineDuelPoll();if(d.battle)openCombatScene(d.battle,{[d.battle.a]:d.battle.characterA||{},[d.battle.b]:d.battle.characterB||{}});renderHallOfFame()}catch(e){alert(e.message)}};return}
+    body.innerHTML='<div class="duel-result">✓ Champion enregistré. En attente du champion adverse…</div>';startOnlineDuelPoll();
+  }
 }
 function renderDuelPanel(panel,champs,roster,meta){
   const old=panel.querySelector('.duel-panel');if(old)old.remove();
@@ -3492,15 +3563,16 @@ function renderDuelPanel(panel,champs,roster,meta){
   const opts=champs.map(ch=>`<option value="${escapeHtml(ch.id)}">S${ch.season} — ${escapeHtml(roster[ch.id]?.name||ch.name||ch.id)}</option>`).join('');
   box.innerHTML=`<div class="title">⚔️ Duel local 1 vs 1</div><div class="muted">Disponible à partir de S2 : choisis deux champions différents. Les paramètres du combat sont tirés aléatoirement avant la simulation.</div><div class="duel-grid"><label>Champion 1<select id="duelP1">${opts}</select></label><div class="duel-vs">VS</div><label>Champion 2<select id="duelP2">${opts}</select></label></div><div class="team-actions" style="margin-top:10px"><button id="duelFightBtn">⚔️ Lancer le duel local</button></div><div id="duelResult"></div>`;
   panel.appendChild(box);const p1=box.querySelector('#duelP1'),p2=box.querySelector('#duelP2');p2.selectedIndex=1;
-  box.querySelector('#duelFightBtn').onclick=()=>{if(p1.value===p2.value){alert('Choisis deux champions différents.');return}const battle=hallDuelBattle(p1.value,p2.value);if(!battle)return;const pa=Math.round(battle.probA*100),wc=roster[battle.winner]||{};box.querySelector('#duelResult').innerHTML=`<div class="duel-result"><b>${escapeHtml(battle.terrain)}</b> • ${escapeHtml(battle.distanceLabel)} (${battle.distance} m)<br>Chances : ${escapeHtml(battle.a)} ${pa}% • ${escapeHtml(battle.b)} ${100-pa}%<br>🏆 <b>${escapeHtml(battle.winner)} — ${escapeHtml(wc.name||'Sans nom')}</b></div>`};
+  box.querySelector('#duelFightBtn').onclick=()=>{if(p1.value===p2.value){alert('Choisis deux champions différents.');return}const battle=hallDuelBattle(p1.value,p2.value);if(!battle)return;const pa=Math.round(battle.probA*100),wc=roster[battle.winner]||{};box.querySelector('#duelResult').innerHTML=`<div class="duel-result"><b>${escapeHtml(battle.region)} — ${escapeHtml(battle.terrain)}</b> • ${escapeHtml(battle.distanceLabel)} (${battle.distance} m)<br>Chances : ${escapeHtml(battle.a)} ${pa}% • ${escapeHtml(battle.b)} ${100-pa}%<br>🏆 <b>${escapeHtml(battle.winner)} — ${escapeHtml(wc.name||'Sans nom')}</b><button type="button" class="secondary combat-view-btn">🎬 Voir le combat</button></div>`;box.querySelector('.combat-view-btn').onclick=()=>openCombatScene(battle,roster)};
 }
 function renderHallOfFame(){
   const root=document.getElementById('hallChampions'),panel=document.getElementById('championTeamPanel'),count=document.getElementById('hallCount');if(!root||!panel)return;
   const champs=championHistory(),roster=loadRoster(),meta=universeMeta();let draft=(meta.championTeamDraft?.length?meta.championTeamDraft:meta.championTeam||[]).filter(id=>champs.some(c=>c.id===id));count.textContent=`${champs.length} champion${champs.length>1?'s':''}`;
   const unlocked=champs.length>=5;
   panel.innerHTML=unlocked?`<div class="title">⚔️ Équipe des champions</div><div class="muted">Choisis exactement 5 champions. Tu pourras modifier cette équipe après chaque nouvelle saison.</div><div class="team-slots" id="teamSlots"></div><div class="team-actions"><button id="saveChampionTeamBtn" ${draft.length===5?'':'disabled'}>💾 Enregistrer l’équipe (${draft.length}/5)</button></div>`:`<div class="title">⚔️ Équipe des champions</div><div class="team-lock">🔒 Débloquée après l’obtention du champion de S5. Champions actuels : ${champs.length}/5.</div>`;
-  panel.insertAdjacentHTML('beforeend',`<div class="hall-stats"><span class="hall-stat">👥 Équipes : ${meta.multiplayerStats.teamWins} V / ${meta.multiplayerStats.teamLosses} D</span><span class="hall-stat">⚔️ Duels en ligne : ${meta.multiplayerStats.duelWins} V / ${meta.multiplayerStats.duelLosses} D</span></div>${multiplayerHistoryHtml(meta,'team')}${multiplayerHistoryHtml(meta,'duel')}`);
-  renderDuelPanel(panel,champs,roster,meta);
+  const onlineV=Number(__onlineDuelStats?.victories)||0,onlineD=Number(__onlineDuelStats?.defeats)||0;panel.insertAdjacentHTML('beforeend',`<div class="hall-stats"><span class="hall-stat">👥 Équipes : ${meta.multiplayerStats.teamWins} V / ${meta.multiplayerStats.teamLosses} D</span><span class="hall-stat">⚔️ Duels en ligne : ${onlineV} V / ${onlineD} D</span></div>${multiplayerHistoryHtml(meta,'team')}${onlineDuelHistoryHtml()}`);
+  panel.querySelectorAll('[data-online-history]').forEach(btn=>btn.onclick=()=>{const x=__onlineDuelStats?.recent_duels?.[Number(btn.dataset.onlineHistory)];if(x?.battle)openCombatScene(x.battle,{[x.battle.a]:x.battle.characterA||{},[x.battle.b]:x.battle.characterB||{}})});
+  renderDuelPanel(panel,champs,roster,meta);renderOnlineDuelPanel(panel,champs,roster);
   root.innerHTML=champs.length?'':'<div class="tournament-empty">Aucun champion pour le moment. Termine le tournoi d’une saison pour inaugurer le Hall of Fame.</div>';
   const drawSlots=()=>{const slots=document.getElementById('teamSlots');if(!slots)return;slots.innerHTML=Array.from({length:5},(_,i)=>{const id=draft[i],c=id?roster[id]:null;return `<div class="team-slot ${id?'filled':''}">${id?`<b>${escapeHtml(c?.name||id)}</b><small>${escapeHtml(id)}</small>`:`Place ${i+1}`}</div>`}).join('');const b=document.getElementById('saveChampionTeamBtn');if(b){b.disabled=draft.length!==5;b.textContent=`💾 Enregistrer l’équipe (${draft.length}/5)`}};
   if(unlocked)drawSlots();
