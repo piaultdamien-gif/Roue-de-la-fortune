@@ -3507,7 +3507,6 @@ function ensureTournamentChampion(t){
     meta.champions[String(t.season)]={id:championId,name:roster[championId]?.name||old?.name||'Sans nom',season:Number(t.season),wonAt:old?.wonAt||new Date().toISOString()};
     saveUniverseMeta(meta);
     if(typeof queueCloudGameStateSave==='function')queueCloudGameStateSave();
-    setTimeout(()=>ensureChampionPortrait(championId,t.season).catch(console.error),250);
   }
   return championId;
 }
@@ -3615,6 +3614,42 @@ function championHistory(){
   return Object.values(m.champions||{}).filter(x=>x?.id).map(x=>({...x,name:r[x.id]?.name||x.name||'Sans nom'})).sort((a,b)=>Number(a.season)-Number(b.season));
 }
 async function hallPortrait(el,id){try{const f=await getIllustration(id);if(!f)return;const u=URL.createObjectURL(f),img=document.createElement('img');img.src=u;img.onload=()=>URL.revokeObjectURL(u);el.replaceChildren(img)}catch(e){}}
+async function hallChampionPortrait(el,id){
+  try{
+    const c=loadRoster()[id];
+    const path=c?.imageGeneration?.championPath;
+    if(path){
+      const f=await cloudDownloadPortraitPath(path);
+      if(f){const u=URL.createObjectURL(f),img=document.createElement('img');img.src=u;img.onload=()=>URL.revokeObjectURL(u);el.replaceChildren(img);return}
+    }
+    await hallPortrait(el,id);
+  }catch(e){await hallPortrait(el,id)}
+}
+const CHAMPION_REGEN_INTERVAL_MS=7*24*60*60*1000;
+function championRegenState(c){
+  const raw=c?.imageGeneration?.championGeneratedAt;
+  if(!raw)return {allowed:true,remaining:0};
+  const last=new Date(raw).getTime();
+  if(!Number.isFinite(last))return {allowed:true,remaining:0};
+  const remaining=Math.max(0,CHAMPION_REGEN_INTERVAL_MS-(Date.now()-last));
+  return {allowed:remaining<=0,remaining};
+}
+function championRegenLabel(ms){
+  const days=Math.floor(ms/86400000),hours=Math.ceil((ms%86400000)/3600000);
+  if(days>0)return `${days} j ${hours} h`;
+  return `${Math.max(1,hours)} h`;
+}
+async function generateChampionPortraitFromHall(id,season,button){
+  const c=loadRoster()[id];if(!c)return;
+  const already=!!c?.imageGeneration?.championPath;
+  const state=championRegenState(c);
+  if(already&&!state.allowed){alert(`La prochaine régénération 9B sera disponible dans ${championRegenLabel(state.remaining)}.`);return}
+  const action=already?'Régénérer':'Générer';
+  if(!confirm(`${action} le portrait Champion 9B de ${c.name||id} ?${already?'\n\nUne seule régénération Champion est autorisée tous les 7 jours.':''}`))return;
+  if(button){button.disabled=true;button.textContent='🏆 Génération 9B en cours…'}
+  const ok=await invokeCharacterImageGeneration(id,{champion:true,championSeason:season});
+  if(ok)renderHallOfFame();else if(button){button.disabled=false;button.textContent=`🏆 ${action} portrait Champion 9B`}
+}
 function saveChampionTeam(ids){const champs=new Set(championHistory().map(x=>x.id));ids=[...new Set(ids)].filter(id=>champs.has(id));if(ids.length!==5){alert('L’équipe doit contenir exactement 5 champions.');return false}const m=universeMeta();m.championTeam=ids;m.championTeamDraft=[];saveUniverseMeta(m);if(typeof queueCloudGameStateSave==='function')queueCloudGameStateSave();renderHallOfFame();return true}
 let __combatSceneUrls=[];
 function closeCombatScene(){
@@ -3714,7 +3749,7 @@ function renderHallOfFame(){
   root.innerHTML=champs.length?'':'<div class="tournament-empty">Aucun champion pour le moment. Termine le tournoi d’une saison pour inaugurer le Hall of Fame.</div>';
   const drawSlots=()=>{const slots=document.getElementById('teamSlots');if(!slots)return;slots.innerHTML=Array.from({length:5},(_,i)=>{const id=draft[i],c=id?roster[id]:null;return `<div class="team-slot ${id?'filled':''}">${id?`<b>${escapeHtml(c?.name||id)}</b><small>${escapeHtml(id)}</small>`:`Place ${i+1}`}</div>`}).join('');const b=document.getElementById('saveChampionTeamBtn');if(b){b.disabled=draft.length!==5;b.textContent=`💾 Enregistrer l’équipe (${draft.length}/5)`}};
   if(unlocked)drawSlots();
-  champs.forEach(ch=>{const c=roster[ch.id]||{},card=document.createElement('article');card.className='champion-card'+(draft.includes(ch.id)?' selected':'');card.innerHTML=`<div class="champion-portrait"><span>🏆</span></div><div class="champion-meta"><strong>S${ch.season} — ${escapeHtml(c.name||ch.name||'Sans nom')}</strong><span class="muted">${escapeHtml(ch.id)}${c.race?' • '+escapeHtml(c.race):''}</span></div>${unlocked?`<button class="secondary champion-select">${draft.includes(ch.id)?'✓ Dans l’équipe':'＋ Ajouter à l’équipe'}</button>`:''}`;root.appendChild(card);hallPortrait(card.querySelector('.champion-portrait'),ch.id);if(unlocked)card.querySelector('.champion-select').onclick=()=>{if(draft.includes(ch.id))draft=draft.filter(x=>x!==ch.id);else if(draft.length<5)draft.push(ch.id);else{alert('L’équipe contient déjà 5 champions. Retire-en un avant d’en ajouter un autre.');return}renderHallOfFameDraft(draft)};});
+  champs.forEach(ch=>{const c=roster[ch.id]||{},card=document.createElement('article');card.className='champion-card'+(draft.includes(ch.id)?' selected':'');const hasChampionPortrait=!!c?.imageGeneration?.championPath,regen=championRegenState(c);const championImageButton=!hasChampionPortrait?`<button class="secondary champion-image-btn">🏆 Générer portrait Champion 9B</button>`:`<button class="secondary champion-image-btn" ${regen.allowed?'':'disabled'}>♻️ ${regen.allowed?'Régénérer portrait Champion 9B':`Disponible dans ${championRegenLabel(regen.remaining)}`}</button>`;card.innerHTML=`<div class="champion-portrait"><span>🏆</span></div><div class="champion-meta"><strong>S${ch.season} — ${escapeHtml(c.name||ch.name||'Sans nom')}</strong><span class="muted">${escapeHtml(ch.id)}${c.race?' • '+escapeHtml(c.race):''}</span></div>${championImageButton}${unlocked?`<button class="secondary champion-select">${draft.includes(ch.id)?'✓ Dans l’équipe':'＋ Ajouter à l’équipe'}</button>`:''}`;root.appendChild(card);hallChampionPortrait(card.querySelector('.champion-portrait'),ch.id);const imageBtn=card.querySelector('.champion-image-btn');if(imageBtn&&(!hasChampionPortrait||regen.allowed))imageBtn.onclick=()=>generateChampionPortraitFromHall(ch.id,ch.season,imageBtn);if(unlocked)card.querySelector('.champion-select').onclick=()=>{if(draft.includes(ch.id))draft=draft.filter(x=>x!==ch.id);else if(draft.length<5)draft.push(ch.id);else{alert('L’équipe contient déjà 5 champions. Retire-en un avant d’en ajouter un autre.');return}renderHallOfFameDraft(draft)};});
   function renderHallOfFameDraft(ids){meta.championTeamDraft=ids;saveUniverseMeta(meta);renderHallOfFame()}
   const save=document.getElementById('saveChampionTeamBtn');if(save)save.onclick=()=>saveChampionTeam(draft);
 }
@@ -4171,8 +4206,13 @@ async function invokeCharacterImageGeneration(characterId,{regenerate=false,cham
     const remote=await cloudDownloadPortraitPath(generatedPath);if(!remote)throw new Error('Image générée introuvable dans le Storage');
     if(champion){
       c.imageGeneration={...(c.imageGeneration||{}),championPath:generatedPath,championSeason:championSeason||null,championGeneratedAt:new Date().toISOString(),championModel:finalData?.model||'@cf/black-forest-labs/flux-2-klein-9b'};
+      // Le portrait Champion 9B devient aussi le portrait principal du personnage.
+      // On le met en cache local pour que la fiche et la liste l'affichent immédiatement,
+      // tout en conservant championPath comme source persistante dans le cloud.
+      const db=await openIllustrationDB();await new Promise((resolve,reject)=>{const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');tx.objectStore(ILLUSTRATION_STORE).put(remote,characterImageIdentity(characterId));tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)});
       const rr=loadRoster();rr[c.id]=JSON.parse(JSON.stringify(c));saveRoster(rr);if(typeof queueCloudCharacterSave==='function')queueCloudCharacterSave(c);
-      illustrationStatus(characterId,'🏆 Portrait champion 9B généré');
+      await refreshIllustrationFor(characterId);setTimeout(()=>refreshIllustrationThumbsFor(characterId),0);
+      illustrationStatus(characterId,'🏆 Portrait champion 9B généré et défini comme portrait principal');
       return true;
     }
     const db=await openIllustrationDB();await new Promise((resolve,reject)=>{const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');tx.objectStore(ILLUSTRATION_STORE).put(remote,characterImageIdentity(characterId));tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)});
@@ -4222,6 +4262,8 @@ function cloudImagePath(characterId){return `${cloudUser.id}/${cloudCurrentGame.
 async function cloudUploadIllustration(characterId,file){if(!cloudReady()||!file)return;const {error}=await cloudClient.storage.from('character-images').upload(cloudImagePath(characterId),file,{upsert:true,contentType:file.type||'application/octet-stream'});if(error)cloudSyncError(error)}
 async function cloudDownloadIllustration(characterId,generatedOnly=false){
   if(!cloudReady())return null;const c=loadRoster()[characterId];
+  // Un Champion utilise toujours son portrait 9B comme portrait principal.
+  if(c?.imageGeneration?.championPath){const b=await cloudDownloadPortraitPath(c.imageGeneration.championPath);if(b)return b}
   if(c?.imageGeneration?.selectedPortrait){const b=await cloudDownloadPortraitPath(c.imageGeneration.selectedPortrait);if(b)return b}
   const list=await cloudListGeneratedPortraits(characterId);if(list.length){const b=await cloudDownloadPortraitPath(list[list.length-1].path);if(b)return b}
   if(generatedOnly)return null;const r=await cloudClient.storage.from('character-images').download(cloudImagePath(characterId));return (!r.error&&r.data)?r.data:null
