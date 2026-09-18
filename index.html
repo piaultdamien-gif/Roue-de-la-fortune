@@ -3427,16 +3427,31 @@ function tournamentSeason(){
   return complete[0]||1;
 }
 function loadTournament(){try{return JSON.parse(localStorage.getItem(TOURNAMENT_KEY)||'null')}catch(e){return null}}
-function saveTournament(t){
-  localStorage.setItem(TOURNAMENT_KEY,JSON.stringify(t));
-  if(typeof queueCloudTournamentSave==='function') queueCloudTournamentSave(t);
+function ensureTournamentChampion(t){
+  if(!t)return null;
+  const roster=loadRoster();
+  let championId=null;
   const last=t?.rounds?.[t.rounds.length-1];
-  if(last?.length===1){
-    const championId=last[0],roster=loadRoster(),meta=universeMeta();meta.champions??={};
-    meta.champions[String(t.season)]={id:championId,name:roster[championId]?.name||'Sans nom',season:Number(t.season),wonAt:new Date().toISOString()};saveUniverseMeta(meta);
+  if(last?.length===1) championId=last[0];
+  if(!championId && last?.length===2){
+    const ri=t.rounds.length-1;
+    championId=t.winners?.[`${ri}-0`]||t.battles?.[`${ri}-0`]?.winner||null;
+  }
+  if(!championId)return null;
+  const meta=universeMeta();meta.champions??={};
+  const old=meta.champions[String(t.season)];
+  if(!old||old.id!==championId){
+    meta.champions[String(t.season)]={id:championId,name:roster[championId]?.name||'Sans nom',season:Number(t.season),wonAt:old?.wonAt||new Date().toISOString()};
+    saveUniverseMeta(meta);
     if(typeof queueCloudGameStateSave==='function')queueCloudGameStateSave();
     setTimeout(()=>ensureChampionPortrait(championId,t.season).catch(console.error),250);
   }
+  return championId;
+}
+function saveTournament(t){
+  localStorage.setItem(TOURNAMENT_KEY,JSON.stringify(t));
+  if(typeof queueCloudTournamentSave==='function') queueCloudTournamentSave(t);
+  ensureTournamentChampion(t);
 }
 function shuffleTournament(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function createTournament(){
@@ -3505,16 +3520,37 @@ function drawTournamentConnectors(){
 function renderTournament(){
   const root=document.getElementById('tournamentRounds'),status=document.getElementById('tournamentStatus'),lab=document.getElementById('tournamentSeasonLabel');if(!root)return;
   const t=loadTournament(),roster=loadRoster(),season=t?.season||tournamentSeason();lab.textContent=`S${season}`;
-  if(!t){const n=Object.keys(roster).filter(id=>id.startsWith(`S${season}-`)).length;status.textContent=n>=64?'64 personnages disponibles : tu peux créer le tirage du tournoi.':`S${season} : ${n}/64 personnages.`;root.innerHTML='<div class="tournament-empty">Aucun tournoi créé.</div>';drawTournamentConnectors();return}
-  t.battles??={};t.deaths??=[];const first=t.rounds[0]||[];status.textContent=`S${t.season} • ${first.length} combattants • combats et progression sauvegardés automatiquement.`;root.innerHTML='';
-  t.rounds.forEach((round,ri)=>{const col=document.createElement('div');col.className='tournament-round';col.innerHTML=`<h3>${tournamentRoundName(ri)}</h3><div class="tournament-round-body"></div>`;const body=col.lastElementChild,slotHeight=Math.max(210,210*Math.pow(2,ri));for(let mi=0;mi<Math.ceil(round.length/2);mi++){const key=`${ri}-${mi}`,battle=t.battles[key],slot=document.createElement('div');slot.className='tournament-match-slot';slot.style.height=`${slotHeight}px`;const box=document.createElement('div');box.className='tournament-match';box.dataset.matchKey=key;[round[mi*2],round[mi*2+1]].filter(Boolean).forEach(id=>{const c=roster[id]||{},win=t.winners[key]===id,row=document.createElement('div');row.className='tournament-fighter'+(win?' winner':'')+(t.deaths.includes(id)?' battle-dead':'');row.innerHTML=`<span class="ph">⚔️</span><span><b>${id}</b><br>${c.name||'Sans nom'}</span>`;box.appendChild(row);tournamentPortrait(row.querySelector('.ph'),id)});
-    if(round[mi*2]&&round[mi*2+1]){const actions=document.createElement('div');actions.className='tournament-actions';actions.innerHTML=`<button type="button" class="smallbtn" ${battle?'disabled':''}>${battle?'✓ Combat simulé':'🎲 Simuler ce combat'}</button>`;if(!battle)actions.firstChild.onclick=()=>simulateTournamentBattle(ri,mi);box.appendChild(actions)}
-    if(battle){const rep=document.createElement('div');rep.className='battle-report';const wc=roster[battle.winner]||{};rep.innerHTML=`<div class="combat-summary-line"><div class="combat-summary-winner">🏆 <b>${battle.winner} — ${wc.name||'Sans nom'}</b>${battle.death?` <span title="Mort pendant le combat">☠️</span>`:''}</div><button type="button" class="secondary combat-view-btn">🎬 Voir</button></div>`;rep.querySelector('.combat-view-btn').onclick=()=>openCombatScene(battle,roster);box.appendChild(rep)}slot.appendChild(box);body.appendChild(slot)}root.appendChild(col)});
-  const last=t.rounds[t.rounds.length-1];if(last?.length===1){status.innerHTML=`🏆 Champion de S${t.season} : <b>${last[0]} — ${(roster[last[0]]||{}).name||'Sans nom'}</b>${t.deaths.length?` • ☠️ ${t.deaths.length} mort${t.deaths.length>1?'s':''}`:''}`}
-  requestAnimationFrame(()=>requestAnimationFrame(drawTournamentConnectors));
+  if(!t){const n=Object.keys(roster).filter(id=>id.startsWith(`S${season}-`)).length;status.textContent=n>=64?'64 personnages disponibles : tu peux créer le tirage du tournoi.':`S${season} : ${n}/64 personnages.`;root.innerHTML='<div class="tournament-empty">Aucun tournoi créé.</div>';return}
+  t.battles??={};t.deaths??=[];t.winners??={};
+  const championId=ensureTournamentChampion(t);
+  const currentRi=currentIncompleteTournamentRound(t);
+  const first=t.rounds[0]||[];
+  status.textContent=`S${t.season} • ${first.length} combattants • progression sauvegardée automatiquement.`;root.innerHTML='';
+  t.rounds.forEach((round,ri)=>{
+    if(!Array.isArray(round)||round.length<2)return;
+    const matches=Math.floor(round.length/2),resolved=Array.from({length:matches},(_,mi)=>!!t.winners[`${ri}-${mi}`]).filter(Boolean).length;
+    const col=document.createElement('div');col.className='tournament-round'+(resolved===matches?' complete-round':'')+(ri===currentRi?' current-round':'');
+    col.innerHTML=`<h3>${tournamentRoundName(ri)}</h3><div class="tournament-phase-summary">${resolved}/${matches} combat${matches>1?'s':''} terminé${resolved>1?'s':''}</div><div class="tournament-round-body"></div>`;
+    const body=col.querySelector('.tournament-round-body');
+    for(let mi=0;mi<matches;mi++){
+      const key=`${ri}-${mi}`,battle=t.battles[key],slot=document.createElement('div');slot.className='tournament-match-slot';
+      const box=document.createElement('div');box.className='tournament-match';box.dataset.matchKey=key;
+      [round[mi*2],round[mi*2+1]].filter(Boolean).forEach(id=>{const c=roster[id]||{},win=t.winners[key]===id,row=document.createElement('div');row.className='tournament-fighter'+(win?' winner':'')+(t.deaths.includes(id)?' battle-dead':'');row.innerHTML=`<span class="ph">⚔️</span><span><b>${escapeHtml(id)}</b><br>${escapeHtml(c.name||'Sans nom')}</span>`;box.appendChild(row);tournamentPortrait(row.querySelector('.ph'),id)});
+      const actions=document.createElement('div');actions.className='tournament-actions';actions.innerHTML=`<button type="button" class="smallbtn" ${battle?'disabled':''}>${battle?'✓ Terminé':'🎲 Simuler'}</button>`;if(!battle)actions.firstChild.onclick=()=>simulateTournamentBattle(ri,mi);box.appendChild(actions);
+      if(battle){const rep=document.createElement('div');rep.className='battle-report';const wc=roster[battle.winner]||{};rep.innerHTML=`<div class="combat-summary-line"><div class="combat-summary-winner">🏆 <b>${escapeHtml(battle.winner)} — ${escapeHtml(wc.name||'Sans nom')}</b>${battle.death?' <span title="Mort pendant le combat">☠️</span>':''}</div><button type="button" class="secondary combat-view-btn">🎬 Voir</button></div>`;rep.querySelector('.combat-view-btn').onclick=()=>openCombatScene(battle,roster);box.appendChild(rep)}
+      slot.appendChild(box);body.appendChild(slot);
+    }
+    root.appendChild(col);
+  });
+  if(championId){const c=roster[championId]||{};const banner=document.createElement('div');banner.className='tournament-champion-banner';banner.innerHTML=`🏆 <b>Champion de S${t.season} : ${escapeHtml(championId)} — ${escapeHtml(c.name||'Sans nom')}</b>${t.deaths.length?` • ☠️ ${t.deaths.length} mort${t.deaths.length>1?'s':''}`:''}`;root.appendChild(banner);status.innerHTML=`🏆 Champion de S${t.season} : <b>${escapeHtml(championId)} — ${escapeHtml(c.name||'Sans nom')}</b>`}
+  requestAnimationFrame(()=>{const target=root.querySelector('.current-round')||root.lastElementChild;if(target&&target.scrollIntoView&&!championId)target.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'})});
 }
 
-function championHistory(){const m=universeMeta(),r=loadRoster(),t=loadTournament(),last=t?.rounds?.[t.rounds.length-1];if(last?.length===1&&!m.champions?.[String(t.season)]){m.champions??={};m.champions[String(t.season)]={id:last[0],name:r[last[0]]?.name||'Sans nom',season:Number(t.season),wonAt:new Date().toISOString()};saveUniverseMeta(m);if(typeof queueCloudGameStateSave==='function')queueCloudGameStateSave()}return Object.values(m.champions||{}).filter(x=>x?.id).map(x=>({...x,name:r[x.id]?.name||x.name||'Sans nom'})).sort((a,b)=>Number(a.season)-Number(b.season))}
+function championHistory(){
+  const t=loadTournament();if(t)ensureTournamentChampion(t);
+  const m=universeMeta(),r=loadRoster();
+  return Object.values(m.champions||{}).filter(x=>x?.id).map(x=>({...x,name:r[x.id]?.name||x.name||'Sans nom'})).sort((a,b)=>Number(a.season)-Number(b.season));
+}
 async function hallPortrait(el,id){try{const f=await getIllustration(id);if(!f)return;const u=URL.createObjectURL(f),img=document.createElement('img');img.src=u;img.onload=()=>URL.revokeObjectURL(u);el.replaceChildren(img)}catch(e){}}
 function saveChampionTeam(ids){const champs=new Set(championHistory().map(x=>x.id));ids=[...new Set(ids)].filter(id=>champs.has(id));if(ids.length!==5){alert('L’équipe doit contenir exactement 5 champions.');return false}const m=universeMeta();m.championTeam=ids;m.championTeamDraft=[];saveUniverseMeta(m);if(typeof queueCloudGameStateSave==='function')queueCloudGameStateSave();renderHallOfFame();return true}
 let __combatSceneUrls=[];
@@ -3596,7 +3632,7 @@ function renderHallOfFame(){
   const champs=championHistory(),roster=loadRoster(),meta=universeMeta();let draft=(meta.championTeamDraft?.length?meta.championTeamDraft:meta.championTeam||[]).filter(id=>champs.some(c=>c.id===id));count.textContent=`${champs.length} champion${champs.length>1?'s':''}`;
   const unlocked=champs.length>=5;
   panel.innerHTML=unlocked?`<div class="title">⚔️ Équipe des champions</div><div class="muted">Choisis exactement 5 champions. Tu pourras modifier cette équipe après chaque nouvelle saison.</div><div class="team-slots" id="teamSlots"></div><div class="team-actions"><button id="saveChampionTeamBtn" ${draft.length===5?'':'disabled'}>💾 Enregistrer l’équipe (${draft.length}/5)</button></div>`:`<div class="title">⚔️ Équipe des champions</div><div class="team-lock">🔒 Débloquée après l’obtention du champion de S5. Champions actuels : ${champs.length}/5.</div>`;
-  const onlineV=Number(__onlineDuelStats?.victories)||0,onlineD=Number(__onlineDuelStats?.defeats)||0;panel.insertAdjacentHTML('beforeend',`<div class="hall-stats"><span class="hall-stat">👥 Équipes : ${meta.multiplayerStats.teamWins} V / ${meta.multiplayerStats.teamLosses} D</span><span class="hall-stat">⚔️ Duels en ligne : ${onlineV} V / ${onlineD} D</span></div>${multiplayerHistoryHtml(meta,'team')}${onlineDuelHistoryHtml()}`);
+  const onlineV=Number(__onlineDuelStats?.victories)||0,onlineD=Number(__onlineDuelStats?.defeats)||0;let teamHist='',onlineHist='';try{teamHist=multiplayerHistoryHtml(meta,'team')}catch(e){console.warn('Historique équipe',e)}try{onlineHist=onlineDuelHistoryHtml()}catch(e){console.warn('Historique duel',e)}panel.insertAdjacentHTML('beforeend',`<div class="hall-stats"><span class="hall-stat">👥 Équipes : ${meta.multiplayerStats.teamWins} V / ${meta.multiplayerStats.teamLosses} D</span><span class="hall-stat">⚔️ Duels en ligne : ${onlineV} V / ${onlineD} D</span></div>${teamHist}${onlineHist}`);
   panel.querySelectorAll('[data-online-history]').forEach(btn=>btn.onclick=()=>{const x=__onlineDuelStats?.recent_duels?.[Number(btn.dataset.onlineHistory)];if(x?.battle)openCombatScene(x.battle,{[x.battle.a]:x.battle.characterA||{},[x.battle.b]:x.battle.characterB||{}})});
   renderDuelPanel(panel,champs,roster,meta);renderOnlineDuelPanel(panel,champs,roster);
   root.innerHTML=champs.length?'':'<div class="tournament-empty">Aucun champion pour le moment. Termine le tournoi d’une saison pour inaugurer le Hall of Fame.</div>';
@@ -4184,3 +4220,21 @@ document.querySelectorAll('[data-region-map]').forEach(initVaeloriaRegionMap);
   window.addEventListener('resize',apply);
 })();
 </script></body></html>
+
+<style id="tournament-compact-fix">
+/* Tournoi compact : chaque phase reste lisible et la finale reste toujours accessible. */
+.tournament-tree-wrap{overflow-x:auto!important;overflow-y:visible!important;padding:8px 4px 24px!important}
+.tournament-rounds{display:flex!important;gap:14px!important;align-items:flex-start!important;min-width:max-content!important;padding:8px 8px 20px!important}
+.tournament-round{width:min(82vw,300px)!important;min-width:min(82vw,300px)!important;flex:0 0 auto!important;border:1px solid #3d2b34;border-radius:14px;background:#0b080c;padding:10px!important}
+.tournament-round.current-round{border-color:#8f5b72;box-shadow:0 0 0 1px #5b3448,0 10px 28px #0008}
+.tournament-round.complete-round{opacity:.82}
+.tournament-round h3{position:sticky;top:0;background:#0b080cee;z-index:3;margin:0 0 8px;padding:7px 4px;border-bottom:1px solid #3d2b34}
+.tournament-round-body{display:grid!important;gap:9px!important}
+.tournament-match-slot{height:auto!important;min-height:0!important;display:block!important}
+.tournament-match{margin:0!important}
+.tournament-connectors{display:none!important}
+.tournament-phase-summary{font-size:11px;color:#a998a2;text-align:center;margin:-3px 0 8px}
+.tournament-champion-banner{margin:12px 0 4px;padding:12px;border:1px solid #8a603f;border-radius:12px;background:linear-gradient(135deg,#1b1015,#0b080c);text-align:center;color:#ead3a0}
+.duel-panel{display:block!important;min-height:0!important}
+@media(max-width:700px){.tournament-round{width:86vw!important;min-width:86vw!important}.tournament-rounds{gap:10px!important}}
+</style>
