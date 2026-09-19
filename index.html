@@ -2658,6 +2658,7 @@ function renderRoster(){
           <span class="compact-roster-separator">—</span>
           <span class="compact-roster-name">${s.name||'Sans nom'}</span>
         </div>
+        ${s.descendantSourceId?'<span class="compact-roster-kind">Descendant</span>':''}
       </div>`;
     }).join('');
     const usedNumbers=new Set(g.fighters.map(id=>Number(id.match(/-(\d+)$/)?.[1])).filter(Number.isFinite));
