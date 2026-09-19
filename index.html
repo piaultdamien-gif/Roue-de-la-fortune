@@ -3916,7 +3916,9 @@ const RACE_CODEX_LORE={
  'Démon':{origin:'Peuple natif de Nharak.',development:'Le terme ne détermine ni sa morale ni ses pouvoirs.',geography:'Nharak est sa strate d’origine.',biology:'À développer.'},
  'Ange':{origin:'Peuple natif d’Elyrion, distinct des Divinités.',development:'Les Anges ne sont pas nécessairement au service des Divinités.',geography:'Elyrion est sa strate d’origine.',biology:'À développer.'},
  'Esprit':{origin:'Être d’origine naturelle ou issu de la persistance spirituelle d’une race.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
- 'Dragon humanoïde':{origin:'Ancienne espèce draconique biologique.',development:'À développer.',geography:'Adaptée aux trois strates.',biology:'À développer.'},
+ 'Dragon humanoïde':{origin:'Stade actuel le plus répandu de la lignée draconique de Vaeloria, descendant directement des Dragons originels.',development:'Forme draconique principalement humanoïde issue de la diversification progressive des anciennes lignées de Dragons originels.',geography:'Adaptée aux trois strates de Vaeloria.',biology:'Morphologie principalement humanoïde pouvant conserver des caractères draconiques variables : écailles, cornes, queue, ailes, yeux, griffes, crocs et souffle draconique.'},
+ 'Dragon originel':{origin:'Ancien stade supérieur de la lignée draconique de Vaeloria, descendant des Dragons ancestraux et ancêtre direct des Dragons humanoïdes.',development:'À développer.',geography:'À développer.',biology:'Véritable dragon entièrement non humanoïde à six membres : quatre pattes et deux ailes. Plus grand, ancien et puissant que le Dragon humanoïde ; son organisme manifeste une énergie primordiale liée à son affinité.'},
+ 'Dragon ancestral':{origin:'Forme la plus ancienne de la lignée draconique, native de Vaeloria et issue des forces primordiales du monde. Les Dragons ancestraux sont à l’origine des Dragons originels, dont descendent ensuite les Dragons humanoïdes.',development:'Êtres conscients d’une intelligence exceptionnelle et d’une longévité immense. Ils appartiennent aux plus anciennes formes de vie conscientes de Vaeloria. Leur taille, leurs plaques et leur énergie primordiale continuent de se renforcer au cours de leur très longue existence.',geography:'Exceptionnellement rares à l’époque actuelle, mais non éteints. Quelques individus très anciens subsistent dans des régions difficiles d’accès des trois strates. Leur affinité peut influencer leur habitat ; l’individu de référence à affinité ténébreuse vit dans les terres orageuses de Thoryndra, à Elyrion.',biology:'Véritables dragons entièrement non humanoïdes à six membres : quatre pattes et deux ailes, avec longue queue, corps colossal, cou robuste et immense envergure. Leurs très anciennes écailles s’épaississent avec l’âge et certaines deviennent des plaques minérales naturelles. Une énergie primordiale liée à l’affinité de chaque individu circule dans leur organisme et peut devenir visible entre les écailles. Écailles, cornes, yeux draconiques, crocs, griffes, queue, ailes, plaques, crêtes et manifestations d’affinité peuvent se transmettre séparément à leurs descendants.'},
  'Golem / Artificiel':{origin:'Race créée puis devenue autonome.',development:'Origine arcane, mécanique ou Nexus.',geography:'À développer.',biology:'Constitution variable selon son origine artificielle.'},
  'Extraterrestre':{origin:'Espèces venues d’autres mondes que Vaeloria, distinctes des Neoxus.',development:'À développer.',geography:'Présence sur Vaeloria variable selon les lignées.',biology:'Biologie extrêmement variable selon l’espèce.'},
  'Divinité / Demi-dieu':{origin:'Ensemble des Demi-dieux, Divinités et rares Dieux célestes.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
@@ -3925,52 +3927,24 @@ const RACE_CODEX_LORE={
  'Homme-bête':{origin:'Ensemble de lignées liées à des espèces animales réelles ou fantastiques.',development:'À développer.',geography:'À développer.',biology:'Variable selon l’espèce animale associée.'},
  'Hybride':{origin:'Descendance de deux véritables ascendances raciales.',development:'À développer.',geography:'À développer.',biology:'Combine des caractères issus de ses deux ascendances.'},
  'Cyborg':{origin:'Être biologique transformé par une intégration durable de technologie Nexus.',development:'À développer.',geography:'À développer.',biology:'Biologie d’origine complétée par des augmentations technologiques.'},
- 'N.E.X.U.S.':{origin:'Descendants vaeloriens ou lignées adaptées issues de l’héritage extraterrestre Neoxus.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
- 'Neoxus':{origin:'Peuple extraterrestre à l’origine de l’héritage Nexus présent notamment à Nexara.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
- 'Dragon ancestral / originel':{origin:'Rangs draconiques exceptionnellement anciens au sein de l’espèce des Dragons.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
- 'Titan primordial / fondateur':{origin:'Rangs titanesques liés aux forces physiques anciennes ou à la formation de Vaeloria.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
- 'Liche':{origin:'Forme exceptionnelle de non-vie pouvant émerger parmi les Squelettes.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
- 'Drakéon':{origin:'Descendance exceptionnelle issue d’une Divinité et d’un Dragon supérieur.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
- 'Nexaryx':{origin:'Descendance exceptionnelle issue d’un N.E.X.U.S. et d’un Dragon supérieur.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
- 'Tyrakhan':{origin:'Descendance exceptionnelle issue d’un Titan primordial et d’un Dragon supérieur.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
  'Deus Machina':{origin:'Descendance exceptionnelle issue d’une Divinité et d’un N.E.X.U.S.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
  'Titan céleste':{origin:'Descendance exceptionnelle issue d’une Divinité et d’un Titan primordial.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
  'Colosse Nexus':{origin:'Descendance exceptionnelle issue d’un N.E.X.U.S. et d’un Titan primordial.',development:'À développer.',geography:'À développer.',biology:'À développer.'}
 };
-const RACE_CODEX_FILES={
- 'Dragon humanoïde':'dragon','Golem / Artificiel':'artificiel','Divinité / Demi-dieu':'divinite','Homme-bête':'homme-bete','Loup-garou':'loup-garou',
- 'N.E.X.U.S.':'nexus','Neoxus':'neoxus','Dragon ancestral / originel':'dragon-ancestral-originel','Titan primordial / fondateur':'titan-primordial-fondateur','Liche':'liche',
- 'Deus Machina':'deus-machina','Titan céleste':'titan-celeste','Colosse Nexus':'colosse-nexus','Drakéon':'drakeon','Nexaryx':'nexaryx','Tyrakhan':'tyrakhan'
-};
+const RACE_CODEX_FILES={'Dragon humanoïde':'dragon','Dragon originel':'dragon-originel','Dragon ancestral':'dragon-ancestral','Golem / Artificiel':'artificiel','Divinité / Demi-dieu':'divinite','Homme-bête':'homme-bete','Loup-garou':'loup-garou','Deus Machina':'deus-machina','Titan céleste':'titan-celeste','Colosse Nexus':'colosse-nexus'};
 function raceCodexSlug(name){return RACE_CODEX_FILES[name]||String(name).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
 function raceCodexData(){
- // Le Codex est volontairement indépendant de la roue : cette liste n'ajoute aucune option tirable.
- const opts=raceOptions();
- const wheelSuperiorNames=['Divinité / Demi-dieu','Titan','Dragon humanoïde','Ange','Démon'];
- const wheelSuperior=new Set(wheelSuperiorNames);
- const common=opts.filter(o=>!wheelSuperior.has(o.label));
- const high=opts.filter(o=>wheelSuperior.has(o.label));
-
- // Formes/lignées supérieures connues du lore mais non sélectionnables directement sur la roue principale.
- const codexOnlySuperior=[
-  {label:'N.E.X.U.S.'},
-  {label:'Neoxus'},
-  {label:'Dragon ancestral / originel'},
-  {label:'Titan primordial / fondateur'},
-  {label:'Liche'}
- ];
-
- // Croisements supérieurs gérés par la logique de descendance existante.
+ const opts=raceOptions(); const total=opts.reduce((a,o)=>a+Number(o.weight||0),0)||100;
+ const superiorNames=['Divinité / Demi-dieu','Titan','Dragon humanoïde','Ange','Démon'];
+ const superior=new Set(superiorNames);
+ const common=opts.filter(o=>!superior.has(o.label));
+ const high=opts.filter(o=>superior.has(o.label));
+ // Entrées de Codex uniquement : elles ne sont jamais ajoutées à la roue des races.
+ const codexOnlyHigh=['Dragon originel','Dragon ancestral'];
+ codexOnlyHigh.forEach(label=>{if(!high.some(o=>o.label===label))high.push({label,weight:0,codexOnly:true})});
+ const pct=list=>list.reduce((a,o)=>a+Number(o.weight||0),0)/total*100;
  const crosses=Object.entries(typeof SPECIAL_CROSS==='object'?SPECIAL_CROSS:{}).map(([parents,name])=>({label:name,parents:parents.split('|')}));
-
- // Croisements supérieurs déjà établis dans le Codex, sans les rendre tirables sur la roue.
- const extraCrosses=[
-  {label:'Drakéon',parents:['Divinité','Dragon supérieur']},
-  {label:'Nexaryx',parents:['N.E.X.U.S.','Dragon supérieur']},
-  {label:'Tyrakhan',parents:['Titan primordial','Dragon supérieur']}
- ];
-
- return {common,high:[...high,...codexOnlySuperior],crosses:[...crosses,...extraCrosses]};
+ return {common,high,crosses,commonPct:pct(common),highPct:pct(high)};
 }
 function raceCodexTile(name,extra=''){
  const src=`assets/universe/races/${raceCodexSlug(name)}.webp`;
