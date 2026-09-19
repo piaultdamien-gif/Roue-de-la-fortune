@@ -181,6 +181,8 @@
 
 /* Univers — vues Vaeloria / Races + codex racial */
 .universe-subtabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 16px}.universe-subtab.active{border-color:#b88a4a!important;color:#f0d49a!important;box-shadow:0 0 0 1px rgba(214,179,106,.18)!important}.universe-subview{display:none}.universe-subview.active{display:block}.race-codex-head{margin:4px 0 18px}.race-codex-section{margin:0 0 24px}.race-codex-section-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 10px}.race-codex-section-title h3{margin:0}.race-codex-chance{font:700 .9rem system-ui,sans-serif;color:#d6b36a}.race-codex-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px}.race-codex-tile{padding:10px!important;min-height:166px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;background:linear-gradient(145deg,#19151b,#0d0b0f)!important;border:1px solid #503d40!important}.race-codex-tile:hover{border-color:#9d713a!important}.race-codex-icon{width:88px;height:88px;border-radius:50%;overflow:hidden;border:1px solid rgba(214,179,106,.38);background:#0b090c;display:grid;place-items:center}.race-codex-icon img{width:100%;height:100%;object-fit:cover;object-position:center 18%}.race-codex-icon span{font-size:28px}.race-codex-name{font-family:"Cinzel",Georgia,serif;font-weight:700;font-size:.88rem;line-height:1.25}.race-codex-detail{display:none;position:fixed;inset:0;z-index:10000;padding:clamp(14px,3vw,34px);background:rgba(5,4,7,.97);overflow:auto;overscroll-behavior:contain}.race-codex-detail.active{display:block}.race-detail-shell{position:relative;width:min(1180px,100%);min-height:calc(100vh - clamp(28px,6vw,68px));margin:0 auto;padding:clamp(16px,3vw,30px);border:1px solid #654840;border-radius:16px;background:linear-gradient(145deg,#181319,#0c0a0d);box-shadow:0 24px 70px #000}.race-detail-close{position:sticky;top:0;z-index:2;float:right;width:44px;height:44px;padding:0!important;border-radius:50%!important;font-size:24px;line-height:1;background:#1c141a!important}.race-detail-layout{clear:both;display:grid;grid-template-columns:minmax(240px,390px) 1fr;gap:clamp(18px,4vw,42px);align-items:start}.race-detail-portrait{aspect-ratio:2/3;border:1px solid rgba(214,179,106,.42);border-radius:12px;overflow:hidden;background:#09080b;display:grid;place-items:center}.race-detail-portrait img{width:100%;height:100%;object-fit:contain}.race-detail-portrait .vae-placeholder{height:100%;padding:18px;text-align:center}.race-detail-copy h2{margin-top:0}.race-detail-block{padding:9px 0;border-bottom:1px solid rgba(214,179,106,.14)}.race-detail-block:last-child{border:0}.race-detail-block h4{margin:0 0 4px;font-size:.9rem}.race-detail-block p{margin:0;line-height:1.55}.race-detail-missing{color:var(--muted);font-style:italic}@media(max-width:700px){.race-codex-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.race-codex-tile{min-height:145px}.race-codex-icon{width:74px;height:74px}.race-codex-detail{padding:10px}.race-detail-shell{min-height:calc(100vh - 20px);padding:14px}.race-detail-layout{grid-template-columns:1fr}.race-detail-portrait{max-width:360px;width:100%;margin:auto}}
+
+.race-codex-family{margin:18px 0 26px}.race-codex-family>h4{margin:0 0 10px;font-size:15px;letter-spacing:.04em;color:var(--muted,#aeb7c7)}
 </style>
 <style id="darkFantasyV181">
 :root{
@@ -3955,7 +3957,8 @@ function raceCodexData(){
  const superiorNames=['Divinité / Demi-dieu','Titan','Dragon humanoïde','Ange','Démon'];
  const superior=new Set(superiorNames);
  // Le choix combiné « Divinité / Demi-dieu » reste intact dans la roue, mais le Codex les affiche séparément.
- const common=opts.filter(o=>!superior.has(o.label));
+ // Cyborg appartient à la famille Nexus dans le Codex : il reste inchangé dans la roue, mais n'est plus affiché parmi les races communes.
+ const common=opts.filter(o=>!superior.has(o.label)&&o.label!=='Cyborg');
  const high=opts.filter(o=>superior.has(o.label)&&o.label!=='Divinité / Demi-dieu');
  // Entrées de Codex uniquement : elles ne sont jamais ajoutées à la roue des races.
  const codexOnlyHigh=['Demi-dieu','Divinité','Dieu céleste','Dragon originel','Dragon ancestral','Titan primordial','Titan fondateur','Cyborg','N.E.X.U.S.','Neoxus'];
@@ -3972,9 +3975,22 @@ function raceCodexTile(name,extra=''){
 function renderRaceCodex(){
  const root=document.getElementById('raceCodexGrid'); if(!root)return;
  const d=raceCodexData(), fmt=n=>`${Math.round(n*100)/100}%`;
+ const byName=new Map(d.high.map(o=>[o.label,o]));
+ // Une seule grille : on regroupe simplement les lignées par ordre d'apparition, sans sous-sections.
+ const orderedNames=[
+  'Demi-dieu','Divinité','Dieu céleste',
+  'Cyborg','N.E.X.U.S.','Neoxus',
+  'Titan','Titan primordial','Titan fondateur',
+  'Dragon humanoïde','Dragon originel','Dragon ancestral',
+  'Ange','Démon'
+ ];
+ const used=new Set(orderedNames);
+ const orderedHigh=orderedNames.filter(n=>byName.has(n)).map(n=>byName.get(n));
+ const otherHigh=d.high.filter(o=>!used.has(o.label));
+ const highTiles=[...orderedHigh,...otherHigh].map(o=>raceCodexTile(o.label)).join('');
  const crossTiles=d.crosses.map(x=>raceCodexTile(x.label,x.parents.join(' × '))).join('');
  const dragonCrossTiles=d.dragonCrosses.map(x=>raceCodexTile(x.label,`Dragon ancestral / originel × ${x.other}`)).join('');
- root.innerHTML=`<section class="race-codex-section"><div class="race-codex-section-title"><h3>✦ Races supérieures</h3></div><div class="race-codex-grid">${d.high.map(o=>raceCodexTile(o.label)).join('')}${crossTiles}${dragonCrossTiles}</div></section><section class="race-codex-section"><div class="race-codex-section-title"><h3>Races communes</h3></div><div class="race-codex-grid">${d.common.map(o=>raceCodexTile(o.label)).join('')}</div></section>`;
+ root.innerHTML=`<section class="race-codex-section"><div class="race-codex-section-title"><h3>✦ Races supérieures</h3></div><div class="race-codex-grid">${highTiles}${crossTiles}${dragonCrossTiles}</div></section><section class="race-codex-section"><div class="race-codex-section-title"><h3>Races communes</h3></div><div class="race-codex-grid">${d.common.map(o=>raceCodexTile(o.label)).join('')}</div></section>`;
  root.querySelectorAll('[data-race-codex]').forEach(b=>b.onclick=()=>openRaceCodex(b.dataset.raceCodex));
 }
 function openRaceCodex(name){
