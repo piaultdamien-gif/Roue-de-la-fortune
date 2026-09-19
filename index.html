@@ -3949,7 +3949,7 @@ function renderRaceCodex(){
  const root=document.getElementById('raceCodexGrid'); if(!root)return;
  const d=raceCodexData(), fmt=n=>`${Math.round(n*100)/100}%`;
  const crossTiles=d.crosses.map(x=>raceCodexTile(x.label,x.parents.join(' × '))).join('');
- root.innerHTML=`<section class="race-codex-section"><div class="race-codex-section-title"><h3>✦ Races supérieures</h3><span class="race-codex-chance">${fmt(d.highPct)} de chances sur la roue</span></div><div class="race-codex-grid">${d.high.map(o=>raceCodexTile(o.label)).join('')}${crossTiles}</div></section><section class="race-codex-section"><div class="race-codex-section-title"><h3>Races communes</h3><span class="race-codex-chance">${fmt(d.commonPct)} de chances sur la roue</span></div><div class="race-codex-grid">${d.common.map(o=>raceCodexTile(o.label)).join('')}</div></section>`;
+ root.innerHTML=`<section class="race-codex-section"><div class="race-codex-section-title"><h3>✦ Races supérieures</h3></div><div class="race-codex-grid">${d.high.map(o=>raceCodexTile(o.label)).join('')}${crossTiles}</div></section><section class="race-codex-section"><div class="race-codex-section-title"><h3>Races communes</h3></div><div class="race-codex-grid">${d.common.map(o=>raceCodexTile(o.label)).join('')}</div></section>`;
  root.querySelectorAll('[data-race-codex]').forEach(b=>b.onclick=()=>openRaceCodex(b.dataset.raceCodex));
 }
 function openRaceCodex(name){
