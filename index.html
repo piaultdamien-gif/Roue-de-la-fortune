@@ -3925,21 +3925,52 @@ const RACE_CODEX_LORE={
  'Homme-bête':{origin:'Ensemble de lignées liées à des espèces animales réelles ou fantastiques.',development:'À développer.',geography:'À développer.',biology:'Variable selon l’espèce animale associée.'},
  'Hybride':{origin:'Descendance de deux véritables ascendances raciales.',development:'À développer.',geography:'À développer.',biology:'Combine des caractères issus de ses deux ascendances.'},
  'Cyborg':{origin:'Être biologique transformé par une intégration durable de technologie Nexus.',development:'À développer.',geography:'À développer.',biology:'Biologie d’origine complétée par des augmentations technologiques.'},
+ 'N.E.X.U.S.':{origin:'Descendants vaeloriens ou lignées adaptées issues de l’héritage extraterrestre Neoxus.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
+ 'Neoxus':{origin:'Peuple extraterrestre à l’origine de l’héritage Nexus présent notamment à Nexara.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
+ 'Dragon ancestral / originel':{origin:'Rangs draconiques exceptionnellement anciens au sein de l’espèce des Dragons.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
+ 'Titan primordial / fondateur':{origin:'Rangs titanesques liés aux forces physiques anciennes ou à la formation de Vaeloria.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
+ 'Liche':{origin:'Forme exceptionnelle de non-vie pouvant émerger parmi les Squelettes.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
+ 'Drakéon':{origin:'Descendance exceptionnelle issue d’une Divinité et d’un Dragon supérieur.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
+ 'Nexaryx':{origin:'Descendance exceptionnelle issue d’un N.E.X.U.S. et d’un Dragon supérieur.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
+ 'Tyrakhan':{origin:'Descendance exceptionnelle issue d’un Titan primordial et d’un Dragon supérieur.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
  'Deus Machina':{origin:'Descendance exceptionnelle issue d’une Divinité et d’un N.E.X.U.S.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
  'Titan céleste':{origin:'Descendance exceptionnelle issue d’une Divinité et d’un Titan primordial.',development:'À développer.',geography:'À développer.',biology:'À développer.'},
  'Colosse Nexus':{origin:'Descendance exceptionnelle issue d’un N.E.X.U.S. et d’un Titan primordial.',development:'À développer.',geography:'À développer.',biology:'À développer.'}
 };
-const RACE_CODEX_FILES={'Dragon humanoïde':'dragon','Golem / Artificiel':'artificiel','Divinité / Demi-dieu':'divinite','Homme-bête':'homme-bete','Loup-garou':'loup-garou','Deus Machina':'deus-machina','Titan céleste':'titan-celeste','Colosse Nexus':'colosse-nexus'};
+const RACE_CODEX_FILES={
+ 'Dragon humanoïde':'dragon','Golem / Artificiel':'artificiel','Divinité / Demi-dieu':'divinite','Homme-bête':'homme-bete','Loup-garou':'loup-garou',
+ 'N.E.X.U.S.':'nexus','Neoxus':'neoxus','Dragon ancestral / originel':'dragon-ancestral-originel','Titan primordial / fondateur':'titan-primordial-fondateur','Liche':'liche',
+ 'Deus Machina':'deus-machina','Titan céleste':'titan-celeste','Colosse Nexus':'colosse-nexus','Drakéon':'drakeon','Nexaryx':'nexaryx','Tyrakhan':'tyrakhan'
+};
 function raceCodexSlug(name){return RACE_CODEX_FILES[name]||String(name).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
 function raceCodexData(){
- const opts=raceOptions(); const total=opts.reduce((a,o)=>a+Number(o.weight||0),0)||100;
- const superiorNames=['Divinité / Demi-dieu','Titan','Dragon humanoïde','Ange','Démon'];
- const superior=new Set(superiorNames);
- const common=opts.filter(o=>!superior.has(o.label));
- const high=opts.filter(o=>superior.has(o.label));
- const pct=list=>list.reduce((a,o)=>a+Number(o.weight||0),0)/total*100;
+ // Le Codex est volontairement indépendant de la roue : cette liste n'ajoute aucune option tirable.
+ const opts=raceOptions();
+ const wheelSuperiorNames=['Divinité / Demi-dieu','Titan','Dragon humanoïde','Ange','Démon'];
+ const wheelSuperior=new Set(wheelSuperiorNames);
+ const common=opts.filter(o=>!wheelSuperior.has(o.label));
+ const high=opts.filter(o=>wheelSuperior.has(o.label));
+
+ // Formes/lignées supérieures connues du lore mais non sélectionnables directement sur la roue principale.
+ const codexOnlySuperior=[
+  {label:'N.E.X.U.S.'},
+  {label:'Neoxus'},
+  {label:'Dragon ancestral / originel'},
+  {label:'Titan primordial / fondateur'},
+  {label:'Liche'}
+ ];
+
+ // Croisements supérieurs gérés par la logique de descendance existante.
  const crosses=Object.entries(typeof SPECIAL_CROSS==='object'?SPECIAL_CROSS:{}).map(([parents,name])=>({label:name,parents:parents.split('|')}));
- return {common,high,crosses,commonPct:pct(common),highPct:pct(high)};
+
+ // Croisements supérieurs déjà établis dans le Codex, sans les rendre tirables sur la roue.
+ const extraCrosses=[
+  {label:'Drakéon',parents:['Divinité','Dragon supérieur']},
+  {label:'Nexaryx',parents:['N.E.X.U.S.','Dragon supérieur']},
+  {label:'Tyrakhan',parents:['Titan primordial','Dragon supérieur']}
+ ];
+
+ return {common,high:[...high,...codexOnlySuperior],crosses:[...crosses,...extraCrosses]};
 }
 function raceCodexTile(name,extra=''){
  const src=`assets/universe/races/${raceCodexSlug(name)}.webp`;
