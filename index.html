@@ -3942,14 +3942,29 @@ const RACE_CODEX_LORE={
 const RACE_CODEX_FILES={'Dragon humanoïde':'dragon','Dragon originel':'dragon-originel','Dragon ancestral':'dragon-ancestral','Titan':'titan','Titan primordial':'titan-primordial','Titan fondateur':'titan-fondateur','Neoxus':'neoxus','N.E.X.U.S.':'nexus','Cyborg':'cyborg','Golem / Artificiel':'artificiel','Demi-dieu':'demi-dieu','Divinité':'divinite','Dieu céleste':'dieu-celeste','Homme-bête':'homme-bete','Loup-garou':'loup-garou','Deus Machina':'deus-machina','Titan céleste':'titan-celeste','Colosse Nexus':'colosse-nexus','Drakéon':'drakeon','Nexaryx':'nexaryx','Tyrakhan':'tyrakhan'};
 function raceCodexSlug(name){return RACE_CODEX_FILES[name]||String(name).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
 const DRAGON_CODEX_CROSSES=[
- {label:'Drakéon',other:'Divinité',ancestral:'Dragon ancestral',originel:'Dragon originel'},
- {label:'Nexaryx',other:'N.E.X.U.S.',ancestral:'Dragon ancestral',originel:'Dragon originel'},
- {label:'Tyrakhan',other:'Titan primordial',ancestral:'Dragon ancestral',originel:'Dragon originel'}
+ {label:'Drakéon',other:'Dieu céleste',ancestral:'Dragon ancestral',originel:'Dragon originel'},
+ {label:'Nexaryx',other:'Neoxus',ancestral:'Dragon ancestral',originel:'Dragon originel'},
+ {label:'Tyrakhan',other:'Titan fondateur',ancestral:'Dragon ancestral',originel:'Dragon originel'}
 ];
 const DRAGON_CROSS_CODEX_LORE={
- 'Drakéon':{origin:'Croisement draconique supérieur avec une lignée divine.',development:'Deux variantes sont reconnues selon la lignée draconique transmise : Dragon ancestral × Divinité et Dragon originel × Divinité.',geography:'À développer.',biology:'À développer.'},
- 'Nexaryx':{origin:'Croisement draconique supérieur avec une lignée N.E.X.U.S.',development:'Deux variantes sont reconnues selon la lignée draconique transmise : Dragon ancestral × N.E.X.U.S. et Dragon originel × N.E.X.U.S.',geography:'À développer.',biology:'À développer.'},
- 'Tyrakhan':{origin:'Croisement draconique supérieur avec une lignée de Titan primordial.',development:'Deux variantes sont reconnues selon la lignée draconique transmise : Dragon ancestral × Titan primordial et Dragon originel × Titan primordial.',geography:'À développer.',biology:'À développer.'}
+ 'Drakéon':{
+  origin:'Croisement supérieur entre une lignée draconique pure et la lignée d’un Dieu céleste. Deux formes existent : Dragon ancestral × Dieu céleste et Dragon originel × Dieu céleste.',
+  development:'Le Drakéon combine les caractères fondamentaux de sa lignée draconique avec les manifestations d’un domaine divin. La Roue divine et les marques liées au domaine se transforment pour s’intégrer à l’anatomie draconique. Les portraits représentatifs utilisent le domaine de la Mort, associé aux Ténèbres pour la forme ancestrale et au Son pour la forme originelle.',
+  geography:'Croisement exceptionnel pouvant apparaître dans les différentes strates selon l’origine de ses deux lignées parentales.',
+  biology:'La forme ancestrale conserve une morphologie draconique ailée et l’Incarnation primordiale de sa lignée ; la forme originelle conserve un corps serpentin sans ailes, quatre membres et la Domination primordiale. Les caractères divins se superposent à cette base sans effacer l’anatomie draconique.'
+ },
+ 'Nexaryx':{
+  origin:'Croisement supérieur entre une lignée draconique pure et un Neoxus. Deux formes existent : Dragon ancestral × Neoxus et Dragon originel × Neoxus.',
+  development:'Le Nexaryx demeure fondamentalement draconique, mais son organisme incorpore la biologie techno-organique Neoxus. Les structures technologiques ne sont pas une armure ajoutée : elles croissent avec le corps et font partie de ses tissus vivants.',
+  geography:'Croisement exceptionnel dont la présence dépend des lignées draconiques concernées et de l’héritage Neoxus présent sur Vaeloria.',
+  biology:'La forme ancestrale conserve quatre pattes, deux ailes et l’Incarnation primordiale ; la forme originelle conserve son long corps serpentin, quatre membres, aucune aile et la Domination primordiale. Des plaques techno-organiques sombres, des réseaux dorés vivants et d’autres caractères Neoxus peuvent parcourir leur organisme. Les portraits représentatifs conservent les Ténèbres pour l’ancestral et le Son pour l’originel.'
+ },
+ 'Tyrakhan':{
+  origin:'Croisement supérieur entre une lignée draconique pure et un Titan fondateur. Deux formes existent : Dragon ancestral × Titan fondateur et Dragon originel × Titan fondateur.',
+  development:'L’héritage du Titan fondateur pousse le gigantisme draconique à une échelle géographique de plusieurs kilomètres. Une biominéralisation extrême se développe avec l’âge et certaines zones stables du corps peuvent être colonisées naturellement par des écosystèmes.',
+  geography:'Croisement exceptionnel à l’échelle du monde. La forme ancestrale peut s’intégrer aux grands reliefs de Yndara, tandis que la forme originelle est capable de traverser l’immense espace aérien séparant Yndara d’Elyrion.',
+  biology:'Le Tyrakhan reste un véritable dragon vivant. La forme ancestrale conserve exactement quatre pattes, deux ailes et l’Incarnation primordiale ; la forme originelle conserve un corps serpentin, exactement quatre membres, aucune aile et la Domination primordiale. Toutes deux héritent de la biominéralisation extrême, de la Force tellurique et de l’Ancrage tellurique du Titan fondateur. Les portraits représentatifs conservent les Ténèbres pour l’ancestral et le Son pour l’originel.'
+ }
 };
 Object.assign(RACE_CODEX_LORE,DRAGON_CROSS_CODEX_LORE);
 function raceCodexData(){
