@@ -3984,8 +3984,16 @@ function raceCodexData(){
  return {common,high,crosses,dragonCrosses,commonPct:pct(common),highPct:pct(high)};
 }
 function raceCodexTile(name,extra=''){
+ const dragonCross=DRAGON_CODEX_CROSSES.find(x=>x.label===name);
+ const escaped=name.replace(/"/g,'&quot;');
+ if(dragonCross){
+  const slug=raceCodexSlug(name);
+  const ancestral=`assets/universe/races/${slug}-ancestral.webp`;
+  const originel=`assets/universe/races/${slug}-originel.webp`;
+  return `<button type="button" class="race-codex-tile secondary" data-race-codex="${escaped}"><span class="race-codex-icon" style="display:grid;grid-template-columns:1fr 1fr;overflow:hidden"><img src="${ancestral}" alt="${name} ancestral" style="width:100%;height:100%;object-fit:cover;min-width:0" onerror="this.style.display='none'"><img src="${originel}" alt="${name} originel" style="width:100%;height:100%;object-fit:cover;min-width:0" onerror="this.style.display='none'"></span><span class="race-codex-name">${name}</span>${extra?`<small class="muted">${extra}</small>`:''}</button>`;
+ }
  const src=`assets/universe/races/${raceCodexSlug(name)}.webp`;
- return `<button type="button" class="race-codex-tile secondary" data-race-codex="${name.replace(/"/g,'&quot;')}"><span class="race-codex-icon"><img src="${src}" alt="${name}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span style="display:none">🧬</span></span><span class="race-codex-name">${name}</span>${extra?`<small class="muted">${extra}</small>`:''}</button>`;
+ return `<button type="button" class="race-codex-tile secondary" data-race-codex="${escaped}"><span class="race-codex-icon"><img src="${src}" alt="${name}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span style="display:none">🧬</span></span><span class="race-codex-name">${name}</span>${extra?`<small class="muted">${extra}</small>`:''}</button>`;
 }
 function renderRaceCodex(){
  const root=document.getElementById('raceCodexGrid'); if(!root)return;
