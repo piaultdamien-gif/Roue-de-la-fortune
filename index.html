@@ -770,7 +770,7 @@ const REGION_RACE_AFF={
 'Aetherys':'N N D D D N D N D F N N D F N F D N D F N','Thoryndra':'N D N F N D N N D F F N D N F N D F N N N','Liorael':'N F D D N F N N F F F N D N D F D N N N D','Caelorn':'F N F N F N N N N N N F D N N N D N D N N',
 'Iskarya':'F F N N N N D N N N N F D N D N D N D N N','Kharadryn':'N D F D N D F N N F N N D F D D D F F N N','Sylvaeryn':'N F D N N F N N F F F N D D D N D N N N D','Avelorn':'F N N N N N D N N N N F D N D F D N D F N','Drakhenor':'N D N F F D N N N N F N N N D D F F F N N','Maelora':'N N D N F F N N F F F F D D D N N N N N D','Nexara':'F N N N F N D N D N N F N F F N N N D N F','Kaelora':'F N N N N N N N N F F F D N N N D F N N N','Vaerunn':'N N N N N N F N N F F N F N N N F F F N N',
 'Lumerys':'N N N N F F D N N F F F D N D N D F D N D','Kythera':'N N F N N N N N D F N N N F N N N F F N F',"Mor'Khal":'D D N N N D N F N F N F F N N D F F N F N','Varkhoryn':'N D F F F D F N N F N N F F D D F F F N N','Naeroth':'F N N N F N D N D F F F N N N D N F N N N'};
-const RACE_ORDER=races.slice();
+const RACE_ORDER=Object.keys(RACE_BASE_WEIGHTS);
 function affinityWeightsFor(region, labels, baseMap=RACE_BASE_WEIGHTS){const row=(REGION_RACE_AFF[region]||'').split(' ');const amap=Object.fromEntries(RACE_ORDER.map((r,i)=>[r,row[i]||'N']));return labels.map(r=>W(r,(baseMap[r]||1)*(AFF[amap[r]]||1)));}
 function raceOptions(excluded=[]){const labels=races.filter(r=>!excluded.includes(r));return affinityWeightsFor(state.birthRegion,labels);}
 const POWER_STAGE=[W('1–49 %',60),W('50–90 %',30),W('91–100 %',10)];
