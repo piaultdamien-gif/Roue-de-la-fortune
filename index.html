@@ -763,19 +763,59 @@ const listTab=document.getElementById('listTab');
 
 const W=(label,weight=1)=>({label,weight}); const EQ=a=>a.map(x=>W(x));
 
-// V8.1 — pondérations explicites utilisées par les roues dynamiques.
-function raceOptions(excluded=[]){
-  const rareWeights={
-    'Divinité / Demi-dieu':1,
-    'Titan':1,
-    'Dragon humanoïde':2,
-    'Ange':3,
-    'Démon':3
-  };
-  const ordinary=races.filter(r=>!(r in rareWeights));
-  const ordinaryWeight=90/ordinary.length;
-  return races.filter(r=>!excluded.includes(r)).map(r=>W(r, rareWeights[r] ?? ordinaryWeight));
-}
+// V9 — système racial régionalisé Vaeloria.
+const RACE_BASE_WEIGHTS={'Humain':15,'Elfe':9,'Nain':8,'Orc':8,'Gobelin':7,'Fée':6,'Géant':4,'Vampire':4,'Loup-garou':4,'Esprit':4,'Homme-bête':7,'Hybride':6,'Squelette':3,'Golem / Artificiel':2,'Extraterrestre':1.5,'Ange':1.5,'Démon':1.5,'Dragon humanoïde':1,'Titan':.75,'Demi-dieu':.75,'Cyborg':.5};
+const AFF={F:2,N:1,D:.4};
+const REGION_RACE_AFF={
+'Aetherys':'N N D D D N D N D F N N D F N F D N D F N','Thoryndra':'N D N F N D N N D F F N D N F N D F N N N','Liorael':'N F D D N F N N F F F N D N D F D N N N D','Caelorn':'F N F N F N N N N N N F D N N N D N D N N',
+'Iskarya':'F F N N N N D N N N N F D N D N D N D N N','Kharadryn':'N D F D N D F N N F N N D F D D D F F N N','Sylvaeryn':'N F D N N F N N F F F N D D D N D N N N D','Avelorn':'F N N N N N D N N N N F D N D F D N D F N','Drakhenor':'N D N F F D N N N N F N N N D D F F F N N','Maelora':'N N D N F F N N F F F F D D D N N N N N D','Nexara':'F N N N F N D N D N N F N F F N N N D N F','Kaelora':'F N N N N N N N N F F F D N N N D F N N N','Vaerunn':'N N N N N N F N N F F N F N N N F F F N N',
+'Lumerys':'N N N N F F D N N F F F D N D N D F D N D','Kythera':'N N F N N N N N D F N N N F N N N F F N F',"Mor'Khal":'D D N N N D N F N F N F F N N D F F N F N','Varkhoryn':'N D F F F D F N N F N N F F D D F F F N N','Naeroth':'F N N N F N D N D F F F N N N D N F N N N'};
+const RACE_ORDER=races.slice();
+function affinityWeightsFor(region, labels, baseMap=RACE_BASE_WEIGHTS){const row=(REGION_RACE_AFF[region]||'').split(' ');const amap=Object.fromEntries(RACE_ORDER.map((r,i)=>[r,row[i]||'N']));return labels.map(r=>W(r,(baseMap[r]||1)*(AFF[amap[r]]||1)));}
+function raceOptions(excluded=[]){const labels=races.filter(r=>!excluded.includes(r));return affinityWeightsFor(state.birthRegion,labels);}
+const POWER_STAGE=[W('1–49 %',60),W('50–90 %',30),W('91–100 %',10)];
+function powerExact(stage){if(stage.startsWith('1'))return 1+Math.floor(Math.random()*49);if(stage.startsWith('50'))return 50+Math.floor(Math.random()*41);return 91+Math.floor(Math.random()*10)}
+const RACIAL7={
+'Humain':[0,0,0,0,0,0,0],'Elfe':[0,-1,1,-1,1,1,1],'Nain':[1,1,0,2,-1,-1,1],'Orc':[1,2,-1,1,0,-1,1],'Gobelin':[0,-1,2,-1,1,0,1],'Fée':[-1,-2,1,-2,2,2,-1],'Géant':[1,3,-1,2,-2,-1,-1],
+'Vampire':[2,1,1,1,2,1,0],'Loup-garou':[2,2,-1,2,1,-1,-1],'Esprit':[-1,-2,1,2,1,3,-2],'Golem / Artificiel':[0,2,0,3,-2,-1,1],'Extraterrestre':[0,0,0,0,0,0,0],
+'Squelette':[0,-1,0,1,0,1,0],'Liche bonus':[1,0,2,1,0,3,0],'Ange':[1,0,1,1,1,2,0],'Archange bonus':[2,1,1,2,1,3,1],'Démon':[1,1,0,1,0,2,0],'Archdémon bonus':[2,2,1,2,1,3,0],
+'Demi-dieu':[1,1,1,1,1,2,0],'Divinité bonus':[1,1,1,1,1,2,0],'Dieu céleste bonus':[2,1,1,2,1,3,1],
+'Cyborg':[1,1,1,1,1,0,1],'N.E.X.U.S. bonus':[1,1,2,1,1,2,1],'Neoxus bonus':[2,1,2,2,2,2,1],
+'Titan':[1,3,-1,3,-2,0,-1],'Titan primordial bonus':[1,2,0,2,-1,2,0],'Titan fondateur bonus':[1,3,1,3,-1,3,0],
+'Dragon humanoïde':[2,2,0,2,1,2,0],'Dragon éveillé bonus':[1,1,0,1,1,2,0],'Dragon ancestral final bonus':[2,2,1,2,1,3,0],'Dragon originel final bonus':[1,2,2,2,1,3,0],
+'Deus Machina':[5,3,6,5,4,7,3],'Titan céleste':[5,8,3,8,-2,7,0],'Colosse Nexus':[5,8,5,8,0,6,3],'Drakéon ancestral':[6,5,3,5,4,8,1],'Drakéon originel':[5,5,4,5,4,8,1],'Nexaryx ancestral':[6,5,5,5,5,7,3],'Nexaryx originel':[5,5,6,5,5,7,3],'Tyrakhan ancestral':[6,8,1,8,-1,7,0],'Tyrakhan originel':[5,8,2,8,-1,7,0]};
+const ART_ORIGIN7={'Arcane':[0,0,1,0,0,2,0],'Mécanique':[1,1,0,1,0,-1,1],'Nexus':[1,0,2,0,1,1,1]};
+const ART_BODY7={'Pierre':[0,1,0,1,-1,0,0],'Métal enchanté':[0,1,0,1,0,1,0],'Bois vivant':[0,0,0,0,1,1,0],'Cristal':[0,-1,1,0,0,1,0],'Glace':[0,0,0,0,1,1,0],'Matière organique artificielle':[1,0,0,0,1,0,0],'Métal':[0,1,0,1,-1,0,0],'Alliage léger':[0,-1,0,-1,1,0,1],'Céramique':[0,0,0,1,0,0,0],'Assemblage alchimique':[0,0,1,0,0,1,0],'Mécanisme composite':[1,0,1,0,0,0,1],'Matériau atypique':[0,0,0,0,0,1,0],'Alliage Nexus':[1,1,0,1,0,0,0],'Matière synthétique':[0,0,0,0,1,0,0],'Cristal technologique':[0,0,1,0,0,1,0],'Structure énergétique':[0,-1,0,-1,1,1,0],'Biomatière artificielle':[1,0,0,1,1,0,0],'Nanostructure':[1,0,1,0,1,0,1]};
+const ALIEN7={'Humanoïde':[0,0,0,0,0,0,0],'Insectoïde':[1,1,0,1,1,-1,0],'Reptilien':[1,1,0,1,0,0,0],'Cristallin':[0,0,1,2,-1,1,-1],'Énergétique':[0,-2,1,1,2,3,-2],'Amorphe':[-1,0,0,2,-1,1,-1],'Végétaloïde':[0,1,0,2,-1,1,0],'Aquatique':[0,0,0,1,1,0,0],'Aviaire':[1,-1,0,-1,2,0,0],'Unique':[0,0,0,0,0,0,0]};
+const BEAST_REAL=['Lion','Tigre','Loup','Renard','Ours','Sanglier','Taureau','Cheval','Cerf','Chèvre','Gorille','Singe','Éléphant','Rhinocéros','Crocodile','Serpent','Lézard','Tortue','Aigle','Hibou','Chauve-souris','Requin','Baleine','Poulpe','Scorpion','Araignée','Scarabée','Fourmi','Guépard','Papillon'];
+const BEAST_FANTASY=['Licorne','Pégase','Griffon','Phénix','Basilic','Cocatrix','Fenrir','Cerbère','Hydre','Manticore','Chimère','Minotaure','Kelpie','Kraken','Serpent de mer','Léviathan','Loup spectral','Kitsune','Tengu','Naga'];
+const BEAST_REAL_AFF={
+'Aetherys':'N N N N D D N N N N D D D D D N N N F F N D D D N N N N N N','Thoryndra':'D D F F F D N N D F D D D D D D D D F N D D D D D N D D D D','Liorael':'N F F F F F N F F N F F N N N F F N F F N D D D D F F F N F','Caelorn':'N N F F N N F F F F D D D D D N N N F F N D D D N N N N F N',
+'Iskarya':'N D F F F N N N F N D D D D D D D D F F D D D D D N N N D N','Kharadryn':'D D F F F N N N N F D D D D D D D D F N N D D D D N D D D D','Sylvaeryn':'N F F F F F N N F N F F N D N F N N N F F D D D D F F F D F','Avelorn':'F N N F N F F F F N D N F F N N N N N F N D D D D N N F F F','Drakhenor':'F N N N D N F F D F D D N F D F F D F N N D D D F F F F F D','Maelora':'N F N N N F N N N N F F F F F F F F N F F N N F F F F F N F','Nexara':'N N N N D N N N D N D N D D D N N N N N N D D D N N N N N N','Kaelora':'N N D N D N N N N N D N N N F F F F F N N F F F D N N N N N','Vaerunn':'F N F F F N F F N F D D N N D N N D F N F D D D F N N N F D',
+'Lumerys':'D F N F N F D D F N F F N N N F F N D F F D D D N F F F D F','Kythera':'D D N N F N N N D F D D D D D N F N N N F D D D F F F F D N',"Mor'Khal":'N N F F N N N N N N D D D D N F N N D F F D D D F F N N D N','Varkhoryn':'N D F N F N F N D F D D D N N F F D N N F D D D F F F F N D','Naeroth':'D D D D D D D D D D D D D D F N N F D D N F F F D N N N D N'};
+const BEAST_FANTASY_AFF={
+'Aetherys':'F F F F D D D D D D N D D D D D F F F D','Thoryndra':'D F F N D N F D F N N N N D D D F N F D','Liorael':'F F N N N N N D N D N D F D D D F F F F','Caelorn':'N F F N D N N D D F F N N D D D N N F N',
+'Iskarya':'F F F N D N F D D D N N F D D D F F F D','Kharadryn':'D F F D D D F D D D D F D D D D F D F D','Sylvaeryn':'F N N N N N F D F D N D F D D D F F F F','Avelorn':'F F N F D N D D N N N F F D D D N F N N','Drakhenor':'D N F F F F N F F F F F D D D D F D F F','Maelora':'F N N F F F D D F F F N F N N D N F N F','Nexara':'D N N N N N D N D N F N D D D D N N N N','Kaelora':'N F F N N N D D F N N N F F F F D N F F','Vaerunn':'D F F F F N F F N F F F D D D D F N F N',
+'Lumerys':'F N N N N N D D N N F D F D D D F F F F','Kythera':'N F F F F N N N N N F F N D D D F N F N',"Mor'Khal":'D D N N F F F F F F F N F N N N F F F F','Varkhoryn':'D N F F F F F F F F F F D D D D F N F F','Naeroth':'D D D D N D D D F D N D F F F F N N N F'};
+function beastSpeciesOptions(kind){let arr=kind==='Animal réel'?BEAST_REAL:BEAST_FANTASY,row=((kind==='Animal réel'?BEAST_REAL_AFF:BEAST_FANTASY_AFF)[state.birthRegion]||'').split(' ');return arr.map((x,i)=>W(x,AFF[row[i]||'N']))}
+
+const ALIEN_ENV_AFF={
+'Tempéré':'F N N N N N F N F N','Désertique':'N F F F N N D D N N','Glaciaire':'N D D F N N D N D N','Océanique':'D D F N D F N F D N','Jungle':'N F F D D F F F F N','Volcanique':'D N F F F F D D D N','Atmosphérique':'N N D N F N N D F N','Souterrain':'N F N F N F D D D N','Monde artificiel':'F N N F F N D D N N','Extrême':'N F F F F F D N N N'};
+const ALIEN_TYPES=['Humanoïde','Insectoïde','Reptilien','Cristallin','Énergétique','Amorphe','Végétaloïde','Aquatique','Aviaire','Unique'];
+function alienTypeOptions(env){let row=(ALIEN_ENV_AFF[env]||'').split(' ');return ALIEN_TYPES.map((x,i)=>W(x,AFF[row[i]||'N']))}
+const SPIRIT_ELEMENTS=['Eau','Terre','Air','Feu','Végétation','Glace','Foudre','Lumière','Ténèbres','Cristal / Minéral','Son'];
+const SPIRIT_BASE={'Eau':15,'Terre':15,'Air':13,'Feu':12,'Végétation':10,'Glace':8,'Foudre':7,'Lumière':6,'Ténèbres':6,'Cristal / Minéral':5,'Son':3};
+const SPIRIT_REGION_AFF={
+'Aetherys':'N N F N D N N F D F N','Thoryndra':'F F F N D F F N N F F','Liorael':'F N F D F D D F D N N','Caelorn':'N F F N N N N N N N F',
+'Iskarya':'N N N D N F N F D N N','Kharadryn':'N F F D D F N N N F N','Sylvaeryn':'F N N D F D N F N D F','Avelorn':'F N N N F D N F D N N','Drakhenor':'D F N F D D F D F F N','Maelora':'F N N N F D N F N D F','Nexara':'N N N N D D F N N F N','Kaelora':'F N F D F D F F D D F','Vaerunn':'N F F F D N F D F F N',
+'Lumerys':'N N N D F D N F N F N','Kythera':'N F D N D F N F N F F',"Mor'Khal":'N N D N D N N D F N F','Varkhoryn':'D F N F D N F D F F N','Naeroth':'F N N D N D F F N N F'};
+function spiritElementOptions(){let row=(SPIRIT_REGION_AFF[state.birthRegion]||'').split(' ');return SPIRIT_ELEMENTS.map((x,i)=>W(x,SPIRIT_BASE[x]*AFF[row[i]||'N']))}
+
+function add7(a,b){return a.map((x,i)=>x+(b?.[i]||0))} function ceilAvg7(a,b){return a.map((x,i)=>Math.ceil((x+(b?.[i]||0))/2))}
+function superiorProfile(base,pct,lineage){let v=[...RACIAL7[base]];if(pct>=50){if(base==='Demi-dieu')v=add7(v,RACIAL7['Divinité bonus']);if(base==='Cyborg')v=add7(v,RACIAL7['N.E.X.U.S. bonus']);if(base==='Titan')v=add7(v,RACIAL7['Titan primordial bonus']);if(base==='Dragon humanoïde')v=add7(v,RACIAL7['Dragon éveillé bonus']);}if(pct>90){if(base==='Demi-dieu')v=add7(v,RACIAL7['Dieu céleste bonus']);if(base==='Cyborg')v=add7(v,RACIAL7['Neoxus bonus']);if(base==='Titan')v=add7(v,RACIAL7['Titan fondateur bonus']);if(base==='Dragon humanoïde')v=add7(v,RACIAL7[lineage==='Originel'?'Dragon originel final bonus':'Dragon ancestral final bonus']);}return v}
+function componentProfile(c){if(!c)return [0,0,0,0,0,0,0];let r=c.race||c;if(typeof c==='string')return RACIAL7[c]||[0,0,0,0,0,0,0];if(r==='Hybride'&&c.compA&&c.compB){let cross=specialSuperiorCross(c.compA,c.compB);return cross?RACIAL7[cross]:ceilAvg7(componentProfile(c.compA),componentProfile(c.compB));}if(['Demi-dieu','Cyborg','Titan','Dragon humanoïde'].includes(r))return superiorProfile(r,c.power||1,c.dragonBlood);let v=[...(RACIAL7[r]||[0,0,0,0,0,0,0])];if(r==='Homme-bête'&&c.species){let b=beastMods[c.species]||[0,0,0,0,0];v=add7(v,[...b,beastPmr[c.species]||0,beastWmr[c.species]||0])}if(r==='Golem / Artificiel'){v=add7(v,ART_ORIGIN7[c.artificialOrigin]);v=add7(v,ART_BODY7[c.artificialBody])}if(r==='Extraterrestre')v=add7(v,ALIEN7[c.alienType]);if(r==='Ange'&&c.evolved)v=add7(v,RACIAL7['Archange bonus']);if(r==='Démon'&&c.evolved)v=add7(v,RACIAL7['Archdémon bonus']);return v}
+function specialSuperiorCross(a,b){if(!a||!b||!(a.power>90&&b.power>90))return null;let A=a.race,B=b.race,key=[A,B].sort().join('|'),dragon=[a,b].find(x=>x.race==='Dragon humanoïde');if(key==='Cyborg|Demi-dieu')return'Deus Machina';if(key==='Demi-dieu|Titan')return'Titan céleste';if(key==='Cyborg|Titan')return'Colosse Nexus';if(dragon){let other=a===dragon?b:a,suf=dragon.dragonBlood==='Originel'?'originel':'ancestral';if(other.race==='Demi-dieu')return`Drakéon ${suf}`;if(other.race==='Cyborg')return`Nexaryx ${suf}`;if(other.race==='Titan')return`Tyrakhan ${suf}`;}return null}
+function racialProfile7(){let L=state.lineage||{};if(state.race==='Hybride'&&L.hybridCompA&&L.hybridCompB){let cross=specialSuperiorCross(L.hybridCompA,L.hybridCompB);return cross?RACIAL7[cross]:ceilAvg7(componentProfile(L.hybridCompA),componentProfile(L.hybridCompB));}let base=L.primaryComponent?componentProfile(L.primaryComponent):componentProfile({race:(state.raceParts||[])[0]||state.race});if(['Vampire','Loup-garou','Esprit','Squelette','Liche'].includes((state.raceParts||[])[0])){let status=(state.raceParts||[])[0];let o=L.originComponent?componentProfile(L.originComponent):[0,0,0,0,0,0,0];if(status==='Liche')return add7(add7(o,RACIAL7['Squelette']),RACIAL7['Liche bonus']);return add7(o,RACIAL7[status]||[0,0,0,0,0,0,0]);}return base;}
 
 function weaponContextMultiplier(name){
  let m=1, arch=(state.archParts||[]).join(' / '), culture=state.culture||'', region=state.birthRegion||'';
@@ -823,7 +863,7 @@ function rankLabel(n,type='stat'){n=Math.max(0,Math.floor(Number(n)||0));if(type
 function levelColor(n){n=Math.max(1,Math.floor(Number(n)||1));return levelColors[Math.min(20,n)-1];}
 const centered=[W('1 — Catastrophique',2),W('2 — Très faible',4),W('3 — Faible',8),W('4 — Médiocre',14),W('5 — Moyen',22),W('6 — Bon',22),W('7 — Excellent',14),W('8 — Exceptionnel',8),W('9 — Légendaire',4),W('10 — Monstrueux',2)];
 const intensity=[W('1 — Infime',2),W('2 — Très faible',4),W('3 — Faible',8),W('4 — Modérée',14),W('5 — Notable',22),W('6 — Forte',22),W('7 — Majeure',14),W('8 — Extrême',8),W('9 — Dévastatrice',4),W('10 — Phénoménale',2)];
-const races=['Humain','Elfe','Nain','Orc','Gobelin','Fée','Géant','Vampire','Loup-garou','Démon','Ange','Esprit','Dragon humanoïde','Golem / Artificiel','Extraterrestre','Divinité / Demi-dieu','Titan','Squelette','Homme-bête','Hybride','Cyborg'];
+const races=['Humain','Elfe','Nain','Orc','Gobelin','Fée','Géant','Vampire','Loup-garou','Esprit','Homme-bête','Hybride','Squelette','Golem / Artificiel','Extraterrestre','Ange','Démon','Dragon humanoïde','Titan','Demi-dieu','Cyborg'];
 const animals=['Lion','Tigre','Loup','Renard','Ours','Sanglier','Taureau','Cheval','Cerf','Chèvre','Gorille','Singe','Éléphant','Rhinocéros','Crocodile','Serpent','Lézard','Tortue','Aigle','Hibou','Chauve-souris','Requin','Baleine','Poulpe','Scorpion','Araignée','Scarabée','Fourmi','Guépard','Papillon','Animal fantastique'];
 const archs=['Guerrier','Berserker','Gardien','Assassin','Artiste martial','Tireur','Mage','Sorcier','Érudit','Ingénieur','Stratège','Soutien','Chasseur','Éclaireur','Commandant','Trickster','Slayer','Invocateur','Prodige','Inclassable'];
 const jobs=['Soldat','Mercenaire','Garde','Chasseur de primes','Assassin','Espion','Policier / Enquêteur','Forgeron','Ingénieur / Mécanicien','Scientifique','Médecin / Guérisseur','Alchimiste','Marchand','Voleur','Explorateur','Chasseur','Marin / Pirate','Pilote','Mineur','Agriculteur','Métier légendaire','Artiste','Cuisinier','Prêtre / Religieux','Enseignant / Érudit','Noble / Diplomate','Dirigeant','Criminel','Sans métier','Métier improbable'];
@@ -2798,15 +2838,8 @@ function vaeloriaPrimaryRace(){
  const parts=state.raceParts||[];
  return parts.find(x=>VAELORIA_BIRTH_WEIGHTS[x])||parts[0]||state.race||'';
 }
-function vaeloriaBirthStrataOptions(){
- const w=VAELORIA_BIRTH_WEIGHTS[vaeloriaPrimaryRace()]||[50,25,25];
- return [W('Yndara',w[0]),W('Elyrion',w[1]),W('Nharak',w[2])];
-}
-function vaeloriaRegionOptions(){
- const arr=VAELORIA_REGIONS[state.birthStratum]||VAELORIA_REGIONS.Yndara;
- const cradle=VAELORIA_CRADLES[vaeloriaPrimaryRace()];
- return arr.map(x=>W(x,cradle&&cradle[0]===x?cradle[1]:1));
-}
+function vaeloriaBirthStrataOptions(){return [W('Yndara',50),W('Elyrion',25),W('Nharak',25)];}
+function vaeloriaRegionOptions(){const arr=VAELORIA_REGIONS[state.birthStratum]||VAELORIA_REGIONS.Yndara;return EQ(arr);}
 function vaeloriaCultureOptions(){
  return EQ(VAELORIA_CULTURES[state.birthRegion]||['Locale','Cosmopolite','Itinérante']);
 }
@@ -2888,9 +2921,10 @@ function summonerSummaryHtml(s=state){
   return `<div class="box summoner-box"><b>🜲 Invocation</b><br>Race : <b>${q.race||'En attente'}</b><br>Nombre simultané : <b>${n}</b> <span class="muted">(maîtrise ${m})</span>${stats?`<br>Stats : ${stats}`:''}<br>Capacités raciales : ${(q.traits||[]).join(', ')||'—'}</div>`;
 }
 
-function activeArchs(){return state.archParts&&state.archParts.length?state.archParts:(state.arch?[state.arch]:[])} function modSum(){let s=[0,0,0,0,0];for(const p of state.raceParts){let m=mods[raceKey(p)]||beastMods[beastAnimal(p)];if(m)s=s.map((x,i)=>x+m[i])}for(const a of activeArchs()){let m=amods[a];if(m)s=s.map((x,i)=>x+m[i])}for(const pm of state.prodigeMods||[]){let i=statNames.indexOf(pm.stat);if(i>=0)s[i]+=pm.value}for(const em of state.extraStatMods||[]){let i=statNames.indexOf(em.stat);if(i>=0)s[i]+=em.value}if(state.race==='Extraterrestre'){for(const am of state.alienBiology?.mods||[]){let i=statNames.indexOf(am.stat);if(i>=0)s[i]+=am.value}}return s} function masteryMod(kind){let s=0;for(const p of state.raceParts){const a=beastAnimal(p);s+=(kind==='power'?(pmr[raceKey(p)]??beastPmr[a]):(wmr[raceKey(p)]??beastWmr[a]))||0;}for(const a of activeArchs())s+=(kind==='power'?pma[a]:wma[a])||0;if(state.race==='Extraterrestre')s+=alienStatModifierFor(kind==='power'?'Pouvoir':'Arme');return s}
-
-function statBreakdown(si){let arr=[];for(const p of state.raceParts){let m=mods[raceKey(p)]||beastMods[beastAnimal(p)];if(m&&m[si])arr.push({source:p,value:m[si]})}for(const a of activeArchs()){let m=amods[a];if(m&&m[si])arr.push({source:`Archétype ${a}`,value:m[si]})}for(const pm of state.prodigeMods||[]){if(statNames.indexOf(pm.stat)===si)arr.push({source:'Prodige',value:pm.value})}for(const em of state.extraStatMods||[]){if(statNames.indexOf(em.stat)===si)arr.push({source:em.source||'Extra',value:em.value})}if(state.race==='Extraterrestre'){for(const am of state.alienBiology?.mods||[]){if(statNames.indexOf(am.stat)===si)arr.push({source:'Adaptation extraterrestre',value:am.value})}}return arr}
+function activeArchs(){return state.archParts&&state.archParts.length?state.archParts:(state.arch?[state.arch]:[])}
+function modSum(){let rp=racialProfile7(),s=rp.slice(0,5);for(const a of activeArchs()){let m=amods[a];if(m)s=s.map((x,i)=>x+(m?.[i]||0))}for(const pm of state.prodigeMods||[]){let i=statNames.indexOf(pm.stat);if(i>=0)s[i]+=pm.value}for(const em of state.extraStatMods||[]){let i=statNames.indexOf(em.stat);if(i>=0)s[i]+=em.value}return s}
+function masteryMod(kind){let rp=racialProfile7(),s=kind==='power'?rp[5]:rp[6];for(const a of activeArchs())s+=(kind==='power'?pma[a]:wma[a])||0;return s}
+function statBreakdown(si){let arr=[],rp=racialProfile7();if(rp[si])arr.push({source:'Race / lignée',value:rp[si]});for(const a of activeArchs()){let m=amods[a];if(m&&m[si])arr.push({source:`Archétype ${a}`,value:m[si]})}for(const pm of state.prodigeMods||[]){if(statNames.indexOf(pm.stat)===si)arr.push({source:'Prodige',value:pm.value})}for(const em of state.extraStatMods||[]){if(statNames.indexOf(em.stat)===si)arr.push({source:em.source||'Extra',value:em.value})}return arr}
 function replaceUniquePower(idx,label){insert([task(`${label} — Manifestation unique`,EQ(uniquePowers),u=>state.powers[idx].name=u)])}
 function replaceUniqueWeapon(idx,label){insert([task(`${label} — Manifestation unique`,EQ(uniqueWeapons),u=>state.weapons[idx].name=u)])}
 function enchantTasks(w,label,n){let ts=[];for(let j=1;j<=n;j++)ts.push(task(`${label} — Enchantement ${j}`,vaeloriaEnchantOptions,e=>{if(e==='Enchantement unique')insert([task(`${label} — Enchantement unique ${j}`,EQ(uniqueEnchants),u=>w.ench.push(u))]);else w.ench.push(e)}));return ts}
@@ -3137,105 +3171,26 @@ function addLegendaryFamiliar(){let f={kind:'Familier légendaire',type:null,nam
 function addTransformation(){insert([task('Transformation — Type',EQ(transformationTypes),x=>{state.transformation={type:x,level:null,stats:[],bonus:0,trait:null};state.extraDetail.push({kind:'Transformation',ref:state.transformation});if(x==='Transformation improbable')insert([task('Transformation improbable — Manifestation',EQ(improbableTransformations),u=>state.transformation.type=u)]);if(x==='Transformation unique')insert([task('Transformation unique — Manifestation',EQ(uniqueTransformations),u=>state.transformation.type=u)])}),task('Transformation — Niveau',centered,x=>{state.transformation.level=valNum(x);state.transformation.bonus=transformationBonus(state.transformation.level)}),task('Transformation — Stat renforcée 1',EQ(statNames),x=>state.transformation.stats.push(x)),task('Transformation — Stat renforcée 2',()=>EQ(statNames.filter(s=>!state.transformation.stats.includes(s))),x=>state.transformation.stats.push(x)),task('Transformation — Trait temporaire',EQ(transformationTraits),x=>state.transformation.trait=x)])}
 function awakeningBonus(level){return level<=3?2:level<=6?3:level<=8?4:level===9?5:6}
 function addAwakening(){insert([task('Éveil — Niveau',centered,x=>{let level=valNum(x);state.awakening={level,primary:null,primaryBonus:awakeningBonus(level),secondary:null,secondaryBonus:level>=7?2:0,evolution:null};state.extraDetail.push({kind:'Éveil',ref:state.awakening})}),task('Éveil — Stat principale',EQ(statNames),x=>{state.awakening.primary=x;let follow=[];if(state.awakening.level>=7)follow.push(task('Éveil — Stat secondaire',()=>EQ(statNames.filter(s=>s!==state.awakening.primary)),y=>state.awakening.secondary=y));if(state.awakening.level===10)follow.push(task('Éveil — Évolution temporaire',EQ(awakeningEvolutions),y=>state.awakening.evolution=y));if(follow.length)insert(follow)})])}
-function addRaceResult(r,depth=0){
-state.lineage=state.lineage||{};
-const originPool=()=>raceOptions(['Vampire','Loup-garou','Squelette']);
-if(r==='Vampire'){
- state.raceParts.push('Vampire');updateRace();
- insert([
-  task('Vampire — Lignée',[W('Sanguine',18),W('Nocturne',18),W('Bestiale',18),W('Psychique',18),W('Spectrale',18),W('Ancienne',10)],x=>state.lineage.vampire=x),
-  task('Vampire — Acquisition',[W('Transformé',55),W('Né',35),W('Héritage dormant',10)],x=>state.lineage.vampireAcquisition=x),
-  task('Vampire — Race d’origine',originPool,x=>state.lineage.originRace=x)
- ]);return;
+function schedulePower(prefix,comp){insert([task(`${prefix} — Puissance`,POWER_STAGE,x=>{comp.power=powerExact(x);comp.powerBand=x})])}
+function scheduleComponentDetails(prefix,comp){let r=comp.race;
+ if(r==='Hybride'){insert([task(`${prefix} — Ascendance A`,()=>raceOptions(['Hybride','Vampire','Loup-garou','Esprit','Squelette']),x=>{let c=comp.compA={race:x};scheduleComponentDetails(`${prefix} A`,c)}),task(`${prefix} — Ascendance B`,()=>raceOptions(['Hybride','Vampire','Loup-garou','Esprit','Squelette']),x=>{let c=comp.compB={race:x};scheduleComponentDetails(`${prefix} B`,c)})]);return}
+ if(r==='Homme-bête'){insert([task(`${prefix} — Nature Homme-bête`,[W('Animal réel',75),W('Animal fantastique',25)],x=>{comp.beastNature=x;const real=['Lion','Tigre','Loup','Renard','Ours','Sanglier','Taureau','Cheval','Cerf','Chèvre','Gorille','Singe','Éléphant','Rhinocéros','Crocodile','Serpent','Lézard','Tortue','Aigle','Hibou','Chauve-souris','Requin','Baleine','Poulpe','Scorpion','Araignée','Scarabée','Fourmi','Guépard','Papillon'];const fantasy=['Licorne','Pégase','Griffon','Phénix','Basilic','Cocatrix','Fenrir','Cerbère','Hydre','Manticore','Chimère','Minotaure','Kelpie','Kraken','Serpent de mer','Léviathan','Loup spectral','Kitsune','Tengu','Naga'];insert([task(`${prefix} — Espèce`,()=>beastSpeciesOptions(x),v=>comp.species=v)])})]);return}
+ if(r==='Golem / Artificiel'){insert([task(`${prefix} — Origine artificielle`,[W('Arcane',40),W('Mécanique',35),W('Nexus',25)],x=>{comp.artificialOrigin=x;const c={Arcane:['Pierre','Métal enchanté','Bois vivant','Cristal','Glace','Matière organique artificielle'],'Mécanique':['Métal','Alliage léger','Céramique','Assemblage alchimique','Mécanisme composite','Matériau atypique'],Nexus:['Alliage Nexus','Matière synthétique','Cristal technologique','Structure énergétique','Biomatière artificielle','Nanostructure']};insert([task(`${prefix} — Constitution`,EQ(c[x]),v=>comp.artificialBody=v),task(`${prefix} — Éveil`,[W('À la création',60),W('Plus tard',40)],v=>comp.artificialAwakening=v)])})]);return}
+ if(r==='Extraterrestre'){const envs=['Tempéré','Désertique','Glaciaire','Océanique','Jungle','Volcanique','Atmosphérique','Souterrain','Monde artificiel','Extrême'];const types=['Humanoïde','Insectoïde','Reptilien','Cristallin','Énergétique','Amorphe','Végétaloïde','Aquatique','Aviaire','Unique'];insert([task(`${prefix} — Environnement natal`,EQ(envs),x=>comp.alienEnvironment=x),task(`${prefix} — Type biologique`,()=>alienTypeOptions(comp.alienEnvironment),x=>comp.alienType=x),task(`${prefix} — Présence`,[W('Récente',30),W('Depuis plusieurs générations',45),W('Ancienne',25)],x=>comp.alienPresence=x)]);return}
+ if(r==='Ange'){insert([task(`${prefix} — Évolution`,[W('Ange',90),W('Archange',10)],x=>comp.evolved=x==='Archange')]);return}
+ if(r==='Démon'){insert([task(`${prefix} — Évolution`,[W('Démon',90),W('Archdémon',10)],x=>comp.evolved=x==='Archdémon')]);return}
+ if(r==='Dragon humanoïde'){insert([task(`${prefix} — Lignée draconique`,[W('Ancestral',50),W('Originel',50)],x=>comp.dragonBlood=x),task(`${prefix} — Puissance`,POWER_STAGE,x=>{comp.power=powerExact(x);comp.powerBand=x})]);return}
+ if(['Demi-dieu','Cyborg','Titan'].includes(r)){schedulePower(prefix,comp);return}
 }
-if(r==='Loup-garou'){
- state.raceParts.push('Loup-garou');updateRace();
- insert([
-  task('Loup-garou — Lignée',[W('Lunaire',22),W('Sauvage',22),W('Prédatrice',22),W('Spirituelle',22),W('Primale',12)],x=>state.lineage.werewolf=x),
-  task('Loup-garou — Acquisition',[W('Transformé',55),W('Né',35),W('Héritage dormant',10)],x=>state.lineage.werewolfAcquisition=x),
-  task('Loup-garou — Race d’origine',originPool,x=>state.lineage.originRace=x)
- ]);return;
-}
-if(r==='Esprit'){
- state.raceParts.push('Esprit');updateRace();
- insert([task('Esprit — Origine',[W('Naturel',60),W('Racial',40)],x=>{state.lineage.spiritOrigin=x;
-  if(x==='Naturel')insert([task('Esprit — Essence',EQ(['Forêt','Montagne','Océan','Rivière','Tempête','Feu','Glace','Cristal','Ombre','Lumière']),v=>state.lineage.spiritEssence=v)]);
-  else insert([task('Esprit — Race d’origine',()=>raceOptions(['Esprit','Vampire','Loup-garou','Squelette']),v=>state.lineage.originRace=v)]);
- })]);return;
-}
-if(r==='Dragon humanoïde'){
- state.raceParts.push('Dragon humanoïde');updateRace();
- insert([
-  task('Dragon — Rang',[W('Humanoïde',85),W('Ancestral',12),W('Originel',3)],x=>state.lineage.dragonRank=x),
-  task('Dragon — Strate ancestrale',[W('Elyrion',1),W('Yndara',1),W('Nharak',1)],x=>{state.lineage.dragonStratum=x;
-   const pools={Elyrion:['Tempête','Haute atmosphère','Lumière','Pics célestes'],Yndara:['Volcanique','Forestière','Océanique','Glaciaire','Désertique','Montagneuse'],Nharak:['Magmatique','Cristalline','Abyssale','Cavernicole','Bioluminescente']};
-   insert([task('Dragon — Lignée',()=>EQ(pools[x]),v=>state.lineage.dragonLineage=v)]);
-  })
- ]);return;
-}
-if(r==='Golem / Artificiel'){
- state.raceParts.push('Golem / Artificiel');updateRace();
- insert([task('Artificiel — Origine',[W('Arcane',40),W('Mécanique',35),W('Nexus',25)],x=>{state.lineage.artificialOrigin=x;
-  const c={Arcane:['Pierre','Métal enchanté','Bois vivant','Cristal','Glace','Matière organique artificielle'],'Mécanique':['Métal','Alliage léger','Céramique','Assemblage alchimique','Mécanisme composite','Matériau atypique'],Nexus:['Alliage Nexus','Matière synthétique','Cristal technologique','Structure énergétique','Biomatière artificielle','Nanostructure']};
-  insert([task('Artificiel — Constitution',()=>EQ(c[x]),v=>state.lineage.artificialBody=v),task('Artificiel — Éveil',[W('À la création',60),W('Plus tard',40)],v=>state.lineage.artificialAwakening=v)]);
- })]);return;
-}
-if(r==='Extraterrestre'){
- state.raceParts.push('Extraterrestre');updateRace();
- state.alienBiology={trait:null,mods:[]};
- const types=['Humanoïde','Insectoïde','Reptilien','Cristallin','Énergétique','Amorphe','Végétaloïde','Aquatique','Aviaire','Unique'];
- const envs=['Tempéré','Désertique','Glaciaire','Océanique','Jungle','Volcanique','Atmosphérique','Souterrain','Monde artificiel','Extrême'];
- insert([
-  task('Extraterrestre — Type biologique',EQ(types),x=>{state.lineage.alienType=x;state.alienBiology.trait=x}),
-  task('Extraterrestre — Environnement natal',EQ(envs),x=>state.lineage.alienEnvironment=x),
-  task('Extraterrestre — Présence',[W('Récente',30),W('Depuis plusieurs générations',45),W('Ancienne',25)],x=>state.lineage.alienPresence=x)
- ]);return;
-}
-if(r==='Divinité / Demi-dieu'){
- insert([task('Divin — Rang',[W('Demi-dieu',70),W('Divinité',25),W('Dieu céleste',5)],x=>{state.raceParts.push(x);state.lineage.divineRank=x;updateRace();
-  const domains=['Guerre','Protection','Nature','Vie','Mort','Savoir','Magie','Justice','Liberté','Destin','Rêves','Océans','Terre','Ciel','Tempêtes','Feu','Lumière','Ténèbres','Temps','Espace'];
-  let f=[task('Divin — Domaine',EQ(domains),v=>state.lineage.divineDomain=v)];
-  if(x==='Demi-dieu')f.unshift(task('Demi-dieu — Ascendance',[W('Descendant de Divinité',45),W('Descendant de Dieu céleste',10),W('Manifestation mineure',20),W('Mortel élevé',25)],v=>state.lineage.divineAncestry=v));
-  insert(f);
- })]);return;
-}
-if(r==='Titan'){
- state.raceParts.push('Titan');updateRace();
- insert([task('Titan — Rang',[W('Titan',75),W('Titan primordial',20),W('Titan fondateur',5)],x=>{state.lineage.titanRank=x;
-  state.raceParts[state.raceParts.lastIndexOf('Titan')]=x;updateRace();
-  if(x==='Titan primordial')insert([task('Titan primordial — Origine',EQ(['Montagne','Océan','Forêt ancestrale','Désert','Glace','Tempête','Magma','Cristal','Profondeurs','Terre']),v=>state.lineage.titanOrigin=v)]);
- })]);return;
-}
-if(r==='Squelette'){
- state.raceParts.push('Squelette');updateRace();
- insert([
-  task('Squelette — Forme',[W('Squelette',95),W('Liche',5)],x=>{state.lineage.undeadForm=x;if(x==='Liche'){state.raceParts[state.raceParts.lastIndexOf('Squelette')]='Liche';updateRace()}}),
-  task('Squelette — Réanimation',EQ(['Accident','Rituel nécromantique','Malédiction','Phénomène mort-vivant','Artefact','Magie incontrôlée','Volontaire','Inconnue']),x=>state.lineage.reanimation=x),
-  task('Squelette — Race d’origine',originPool,x=>state.lineage.originRace=x)
- ]);return;
-}
-if(r==='Homme-bête'){
- state.raceParts.push('Homme-bête');updateRace();
- const real=['Lion','Tigre','Loup','Renard','Ours','Sanglier','Taureau','Cheval','Cerf','Chèvre','Gorille','Singe','Éléphant','Rhinocéros','Crocodile','Serpent','Lézard','Tortue','Aigle','Hibou','Chauve-souris','Requin','Baleine','Poulpe','Scorpion','Araignée','Scarabée','Fourmi','Guépard','Papillon'];
- const fantasy=['Licorne','Pégase','Griffon','Phénix','Basilic','Cocatrix','Fenrir','Cerbère','Hydre','Manticore','Chimère','Minotaure','Kelpie','Kraken','Serpent de mer','Léviathan','Loup spectral','Kitsune','Tengu','Naga'];
- insert([task('Homme-bête — Nature',[W('Animal réel',75),W('Animal fantastique',25)],x=>{state.lineage.beastNature=x;insert([task('Homme-bête — Espèce',()=>EQ(x==='Animal réel'?real:fantasy),v=>{state.lineage.beastSpecies=v;state.raceParts[state.raceParts.lastIndexOf('Homme-bête')]='Homme-bête '+v;updateRace()})])})]);return;
-}
-if(r==='Cyborg'){
- state.raceParts.push('Cyborg');updateRace();
- insert([
-  task('Cyborg — Race d’origine',()=>raceOptions(['Cyborg','Vampire','Loup-garou','Squelette']),x=>state.lineage.originRace=x),
-  task('Cyborg — Intégration Nexus',[W('Organique',35),W('Équilibré',45),W('Synthétique',20)],x=>state.lineage.nexusIntegration=x)
- ]);return;
-}
-if(r==='Hybride'){
- state.raceParts.push('Hybride');updateRace();
- insert([
-  task('Hybride — Ascendance A',()=>raceOptions(['Hybride','Vampire','Loup-garou','Squelette']),x=>state.lineage.hybridA=x),
-  task('Hybride — Ascendance B',()=>raceOptions(['Hybride','Vampire','Loup-garou','Squelette']).filter(o=>o.label!==state.lineage.hybridA),x=>state.lineage.hybridB=x),
-  task('Hybride — Type',[W('Direct',70),W('Stabilisé',30)],x=>{state.lineage.hybridType=x;state.raceParts=[state.lineage.hybridA,state.lineage.hybridB];updateRace()})
- ]);return;
-}
-state.raceParts.push(r);updateRace();
+function vampireWerewolfOriginOptions(){return raceOptions(['Squelette','Golem / Artificiel','Esprit','Vampire','Loup-garou'])}
+function spiritOriginRaceOptions(){return raceOptions(['Squelette','Golem / Artificiel','Esprit'])}
+function undeadOriginRaceOptions(){return raceOptions(['Squelette','Golem / Artificiel','Esprit','Vampire','Loup-garou'])}
+function addRaceResult(r,depth=0){state.lineage=state.lineage||{};
+ if(r==='Hybride'){state.raceParts=['Hybride'];state.race='Hybride';state.lineage.hybridCompA=null;state.lineage.hybridCompB=null;insert([task('Hybride — Ascendance A',()=>raceOptions(['Hybride','Vampire','Loup-garou','Esprit','Squelette']),x=>{let c=state.lineage.hybridCompA={race:x};state.lineage.hybridA=x;scheduleComponentDetails('Ascendance A',c)}),task('Hybride — Ascendance B',()=>raceOptions(['Hybride','Vampire','Loup-garou','Esprit','Squelette']),x=>{let c=state.lineage.hybridCompB={race:x};state.lineage.hybridB=x;scheduleComponentDetails('Ascendance B',c)})]);return}
+ if(['Vampire','Loup-garou'].includes(r)){state.raceParts=[r];updateRace();insert([task(`${r} — Race d’origine`,vampireWerewolfOriginOptions,x=>{let c=state.lineage.originComponent={race:x};state.lineage.originRace=x;scheduleComponentDetails(`${r} — Origine`,c)})]);return}
+ if(r==='Esprit'){state.raceParts=['Esprit'];updateRace();insert([task('Esprit — Origine',[W('Naturel',50),W('Race existante',50)],x=>{state.lineage.spiritOrigin=x;if(x==='Naturel'){insert([task('Esprit — Élément naturel',spiritElementOptions,v=>state.lineage.spiritEssence=v)])}else insert([task('Esprit — Race d’origine',spiritOriginRaceOptions,x=>{let c=state.lineage.originComponent={race:x};state.lineage.originRace=x;scheduleComponentDetails('Esprit — Origine raciale',c)})])})]);return}
+ if(r==='Squelette'){state.raceParts=['Squelette'];updateRace();insert([task('Squelette — Race d’origine',undeadOriginRaceOptions,x=>{let c=state.lineage.originComponent={race:x};state.lineage.originRace=x;scheduleComponentDetails('Squelette — Origine',c)}),task('Squelette — Réanimation',EQ(['Accident','Rituel nécromantique','Malédiction','Phénomène mort-vivant','Artefact','Magie incontrôlée','Volontaire','Inconnue']),x=>state.lineage.reanimation=x),task('Squelette — Forme',[W('Squelette',95),W('Liche',5)],x=>{state.lineage.undeadForm=x;state.raceParts=[x];updateRace()})]);return}
+ let comp=state.lineage.primaryComponent={race:r};state.raceParts=[r];updateRace();scheduleComponentDetails(r,comp);
 }
 function updateRace(){state.race=state.raceParts.join(' / ')}
 function sizeOptions(){
@@ -3500,9 +3455,9 @@ function vaeloriaColorOptions(exclude=null){
  return colors.filter(x=>x!==exclude).map(x=>W(x,score[x]||1));
 }
 
-function buildInitial(){queue=[task('Race',raceOptions(),x=>addRaceResult(x)),
-task('Strate de naissance',vaeloriaBirthStrataOptions,x=>state.birthStratum=x),
+function buildInitial(){queue=[task('Strate de naissance',vaeloriaBirthStrataOptions,x=>state.birthStratum=x),
 task('Région',vaeloriaRegionOptions,x=>state.birthRegion=x),
+task('Race',raceOptions,x=>addRaceResult(x)),
 task('Culture',vaeloriaCultureOptions,x=>state.culture=x),
 task('Genre',[W('Homme',45),W('Femme',45),W('Autre / indéterminé',10)],x=>state.gender=x),task('Taille',sizeOptions,x=>{let n=parseFloat(x);if(state._historySizeMultiplier)n=Math.round(n*state._historySizeMultiplier*100)/100;state.size=n+' m'}),task('Archétype',EQ(archs),x=>{state.arch=x;state.archParts=[x];if(x==='Inclassable')insert([task('Inclassable — Archétype A',EQ(archs.filter(a=>a!=='Inclassable')),a=>{state.archParts=[a];if(a==='Slayer')addSlayerTarget('Slayer');if(a==='Invocateur')beginSummonerInvocation()}),task('Inclassable — Archétype B',EQ(archs.filter(a=>a!=='Inclassable')),a=>{state.archParts.push(a);state.arch=`Inclassable (${state.archParts.join(' + ')})`;if(a==='Slayer')addSlayerTarget('Slayer');if(a==='Invocateur')beginSummonerInvocation()})]);else if(x==='Slayer')addSlayerTarget('Slayer');if(x==='Invocateur')beginSummonerInvocation();if(x==='Prodige')insert([task('Prodige — Stat majeure',EQ(statNames),a=>{state.prodigeMods=[{stat:a,value:4}]}),task('Prodige — Stat secondaire',()=>EQ(statNames.filter(s=>s!==state.prodigeMods[0]?.stat)),a=>state.prodigeMods.push({stat:a,value:2}))])}),task('Métier',vaeloriaJobOptions,x=>{state.job=x;if(x==='Métier improbable')insert([task('Métier improbable — Manifestation',EQ(improbableJobs),u=>state.job=u)]);else if(x==='Métier légendaire'){let j={kind:'Métier légendaire',name:null,ability:null};state.extraDetail.push(j);insert([task('Métier légendaire — Profession',EQ(legendaryJobs),v=>j.name=v),task('Métier légendaire — Capacité',EQ(legendaryJobAbilities),v=>{j.ability=v;if(v==='Capacité professionnelle unique')insert([task('Métier légendaire — Capacité unique',EQ(uniqueLegendaryJobAbilities),u=>j.ability=u)])}),task('Métier légendaire — Finalisation',[W('Inscrire le métier')],()=>state.job=j.name||'Métier légendaire')])}}),task('Nombre d’histoires',[W('1 histoire',90),W('2 histoires',10)],x=>{let n=x.startsWith('2')?2:1;let ts=[];for(let j=1;j<=n;j++)ts.push(task(`Histoire ${j}`,vaeloriaHistoryOptions,h=>{state.history.push(h);if(h==='Béni')addBlessing(`Histoire ${j}`);if(h==='Maudit')addCurse(`Histoire ${j}`);applyHistoryConsequence(h,j);if(h==='Histoire improbable')insert([task(`Histoire ${j} improbable — Manifestation`,EQ(improbableHistories),u=>{state.history[state.history.length-1]=u})]);if(h==='Histoire légendaire'){let hi=state.history.length-1;insert([task(`Histoire ${j} légendaire — Événement`,EQ(legendaryHistories),u=>{state.history[hi]=u;if(u==='Histoire légendaire unique')insert([task(`Histoire ${j} légendaire — Manifestation unique`,EQ(uniqueLegendaryHistories),z=>state.history[hi]=z)])})])}}));insert(ts)}),task('Extra',vaeloriaExtraOptions,x=>{state.extra=x;if(x==='Familier')addFamiliar();else if(x==='Monture')addMount();else if(x==='Compagnon artificiel')addArtificialCompanion();else if(x==='Familier légendaire')addLegendaryFamiliar();else if(x==='Objet béni'||x==='Objet maudit'||x==='Artefact')addArtifact(x);else if(x==='Bénédiction')addBlessing('Extra');else if(x==='Deuxième pouvoir')state._extraPower=true;else if(x==='Deuxième arme')state._extraWeapon=true;else if(x==='Transformation')addTransformation();else if(x==='Éveil')addAwakening();else if(x==='Technique secrète'){let t={kind:'Technique secrète',name:null,mastery:null};state.extraDetail.push(t);insert([task('Technique secrète — Type',EQ(secretTechniques),v=>{t.name=v;if(v==='Technique unique')insert([task('Technique secrète — Manifestation unique',EQ(uniqueSecretTechniques),u=>t.name=u)])}),task('Technique secrète — Maîtrise',centered,v=>t.mastery=valNum(v))])}else if(x==='Armure spéciale'){let a={kind:'Armure spéciale',type:null,effect:null,power:null};state.extraDetail.push(a);insert([task('Armure spéciale — Type',EQ(armorTypes),v=>a.type=v),task('Armure spéciale — Propriété',EQ(armorEffects),v=>{a.effect=v;if(v==='Propriété unique')insert([task('Armure spéciale — Propriété unique',EQ(armorUniqueEffects),u=>a.effect=u)])}),task('Armure spéciale — Puissance',centered,v=>{a.power=valNum(v);registerArmorStatBonus(a)})])}else if(x==='Lien mystique'){let l={kind:'Lien mystique',target:null,nature:null,power:null,ownership:null,linkedItem:null,relationship:null};state.extraDetail.push(l);insert([task('Lien mystique — Cible',EQ(mysticLinkTargets),v=>{l.target=v;
 if(v==='Une arme consciente'){l.ownership='Possédé par le personnage';l.linkedItem='Arme équipée';}
