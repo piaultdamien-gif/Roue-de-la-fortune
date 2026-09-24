@@ -1287,14 +1287,20 @@ function prepareSelectedDescendantForWheel(d){
   state.inheritedMutations=JSON.parse(JSON.stringify(d.mutations||[]));
   state.racialTraits=JSON.parse(JSON.stringify(d.racialTraits||[]));
   state.lineage={...(state.lineage||{}),descendantId:d.id,parentIds:[...(d.parentIds||[])]};
+  // Le prénom d'un descendant existe déjà dans le registre DESC-xxxx : il ne doit
+  // jamais repasser par les roues de génération de prénom. Les anciennes versions
+  // remplaçaient seulement « Prénom — Structure », ce qui pouvait désynchroniser la
+  // file dynamique et faire finir une valeur de la roue suivante (ex. un titre) dans name.
+  queue=queue.filter(t=>!String(t?.title||'').startsWith('Prénom'));
+  state.name=d.name||state.name||'';
+  delete state._nameParts;
   const fixed={
     'Race':d.race,
     'Genre':d.gender,
     'Corpulence':d.appearance?.body,
     'Couleur dominante 1':d.appearance?.c1,
     'Couleur dominante 2':d.appearance?.c2,
-    'Signe distinctif':d.appearance?.sign,
-    'Prénom — Structure':d.name
+    'Signe distinctif':d.appearance?.sign
   };
   for(const t of queue){
     if(!fixed[t.title])continue;
@@ -1306,7 +1312,6 @@ function prepareSelectedDescendantForWheel(d){
     else if(t.title==='Couleur dominante 1')t.apply=()=>{state.appearance.c1=value};
     else if(t.title==='Couleur dominante 2')t.apply=()=>{state.appearance.c2=value};
     else if(t.title==='Signe distinctif')t.apply=()=>{state.appearance.sign=value};
-    else if(t.title==='Prénom — Structure')t.apply=()=>{state.name=d.name||value;delete state._nameParts};
   }
   return true;
 }
@@ -3193,8 +3198,29 @@ function addRaceResult(r,depth=0){state.lineage=state.lineage||{};
  let comp=state.lineage.primaryComponent={race:r};state.raceParts=[r];updateRace();scheduleComponentDetails(r,comp);
 }
 function updateRace(){state.race=state.raceParts.join(' / ')}
+function morphologyRaceNames(){
+ const L=state.lineage||{}, out=[];
+ const addComp=c=>{
+   if(!c||!c.race)return;
+   if(c.race==='Hybride'){
+     addComp(c.compA); addComp(c.compB); return;
+   }
+   // Vampire, Loup-garou, Squelette/Liche and racial Esprit keep the morphology
+   // of their biological origin. The state itself must not reset height.
+   if(['Vampire','Loup-garou','Squelette','Liche','Esprit'].includes(c.race) && c.originComponent){
+     addComp(c.originComponent); return;
+   }
+   out.push(c.race);
+ };
+ if(L.originComponent) addComp(L.originComponent);
+ else if(L.hybridCompA||L.hybridCompB){ addComp(L.hybridCompA); addComp(L.hybridCompB); }
+ else if(L.primaryComponent) addComp(L.primaryComponent);
+ else (state.raceParts||[]).forEach(r=>out.push(r));
+ return [...new Set(out.filter(Boolean))];
+}
 function sizeOptions(){
- const race=(state.raceParts||[]).join(' / '),L=state.lineage||{};
+ const morphology=morphologyRaceNames();
+ const race=morphology.join(' / '),L=state.lineage||{};
  const range=(min,max,step=.1,center=null)=>{
    const vals=[];for(let n=min;n<=max+1e-9;n+=step){let v=Math.round(n*100)/100;let w=center?Math.max(.35,3-Math.abs(v-center)*2):1;vals.push(W(v.toFixed(2)+' m',w))}
    return vals;
@@ -3499,7 +3525,13 @@ function finishGeneration(){
     state._autoSavedAtFinish=true;
     if(state.descendantSourceId){
       const ds=descendants(), d=ds[state.descendantSourceId];
-      if(d){d.fighterDataGenerated=true;d.fighterId=state.id;d.selectedForSeason=seasonNumber;d.status=`Combattant S${seasonNumber} — ${state.id}`;ds[d.id]=d;saveStore(STORAGE_DESC,ds)}
+      if(d){
+        // Dernier verrou d'identité : le titre et toutes les autres roues peuvent changer,
+        // mais le prénom canonique du descendant reste celui de sa fiche DESC-xxxx.
+        state.name=d.name||state.name;
+        delete state._nameParts;
+        d.fighterDataGenerated=true;d.fighterId=state.id;d.selectedForSeason=seasonNumber;d.status=`Combattant S${seasonNumber} — ${state.id}`;ds[d.id]=d;saveStore(STORAGE_DESC,ds)
+      }
     }
     saveCurrentCharacter();
     setTimeout(()=>invokeCharacterImageGeneration(state.id).catch(console.error),1200);
