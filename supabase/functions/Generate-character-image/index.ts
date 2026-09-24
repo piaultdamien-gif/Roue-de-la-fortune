@@ -14,12 +14,42 @@ const WIDTH = 512;
 const HEIGHT = 1024;
 const VALIDATION_SCORE_MIN = 80;
 
-const STYLE_REFERENCE_PATHS = [
-  "style-references/reference_1_Urgorra.jpg",
-  "style-references/reference_2_Veyr.jpg",
-  "style-references/reference_3_Kesor.jpg",
-  "style-references/reference_4_Arerel.jpg",
-];
+const SITE_BASE_URL = "https://piaultdamien-gif.github.io/Roue-de-la-fortune";
+const RACE_ASSET_BASE = `${SITE_BASE_URL}/assets/universe/races`;
+const REGION_ASSET_BASE = `${SITE_BASE_URL}/assets/universe/regions`;
+
+const RACE_FILE_MAP: Record<string, string> = {
+  "Dragon humanoïde": "dragon",
+  "Dragon originel": "dragon-originel",
+  "Dragon ancestral": "dragon-ancestral",
+  "Titan": "titan",
+  "Titan primordial": "titan-primordial",
+  "Titan fondateur": "titan-fondateur",
+  "Neoxus": "neoxus",
+  "N.E.X.U.S.": "nexus",
+  "Cyborg": "cyborg",
+  "Golem / Artificiel": "artificiel",
+  "Demi-dieu": "demi-dieu",
+  "Divinité": "divinite",
+  "Dieu céleste": "dieu-celeste",
+  "Homme-bête": "homme-bete",
+  "Hybride": "hybride",
+  "Squelette": "squelette",
+  "Liche": "liche",
+  "Extraterrestre": "extraterrestre",
+  "Loup-garou": "loup-garou",
+  "Deus Machina": "deus-machina",
+  "Titan céleste": "titan-celeste",
+  "Colosse Nexus": "colosse-nexus",
+  "Drakéon": "drakeon",
+  "Nexaryx": "nexaryx",
+  "Tyrakhan": "tyrakhan",
+};
+
+const REGION_FILE_MAP: Record<string, string> = {
+  "Mor'Khal": "morkhal",
+  "Mor’Khal": "morkhal",
+};
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -213,7 +243,10 @@ CORE RULES:
 - Do not overload the image with every statistic or abstract mechanic.
 - No written or pseudo-written text anywhere: no words, letters, numbers, names, labels, logos, UI, watermark, poster/card typography, or text-like runes.
 - Full body vertical portrait, head and feet visible, dark fantasy + science-fiction production art.
-- The four external reference images used by FLUX are ART-DIRECTION REFERENCES ONLY. Never copy their characters, species, faces, weapons, clothing, colors, poses or anatomy.
+- FLUX may receive canonical visual references selected specifically for THIS character. Race reference image(s) are authoritative only for racial anatomy, morphology, and species markers. Never copy their clothing, pose, weapon, identity, or background unless the source JSON independently requires it.
+- A region reference image is authoritative only for the environment: landscape, architecture, vegetation, climate, atmosphere, and regional visual identity. It must NEVER alter the character's race, anatomy, face, body, or species markers.
+- The source character's clothingStyle is a strong visual requirement: make the outfit visibly follow that clothing style through cut, materials, ornamentation, layering, and silhouette while remaining coherent with explicit equipment.
+- Keep the overall rendering dark-fantasy / science-fiction cinematic production art without relying on unrelated style-reference characters.
 
 Return ONLY valid JSON with this exact shape:
 {
@@ -341,14 +374,109 @@ if (!parsed) {
   };
 }
 
-async function loadStyleReferences(admin: any) {
-  const out: { blob: Blob; name: string }[] = [];
-  for (const path of STYLE_REFERENCE_PATHS) {
-    const { data, error } = await admin.storage.from(BUCKET).download(path);
-    if (error || !data) throw new Error(`RÃ©fÃ©rence artistique introuvable: ${path}`);
-    out.push({ blob: data, name: path.split("/").pop() || "reference.jpg" });
+function assetSlug(value: unknown) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function raceAssetSlug(name: string) {
+  return RACE_FILE_MAP[name] || assetSlug(name);
+}
+
+function regionAssetSlug(name: string) {
+  return REGION_FILE_MAP[name] || assetSlug(name);
+}
+
+function uniqueStrings(values: unknown[]) {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    const v = String(value ?? "").trim();
+    if (!v || seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
   }
   return out;
+}
+
+function requestedRaceReferences(character: any): string[] {
+  const finalRace = String(character?.race || "").trim();
+  const parts = Array.isArray(character?.raceParts)
+    ? character.raceParts.map((x: any) => String(x ?? "").trim()).filter(Boolean)
+    : [];
+
+  // A special final cross has its own canonical portrait. For draconic crosses,
+  // select only the branch actually requested by the generated character.
+  const special = ["Deus Machina", "Titan céleste", "Colosse Nexus", "Drakéon", "Nexaryx", "Tyrakhan"]
+    .find((x) => finalRace.includes(x) || parts.includes(x));
+  if (special) {
+    if (["Drakéon", "Nexaryx", "Tyrakhan"].includes(special)) {
+      const lineageText = JSON.stringify(character?.lineage || {}) + " " + finalRace + " " + parts.join(" ");
+      if (/originel/i.test(lineageText)) return [`${raceAssetSlug(special)}-originel`];
+      if (/ancestral/i.test(lineageText)) return [`${raceAssetSlug(special)}-ancestral`];
+    }
+    return [raceAssetSlug(special)];
+  }
+
+  // For a true hybrid, use only its actual biological components rather than
+  // the generic Hybride codex portrait. States/forms are kept only when they
+  // are explicitly part of the requested final race.
+  const stateLike = new Set(["Hybride"]);
+  let names = parts.filter((x: string) => !stateLike.has(x));
+  if (!names.length && finalRace) {
+    // Exact known race first; otherwise split common composite display strings.
+    if (RACE_FILE_MAP[finalRace]) names = [finalRace];
+    else names = finalRace.split(/\s*\/\s*|\s*\+\s*/).filter(Boolean);
+  }
+
+  // Never send unrelated race images. Maximum three race references leaves
+  // one FLUX slot for the character's region reference.
+  return uniqueStrings(names).map(raceAssetSlug).filter(Boolean).slice(0, 3);
+}
+
+async function fetchReference(url: string, name: string) {
+  const r = await fetch(url, { headers: { Accept: "image/webp,image/*" } });
+  if (!r.ok) throw new Error(`${name} (${r.status})`);
+  return { blob: await r.blob(), name };
+}
+
+async function loadCharacterReferences(character: any, warnings: string[]) {
+  const refs: { blob: Blob; name: string }[] = [];
+  const raceSlugs = requestedRaceReferences(character);
+
+  for (const slug of raceSlugs) {
+    const name = `${slug}.webp`;
+    try {
+      refs.push(await fetchReference(`${RACE_ASSET_BASE}/${encodeURIComponent(name)}`, `race-${name}`));
+    } catch (e: any) {
+      warnings.push(`Race reference unavailable: ${name} — ${String(e?.message || e).slice(0, 180)}`);
+    }
+  }
+
+  const region = String(character?.birthRegion || character?.region || "").trim();
+  if (region && refs.length < 4) {
+    const slug = regionAssetSlug(region);
+    const name = `${slug}.webp`;
+    try {
+      refs.push(await fetchReference(`${REGION_ASSET_BASE}/${encodeURIComponent(name)}`, `region-${name}`));
+    } catch (e: any) {
+      warnings.push(`Region reference unavailable: ${name} — ${String(e?.message || e).slice(0, 180)}`);
+    }
+  }
+
+  console.log("CHARACTER_REFERENCES", JSON.stringify({
+    race: character?.race ?? null,
+    raceParts: character?.raceParts ?? null,
+    region: region || null,
+    clothingStyle: character?.clothingStyle ?? null,
+    references: refs.map((x) => x.name),
+  }));
+
+  return refs;
 }
 
 function findCloudflareImage(data: any): string | null {
@@ -540,7 +668,7 @@ Deno.serve(async (req) => {
 
     if (!fluxPrompt) throw new Error("No image prompt available.");
 
-    const refs = await loadStyleReferences(admin);
+    const refs = character ? await loadCharacterReferences(character, warnings) : [];
     const model = generationMode === "champion" ? CF_MODEL_CHAMPION : CF_MODEL_NORMAL;
 
     const first = await generateFlux(CF_ACCOUNT_ID, CF_TOKEN, model, fluxPrompt, seed, refs);
