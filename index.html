@@ -1270,7 +1270,21 @@ function selectedDescendantForCurrentSlot(){
   // normaux qui avaient déjà été commencés avant la sélection.
   for(const sourceId of ids){
     const d=ds[sourceId];
-    if(!d||d.fighterDataGenerated)continue;
+    if(!d)continue;
+    // Auto-réparation : si le combattant matérialisé a été supprimé de la liste,
+    // la fiche DESC ne doit pas rester bloquée comme « déjà générée ».
+    // On libère son ancien fighterId afin qu'il puisse reprendre le prochain slot libre
+    // et continuer uniquement les roues qui lui manquent.
+    if(d.fighterDataGenerated){
+      const assignedId=d.fighterId;
+      const assigned=assignedId?roster[assignedId]:null;
+      if(assigned)continue;
+      d.fighterDataGenerated=false;
+      d.fighterId=null;
+      d.status=`Descendant — sélectionné S${seasonNumber}`;
+      ds[sourceId]=d;
+      saveStore(STORAGE_DESC,ds);
+    }
     // Un descendant déjà affecté à un autre slot en cours ne doit pas être dupliqué.
     if(d.fighterId&&d.fighterId!==currentId){
       const assigned=roster[d.fighterId];
@@ -2499,6 +2513,22 @@ function deleteCharacterCompletely(id){
 
 Cette action retire le personnage de la liste et efface ses références locales.`);
   if(!ok) return;
+
+  // Si ce combattant matérialisait un DESC-xxxx, sa suppression de la liste
+  // ne supprime PAS le descendant de l'univers : elle libère simplement sa matérialisation.
+  // Sans ceci, fighterDataGenerated restait à true et la roue refusait de le reprendre.
+  const descStore=descendants();
+  const sourceDesc=(fighter.descendantSourceId&&descStore[fighter.descendantSourceId])
+    || Object.values(descStore).find(d=>d?.fighterId===id);
+  if(sourceDesc){
+    sourceDesc.fighterDataGenerated=false;
+    sourceDesc.fighterId=null;
+    sourceDesc.status=sourceDesc.selectedForSeason
+      ? `Descendant — sélectionné S${sourceDesc.selectedForSeason}`
+      : `Descendant — en attente S${sourceDesc.eligibleSeason||seasonNumber}`;
+    descStore[sourceDesc.id]=sourceDesc;
+    saveStore(STORAGE_DESC,descStore);
+  }
 
   // Delete the fighter from the keyed roster.
   delete rosterObj[id];
