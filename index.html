@@ -3459,7 +3459,7 @@ function undeadOriginRaceOptions(){return raceOptions(['Squelette','Golem / Arti
 function addRaceResult(r,depth=0){state.lineage=state.lineage||{};
  if(r==='Hybride'){state.raceParts=['Hybride'];state.race='Hybride';state.lineage.hybridCompA=null;state.lineage.hybridCompB=null;insert([task('Hybride — Ascendance A',()=>raceOptions(['Hybride','Vampire','Loup-garou','Esprit','Squelette']),x=>{let c=state.lineage.hybridCompA={race:x};state.lineage.hybridA=x;scheduleComponentDetails('Ascendance A',c)}),task('Hybride — Ascendance B',()=>raceOptions(['Hybride','Vampire','Loup-garou','Esprit','Squelette']),x=>{let c=state.lineage.hybridCompB={race:x};state.lineage.hybridB=x;scheduleComponentDetails('Ascendance B',c)})]);return}
  if(['Vampire','Loup-garou'].includes(r)){state.raceParts=[r];updateRace();insert([task(`${r} — Race d’origine`,vampireWerewolfOriginOptions,x=>{let c=state.lineage.originComponent={race:x};state.lineage.originRace=x;scheduleComponentDetails(`${r} — Origine`,c)})]);return}
- if(r==='Esprit'){state.raceParts=['Esprit'];updateRace();insert([task('Esprit — Origine',[W('Naturel',50),W('Race existante',50)],x=>{state.lineage.spiritOrigin=x;if(x==='Naturel'){insert([task('Esprit — Élément naturel',spiritElementOptions,v=>state.lineage.spiritEssence=v)])}else insert([task('Esprit — Race d’origine',spiritOriginRaceOptions,x=>{let c=state.lineage.originComponent={race:x};state.lineage.originRace=x;scheduleComponentDetails('Esprit — Origine raciale',c)})])})]);return}
+ if(r==='Esprit'){state.raceParts=['Esprit'];updateRace();insert([task('Esprit — Origine',[W('Naturel',50),W('Race existante',50)],x=>{state.lineage.spiritOrigin=x;if(x==='Naturel'){insert([task('Esprit — Élément naturel',spiritElementOptions,v=>{state.lineage.spiritEssence=v;let p=(state.powers||[]).find(q=>q&&q.naturalSpiritElement);if(!p){p={name:v,mastery:null,naturalSpiritElement:true,source:'Esprit naturel'};state.powers.push(p)}else p.name=v;insert([task(`Esprit — Maîtrise de ${v}`,centered,m=>{p.masteryBase=valNum(m);p.masteryMod=masteryMod('power');p.mastery=Math.max(0,p.masteryBase+p.masteryMod+(state._historyPowerMasteryMod||0))})])})])}else insert([task('Esprit — Race d’origine',spiritOriginRaceOptions,x=>{let c=state.lineage.originComponent={race:x};state.lineage.originRace=x;scheduleComponentDetails('Esprit — Origine raciale',c)})])})]);return}
  if(r==='Squelette'){state.raceParts=['Squelette'];updateRace();insert([task('Squelette — Race d’origine',undeadOriginRaceOptions,x=>{let c=state.lineage.originComponent={race:x};state.lineage.originRace=x;scheduleComponentDetails('Squelette — Origine',c)}),task('Squelette — Réanimation',EQ(['Accident','Rituel nécromantique','Malédiction','Phénomène mort-vivant','Artefact','Magie incontrôlée','Volontaire','Inconnue']),x=>state.lineage.reanimation=x),task('Squelette — Forme',[W('Squelette',95),W('Liche',5)],x=>{state.lineage.undeadForm=x;state.raceParts=[x];updateRace()})]);return}
  let comp=state.lineage.primaryComponent={race:r};state.raceParts=[r];updateRace();scheduleComponentDetails(r,comp);
 }
@@ -3798,6 +3798,11 @@ function finishGeneration(){
         delete state._nameParts;
         d.fighterDataGenerated=true;d.fighterId=state.id;d.selectedForSeason=seasonNumber;d.status=`Combattant S${seasonNumber} — ${state.id}`;ds[d.id]=d;saveStore(STORAGE_DESC,ds)
       }
+    }
+    // Recalcule la maîtrise du pouvoir élémentaire inné une fois Archétype et Histoire connus.
+    for(const p of (state.powers||[]))if(p?.naturalSpiritElement&&Number.isFinite(p.masteryBase)){
+      p.masteryMod=masteryMod('power');
+      p.mastery=Math.max(0,p.masteryBase+p.masteryMod+(state._historyPowerMasteryMod||0));
     }
     saveCurrentCharacter();
     setTimeout(()=>invokeCharacterImageGeneration(state.id).catch(console.error),1200);
