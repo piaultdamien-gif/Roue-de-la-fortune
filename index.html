@@ -1198,18 +1198,28 @@ function loadCharacterById(id){
   // Réparation/garantie d'identité des descendants déjà matérialisés :
   // le combattant garde le prénom canonique de DESC-xxxx, même si une ancienne version
   // de la roue avait tiré un nouveau prénom (ex. DESC-0004 Raoros devenu Ophir).
-  if(state.descendantSourceId){
-    const source=descendants()[state.descendantSourceId];
+  {
+    const ds=descendants();
+    // Les versions buggées ont parfois perdu descendantSourceId. fighterId dans DESC-xxxx
+    // reste alors la source de vérité et permet de réparer automatiquement le combattant.
+    const source=state.descendantSourceId?ds[state.descendantSourceId]:Object.values(ds).find(d=>d?.fighterId===state.id);
     if(source){
+      state.descendantSourceId=source.id;
       state.isDescendant=true;
       state.name=source.name||state.name;
+      state.race=source.race||state.race;
+      state.raceParts=JSON.parse(JSON.stringify(source.raceParts||state.raceParts||[]));
+      state.gender=source.gender||state.gender;
+      state.racialTraits=JSON.parse(JSON.stringify(source.racialTraits||state.racialTraits||[]));
+      state.inheritedPowers=JSON.parse(JSON.stringify(source.inheritedPowers||state.inheritedPowers||[]));
+      state.inheritedMutations=JSON.parse(JSON.stringify(source.mutations||state.inheritedMutations||[]));
       state.genealogy=JSON.parse(JSON.stringify(source.genealogy||state.genealogy||{}));
       state.genealogy.parents=[...(source.parentIds||source.genealogy?.parents||[])];
       source.fighterDataGenerated=true;
       source.fighterId=state.id;
-      source.selectedForSeason=seasonNumber;
-      source.status=`Combattant S${seasonNumber} — ${state.id}`;
-      const ds=descendants();ds[source.id]=source;saveStore(STORAGE_DESC,ds);
+      source.selectedForSeason=Number(String(state.id).match(/^S(\d+)-/)?.[1]||seasonNumber);
+      source.status=`Combattant S${source.selectedForSeason} — ${state.id}`;
+      ds[source.id]=source;saveStore(STORAGE_DESC,ds);
       const rr=loadRoster();rr[state.id]=JSON.parse(JSON.stringify(state));saveRoster(rr);
     }
   }
@@ -1287,13 +1297,16 @@ function prepareSelectedDescendantForWheel(d){
   state.inheritedMutations=JSON.parse(JSON.stringify(d.mutations||[]));
   state.racialTraits=JSON.parse(JSON.stringify(d.racialTraits||[]));
   state.lineage={...(state.lineage||{}),descendantId:d.id,parentIds:[...(d.parentIds||[])]};
-  // Le prénom d'un descendant existe déjà dans le registre DESC-xxxx : il ne doit
-  // jamais repasser par les roues de génération de prénom. Les anciennes versions
-  // remplaçaient seulement « Prénom — Structure », ce qui pouvait désynchroniser la
-  // file dynamique et faire finir une valeur de la roue suivante (ex. un titre) dans name.
-  queue=queue.filter(t=>!String(t?.title||'').startsWith('Prénom'));
+  // IMPORTANT : on conserve la tâche de prénom dans la file pour ne jamais décaler
+  // les logs/roues suivantes. Pour un descendant elle devient une seule étape fixe,
+  // sans sous-roues Début/Milieu/Fin : le prénom canonique DESC-xxxx est simplement réappliqué.
   state.name=d.name||state.name||'';
   delete state._nameParts;
+  const nameTask=queue.find(t=>String(t?.title||'')==='Prénom — Structure');
+  if(nameTask){
+    nameTask.options=()=>[W(d.name||state.name||'Descendant')];
+    nameTask.apply=()=>{state.name=d.name||state.name||'';delete state._nameParts};
+  }
   const fixed={
     'Race':d.race,
     'Genre':d.gender,
