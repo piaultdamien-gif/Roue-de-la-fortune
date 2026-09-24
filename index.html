@@ -1215,10 +1215,14 @@ function loadCharacterById(id){
       state.inheritedMutations=JSON.parse(JSON.stringify(source.mutations||state.inheritedMutations||[]));
       state.genealogy=JSON.parse(JSON.stringify(source.genealogy||state.genealogy||{}));
       state.genealogy.parents=[...(source.parentIds||source.genealogy?.parents||[])];
-      source.fighterDataGenerated=true;
+      // Un descendant chargé mais encore incomplet reste prioritaire dans la roue.
+      // fighterDataGenerated signifie désormais réellement « génération terminée » et non « fiche ouverte ».
+      source.fighterDataGenerated=!!state._generationComplete;
       source.fighterId=state.id;
       source.selectedForSeason=Number(String(state.id).match(/^S(\d+)-/)?.[1]||seasonNumber);
-      source.status=`Combattant S${source.selectedForSeason} — ${state.id}`;
+      source.status=state._generationComplete
+        ? `Combattant S${source.selectedForSeason} — ${state.id}`
+        : `Descendant — génération en cours S${source.selectedForSeason} — ${state.id}`;
       ds[source.id]=source;saveStore(STORAGE_DESC,ds);
       const rr=loadRoster();rr[state.id]=JSON.parse(JSON.stringify(state));saveRoster(rr);
     }
@@ -1539,9 +1543,41 @@ function blockGenerationIfDescendantsNotSelected(){
   renderGenealogy();
   return true;
 }
+function priorityDescendantFighterForSeason(season=seasonNumber){
+  if(Number(season)<=1)return null;
+  const roster=loadRoster(), ds=descendants(), meta=universeMeta();
+  const ids=Array.isArray(meta.selectedBySeason?.[season])?meta.selectedBySeason[season]:[];
+  // 1) Un descendant déjà matérialisé mais incomplet passe avant tout personnage normal.
+  for(const sourceId of ids){
+    const d=ds[sourceId];
+    if(!d||d.selectedForSeason===false)continue;
+    const fid=d.fighterId;
+    const fighter=fid?roster[fid]:null;
+    if(fighter&&!fighter._generationComplete)return fid;
+  }
+  return null;
+}
 function advanceCharacter(){
   saveCurrentCharacter();
 
+  // PRIORITÉ ABSOLUE : terminer d'abord tout descendant sélectionné déjà matérialisé.
+  // Ainsi, tant qu'un descendant disponible a encore des roues à tirer, la génération
+  // ne part jamais créer/continuer un personnage normal à sa place.
+  const priorityDescId=priorityDescendantFighterForSeason(seasonNumber);
+  if(priorityDescId && priorityDescId!==currentCharacterId()){
+    const m=String(priorityDescId).match(/^S(\d+)-(\d+)$/);
+    if(m){
+      seasonNumber=Number(m[1]);characterNumber=Number(m[2]);
+      localStorage.setItem(STORAGE_SEASON,String(seasonNumber));
+      localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
+      if(!loadCharacterById(priorityDescId))newCharacterAtCurrentId();
+      return;
+    }
+  }
+
+  // Ensuite, le premier emplacement libre est attribué en priorité à un descendant
+  // sélectionné non encore matérialisé via selectedDescendantForCurrentSlot().
+  // Ce n'est que lorsqu'il n'en reste plus que la roue crée un personnage normal.
   // Tant qu'il existe un trou dans la saison, on le remplit avant toute autre chose.
   // Cela évite notamment de rester bloqué sur l'ID recréé après une suppression.
   const firstFree=firstEmptyCharacterNumber(seasonNumber);
