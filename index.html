@@ -512,15 +512,15 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
 
 /* HGT V21 — écran d'entrée + identité publique joueur */
 body.hgt-gated{overflow:hidden}
-#hgtEntry{position:fixed;inset:0;z-index:30000;display:flex;align-items:center;justify-content:center;padding:22px;background:radial-gradient(circle at 50% 20%,#281922 0,#0b080d 46%,#050406 100%)}
+#hgtEntry{position:fixed;inset:0;z-index:30000;display:flex;align-items:center;justify-content:center;padding:22px;background:#050406 center/cover no-repeat;background-image:linear-gradient(rgba(3,2,4,.22),rgba(3,2,4,.58)),url('assets/ui/hgt-home.webp')}
 #hgtEntry[hidden]{display:none!important}
-.hgt-entry-card{width:min(560px,94vw);padding:28px;border:1px solid #654553;border-radius:20px;background:rgba(12,8,12,.94);box-shadow:0 28px 90px #000b;text-align:center}
-.hgt-entry-art{height:min(34vh,260px);border:1px solid #49333d;border-radius:15px;margin-bottom:20px;background:linear-gradient(145deg,#171019,#09070b);display:grid;place-items:center;overflow:hidden}
+.hgt-entry-card{width:min(420px,92vw);padding:24px;border:1px solid #765463;border-radius:18px;background:rgba(10,7,11,.82);backdrop-filter:blur(12px);box-shadow:0 28px 90px #000c;text-align:center}
+.hgt-entry-art{display:none}
 .hgt-entry-art img{width:100%;height:100%;object-fit:cover}.hgt-entry-placeholder{font-family:Cinzel,serif;color:#a58c96;letter-spacing:.08em}
 .hgt-entry-title{font-family:Cinzel,serif;font-size:clamp(25px,5vw,42px);color:#e5c77d;margin:0 0 5px}.hgt-entry-sub{color:#a99aa2;margin-bottom:18px}
 .hgt-entry-form{display:grid;gap:10px}.hgt-entry-form input{width:100%;box-sizing:border-box;padding:12px;border-radius:9px;border:1px solid #59404a;background:#100c11;color:#eee;font:inherit}
 .hgt-entry-actions{display:flex;gap:9px}.hgt-entry-actions button{flex:1}.hgt-entry-message{min-height:20px;color:#b9aab1;font-size:13px;margin-top:8px}
-.hgt-player-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #5a414c;border-radius:999px;background:#100b10;color:#ead3a0;font-weight:700}
+.hgt-player-chip{display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 6px;border:1px solid #6b4c59;border-radius:999px;background:#100b10;color:#ead3a0;font-weight:800;cursor:pointer}.hgt-player-chip:hover{border-color:#d2aa59;box-shadow:0 0 0 2px #d2aa5922}.player-avatar{width:30px;height:30px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:#21151d;border:1px solid #8a6756;flex:0 0 auto}.player-avatar img{width:100%;height:100%;object-fit:cover}.profile-avatar-current{display:flex;align-items:center;gap:12px;margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:12px;background:#0d0b0e}.profile-avatar-current .player-avatar{width:58px;height:58px}.profile-avatar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:9px;margin-top:10px}.profile-avatar-choice{padding:7px;border:1px solid #4b3940;border-radius:10px;background:#100c10;color:inherit;cursor:pointer;text-align:center}.profile-avatar-choice.selected{border-color:#d8b65d;box-shadow:0 0 0 2px #d8b65d22}.profile-avatar-choice .champion-mini{width:100%;aspect-ratio:1/1;border-radius:8px;overflow:hidden;background:#09080b;display:grid;place-items:center;margin-bottom:6px}.profile-avatar-choice .champion-mini img{width:100%;height:100%;object-fit:cover}.profile-avatar-choice small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.profile-option{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--line)}.profile-option input{width:20px;height:20px;accent-color:#d8b65d}.profile-option-copy{display:grid;gap:2px}.profile-option-copy small{color:var(--muted)}
 @media(max-width:600px){.hgt-entry-card{padding:18px}.hgt-entry-actions{flex-direction:column}.hgt-entry-art{height:190px}}
 </style>
 </head><body class="hgt-gated"><div id="hgtEntry">
@@ -535,7 +535,7 @@ body.hgt-gated{overflow:hidden}
 <header><div><h1>⚔️ Hazard Game Tournament</h1><div class="muted">Chaque donnée aléatoire affichée provient de la roue que tu vois tourner.</div></div><div class="pill" id="charId">S1-001</div></header>
 
 <div class="cloud-bar">
-  <span id="playerPseudo" class="hgt-player-chip" hidden>👤 —</span>
+  <span id="playerPseudo" class="hgt-player-chip" hidden><span class="player-avatar" id="playerAvatar">👤</span><span id="playerPseudoText">—</span></span>
   <span id="cloudStatus" class="cloud-status">☁️ Mode local</span>
   <button type="button" class="secondary" id="cloudAccountBtn">☁️ Connexion</button>
 </div>
@@ -543,6 +543,12 @@ body.hgt-gated{overflow:hidden}
   <div class="cloud-card">
     <button type="button" class="secondary cloud-close" id="cloudCloseBtn">✕</button>
     <div id="cloudModalContent"></div>
+  </div>
+</div>
+<div id="profileModal" class="cloud-modal" aria-hidden="true">
+  <div class="cloud-card">
+    <button type="button" class="secondary cloud-close" id="profileCloseBtn">✕</button>
+    <div id="profileModalContent"></div>
   </div>
 </div>
 <div class="tabs">
@@ -3058,7 +3064,7 @@ function vaeloriaCultureOptions(){
  return EQ(VAELORIA_CULTURES[state.birthRegion]||['Locale','Cosmopolite','Itinérante']);
 }
 
-function task(title,options,apply){return{title,options:()=>typeof options==='function'?options():options,apply}} function insert(tasks){queue.splice(index+1,0,...tasks)}
+function task(title,options,apply){return{title,options:()=>typeof options==='function'?options():options,apply,_subwheel:false}} function insert(tasks){for(const t of tasks||[])if(t)t._subwheel=true;queue.splice(index+1,0,...tasks)}
 function raceKey(p){if(p.startsWith('Homme-bête'))return null;return p} 
 function summonCountFromMastery(m){
   m=Number(m)||0;
@@ -3767,7 +3773,7 @@ function finishGeneration(){
   resetBtn.textContent='Réinitialiser';
   return true;
 }
-async function next(){if(spinning)return;if(blockGenerationIfPreviousTournamentIncomplete())return;if(blockGenerationIfDescendantsNotSelected())return;if(index>=queue.length){finishGeneration();return}let t=queue[index],opts=t.options();if(opts.length===1){let r=opts[0].label;result.innerHTML=`${r}<small>${t.title} — attribution automatique</small>`;state.logs.push({cat:t.title,val:r});t.apply(r);index++;saveCurrentCharacter();render();if(finishGeneration())return;return next()}taskTitle.textContent=t.title;count.textContent=`Roue ${spinNumber+1} • ${index+1}/${queue.length} étapes actuelles`;drawWheel(opts);let r=await spin(opts);spinNumber++;result.innerHTML=`${wheelDisplayLabel(r)}<small>${t.title}</small>`;state.logs.push({cat:t.title,val:r});t.apply(r);index++;saveCurrentCharacter();render();if(finishGeneration())return;spinBtn.textContent='Tourner la roue';if(auto)setTimeout(next,280)}
+async function next(){if(spinning)return;if(blockGenerationIfPreviousTournamentIncomplete())return;if(blockGenerationIfDescendantsNotSelected())return;if(index>=queue.length){finishGeneration();return}let t=queue[index],opts=t.options();if(t._subwheel&&hideSubwheelsEnabled()){let r=weightedPick(opts),label=opts[r]?.label??opts[0]?.label;state.logs.push({cat:t.title,val:label});t.apply(label);index++;saveCurrentCharacter();render();if(finishGeneration())return;return next()}if(opts.length===1){let r=opts[0].label;result.innerHTML=`${r}<small>${t.title} — attribution automatique</small>`;state.logs.push({cat:t.title,val:r});t.apply(r);index++;saveCurrentCharacter();render();if(finishGeneration())return;return next()}taskTitle.textContent=t.title;count.textContent=`Roue ${spinNumber+1} • ${index+1}/${queue.length} étapes actuelles`;drawWheel(opts);let r=await spin(opts);spinNumber++;result.innerHTML=`${wheelDisplayLabel(r)}<small>${t.title}</small>`;state.logs.push({cat:t.title,val:r});t.apply(r);index++;saveCurrentCharacter();render();if(finishGeneration())return;spinBtn.textContent='Tourner la roue';if(auto)setTimeout(next,280)}
 function fmtMods(map,parts){let out=[];for(const p of parts){let k=raceKey(p),v=map[k];if(v)out.push(`${p} ${v>0?'+':''}${v}`)}return out.join(' • ')||'aucun'}
 function raceBonusText(){
  const rp=racialProfile7();
@@ -4284,16 +4290,20 @@ function hgtEntryMessage(text,kind=''){const e=document.getElementById('hgtEntry
 function validPseudo(v){return typeof v==='string'&&v.trim().length>=3&&v.trim().length<=24&&/^[A-Za-zÀ-ÖØ-öø-ÿ0-9 _.-]+$/u.test(v.trim())}
 async function loadCloudProfile(){
   cloudProfile=null;if(!cloudClient||!cloudUser)return null;
-  const {data,error}=await cloudClient.from(PLAYER_PROFILE_TABLE).select('user_id,username,created_at,updated_at').eq('user_id',cloudUser.id).maybeSingle();
+  const {data,error}=await cloudClient.from(PLAYER_PROFILE_TABLE).select('user_id,username,avatar_champion_id,avatar_image_path,created_at,updated_at').eq('user_id',cloudUser.id).maybeSingle();
   if(error){console.warn('Profil joueur indisponible',error);return null}cloudProfile=data||null;return cloudProfile;
 }
 async function createCloudProfile(username){
   const clean=String(username||'').trim();if(!validPseudo(clean))throw new Error('Pseudo : 3 à 24 caractères, lettres/chiffres/espaces/._- uniquement.');
-  const {data,error}=await cloudClient.from(PLAYER_PROFILE_TABLE).insert({user_id:cloudUser.id,username:clean}).select('user_id,username,created_at,updated_at').single();
+  const {data,error}=await cloudClient.from(PLAYER_PROFILE_TABLE).insert({user_id:cloudUser.id,username:clean}).select('user_id,username,avatar_champion_id,avatar_image_path,created_at,updated_at').single();
   if(error){if(error.code==='23505')throw new Error('Ce pseudo exact existe déjà. La casse compte : Damien et damien sont différents.');throw error}
   cloudProfile=data;updatePlayerPseudo();return data;
 }
-function updatePlayerPseudo(){const e=document.getElementById('playerPseudo');if(!e)return;if(cloudUser&&cloudProfile?.username){e.hidden=false;e.textContent='👤 '+cloudProfile.username}else e.hidden=true}
+let __profileAvatarObjectUrl=null;
+async function renderPlayerAvatar(){const host=document.getElementById('playerAvatar');if(!host)return;if(__profileAvatarObjectUrl){URL.revokeObjectURL(__profileAvatarObjectUrl);__profileAvatarObjectUrl=null}host.textContent='👤';const path=cloudProfile?.avatar_image_path;if(!path||!cloudReady())return;try{const blob=await cloudDownloadPortraitPath(path);if(!blob)return;const u=URL.createObjectURL(blob);__profileAvatarObjectUrl=u;const img=document.createElement('img');img.src=u;img.alt='Icône de profil';host.replaceChildren(img)}catch(e){}}
+function updatePlayerPseudo(){const e=document.getElementById('playerPseudo'),label=document.getElementById('playerPseudoText');if(!e)return;if(cloudUser&&cloudProfile?.username){e.hidden=false;if(label)label.textContent=cloudProfile.username;e.title='Ouvrir le profil';e.onclick=openProfileModal;renderPlayerAvatar()}else{e.hidden=true;e.onclick=null}}
+async function setProfileChampionAvatar(championId){const ch=championHistory().find(x=>x.id===championId);if(!ch)throw new Error("Ce personnage n’est pas un Champion du joueur.");const c=loadRoster()[championId]||{};const path=c?.imageGeneration?.championPath||c?.imageGeneration?.selectedPortrait||null;if(!path)throw new Error("Ce Champion n’a pas encore de portrait disponible.");const {data,error}=await cloudClient.from(PLAYER_PROFILE_TABLE).update({avatar_champion_id:championId,avatar_image_path:path}).eq('user_id',cloudUser.id).select('user_id,username,avatar_champion_id,avatar_image_path,created_at,updated_at').single();if(error)throw error;cloudProfile=data;updatePlayerPseudo();return data}
+async function fillProfileChampionAvatars(root){if(!root)return;const roster=loadRoster();for(const el of root.querySelectorAll('[data-profile-avatar-id]')){const id=el.dataset.profileAvatarId,c=roster[id]||{},path=c?.imageGeneration?.championPath||c?.imageGeneration?.selectedPortrait;if(!path)continue;try{const blob=await cloudDownloadPortraitPath(path);if(!blob)continue;const u=URL.createObjectURL(blob),img=document.createElement('img');img.src=u;img.alt=c.name||id;img.onload=()=>URL.revokeObjectURL(u);el.replaceChildren(img)}catch(e){}}}
 function enterHgt(){if(!cloudUser||!cloudProfile?.username)return;document.getElementById('hgtEntry').hidden=true;document.body.classList.remove('hgt-gated');updatePlayerPseudo();}
 function leaveHgtGate(){document.getElementById('hgtEntry').hidden=false;document.body.classList.add('hgt-gated');renderEntryGate()}
 function renderEntryGate(){
@@ -4301,12 +4311,32 @@ function renderEntryGate(){
   const sub=document.getElementById('hgtEntrySubtitle');hgtEntryMessage('');
   if(!cloudUser){sub.textContent='Connecte-toi pour entrer dans Vaeloria.';root.innerHTML=`<div class="hgt-entry-form"><input id="entryEmail" type="email" autocomplete="email" placeholder="Adresse e-mail"><input id="entryPassword" type="password" autocomplete="current-password" placeholder="Mot de passe (6 caractères minimum)"><div class="hgt-entry-actions"><button id="entryLogin">Se connecter</button><button class="secondary" id="entrySignup">Créer un compte</button></div></div>`;document.getElementById('entryLogin').onclick=entryLogin;document.getElementById('entrySignup').onclick=entrySignup;return}
   if(!cloudProfile?.username){sub.textContent='Choisis ton identité publique pour les combats en ligne.';root.innerHTML=`<div class="hgt-entry-form"><input id="entryPseudo" maxlength="24" autocomplete="nickname" placeholder="Pseudo (3–24 caractères)"><button id="entryPseudoBtn">Créer mon pseudo</button><button class="secondary" id="entryLogout">Se déconnecter</button></div><div class="muted" style="margin-top:8px">Le pseudo est unique à l’identique. La casse compte : « Damien » et « damien » peuvent coexister.</div>`;document.getElementById('entryPseudoBtn').onclick=async()=>{const b=document.getElementById('entryPseudoBtn');b.disabled=true;try{await createCloudProfile(document.getElementById('entryPseudo').value);renderEntryGate()}catch(e){hgtEntryMessage(e.message||String(e),'error')}finally{b.disabled=false}};document.getElementById('entryLogout').onclick=cloudLogout;return}
-  sub.textContent=`Bienvenue, ${cloudProfile.username}.`;root.innerHTML=`<div class="hgt-entry-form"><button id="entryPlay">⚔️ Jouer</button><button class="secondary" id="entryAccount">☁️ Mes parties</button><button class="secondary" id="entryLogout">Se déconnecter</button></div>`;document.getElementById('entryPlay').onclick=enterHgt;document.getElementById('entryAccount').onclick=()=>{enterHgt();openCloudModal()};document.getElementById('entryLogout').onclick=cloudLogout;
+  sub.textContent=`Bienvenue, ${cloudProfile.username}.`;root.innerHTML=`<div class="hgt-entry-form"><button id="entryPlay">⚔️ Jouer</button></div>`;document.getElementById('entryPlay').onclick=enterHgt;
 }
 async function entryLogin(){const email=document.getElementById('entryEmail')?.value.trim(),password=document.getElementById('entryPassword')?.value||'';if(!email||!password){hgtEntryMessage('Entre ton e-mail et ton mot de passe.','error');return}hgtEntryMessage('Connexion…');const {error}=await cloudClient.auth.signInWithPassword({email,password});if(error)hgtEntryMessage('Connexion impossible : '+error.message,'error')}
 async function entrySignup(){const email=document.getElementById('entryEmail')?.value.trim(),password=document.getElementById('entryPassword')?.value||'';if(!email||password.length<6){hgtEntryMessage('Entre un e-mail et un mot de passe d’au moins 6 caractères.','error');return}hgtEntryMessage('Création du compte…');const {data,error}=await cloudClient.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});if(error){hgtEntryMessage('Inscription impossible : '+error.message,'error');return}if(!data.session)hgtEntryMessage('Compte créé. Vérifie ton e-mail si une confirmation est demandée.');}
 
 function cloudReady(){return !!(cloudClient&&cloudUser&&cloudCurrentGame?.id)}
+const HGT_PREF_HIDE_SUBWHEELS='hgt_pref_hide_subwheels';
+function hideSubwheelsEnabled(){return localStorage.getItem(HGT_PREF_HIDE_SUBWHEELS)==='1'}
+function setHideSubwheels(v){localStorage.setItem(HGT_PREF_HIDE_SUBWHEELS,v?'1':'0')}
+function openProfileModal(){document.getElementById('profileModal')?.classList.add('active');renderProfileModal()}
+function closeProfileModal(){document.getElementById('profileModal')?.classList.remove('active')}
+function renderProfileModal(){
+ const root=document.getElementById('profileModalContent');if(!root)return;
+ if(!cloudUser||!cloudProfile?.username){root.innerHTML='<h2>Profil</h2><div class="muted">Aucun profil connecté.</div>';return}
+ const champs=championHistory(),roster=loadRoster(),selected=cloudProfile?.avatar_champion_id||'';
+ const selectedChampion=champs.find(x=>x.id===selected),selectedName=selectedChampion?(roster[selected]?.name||selectedChampion.name||selected):'Aucune icône sélectionnée';
+ const choices=champs.length?champs.map(ch=>{const c=roster[ch.id]||{},hasPortrait=!!(c?.imageGeneration?.championPath||c?.imageGeneration?.selectedPortrait);return `<button type="button" class="profile-avatar-choice ${selected===ch.id?'selected':''}" data-avatar-choice="${escapeHtml(ch.id)}" ${hasPortrait?'':'disabled'}><span class="champion-mini" data-profile-avatar-id="${escapeHtml(ch.id)}">${hasPortrait?'🏆':'—'}</span><small>${escapeHtml(c.name||ch.name||ch.id)}</small><small class="muted">S${Number(ch.season)||'?'}</small></button>`}).join(''):'<div class="muted">Aucun Champion disponible pour le moment.</div>';
+ root.innerHTML=`<h2>👤 ${escapeHtml(cloudProfile.username)}</h2><div class="muted">${escapeHtml(cloudUser.email||'')}</div><div class="profile-avatar-current"><span class="player-avatar" id="profileCurrentAvatar">👤</span><div><b>Icône de profil</b><div class="muted">${escapeHtml(selectedName)}</div></div></div><div><b>Choisir parmi mes Champions</b><div class="muted">Tu peux changer d’icône à volonté. Seuls tes Champions disposant d’un portrait peuvent être sélectionnés.</div><div class="profile-avatar-grid">${choices}</div></div><label class="profile-option"><span class="profile-option-copy"><b>Masquer les sous-roues uniquement</b><small>Les tirages secondaires restent effectués normalement, mais leur animation n’est pas affichée. Les roues principales restent visibles.</small></span><input id="prefHideSubwheels" type="checkbox" ${hideSubwheelsEnabled()?'checked':''}></label><div class="cloud-row" style="margin-top:14px"><button id="profileGamesBtn">☁️ Mes parties</button><button class="secondary" id="profileSyncBtn" ${cloudReady()?'':'disabled'}>☁️ Synchroniser</button></div><div class="cloud-separator"></div><button class="secondary" id="profileLogoutBtn">Se déconnecter</button><div id="profileMessage" class="cloud-message"></div>`;
+ root.querySelector('#prefHideSubwheels').onchange=e=>setHideSubwheels(e.target.checked);
+ root.querySelector('#profileGamesBtn').onclick=()=>{closeProfileModal();openCloudModal()};
+ root.querySelector('#profileSyncBtn').onclick=async()=>{const m=root.querySelector('#profileMessage');m.textContent='Synchronisation…';try{await cloudSyncAllData();m.textContent='Synchronisation terminée ✓'}catch(e){m.textContent='Erreur : '+(e.message||e)}};
+ root.querySelector('#profileLogoutBtn').onclick=cloudLogout;
+ root.querySelectorAll('[data-avatar-choice]').forEach(btn=>btn.onclick=async()=>{const m=root.querySelector('#profileMessage');m.textContent='Mise à jour de l’icône…';try{await setProfileChampionAvatar(btn.dataset.avatarChoice);renderProfileModal()}catch(e){m.textContent='Erreur : '+(e.message||e)}});
+ fillProfileChampionAvatars(root);
+ const current=root.querySelector('#profileCurrentAvatar');if(current&&cloudProfile?.avatar_image_path&&cloudReady())cloudDownloadPortraitPath(cloudProfile.avatar_image_path).then(blob=>{if(!blob||!current.isConnected)return;const u=URL.createObjectURL(blob),img=document.createElement('img');img.src=u;img.alt='Icône de profil';img.onload=()=>URL.revokeObjectURL(u);current.replaceChildren(img)}).catch(()=>{});
+}
 function cloudStatus(text,kind=''){
   const el=document.getElementById('cloudStatus');if(!el)return;
   el.textContent=text;el.className='cloud-status'+(kind?' '+kind:'');
@@ -4806,9 +4836,9 @@ async function initCloud(){
   if(cloudReady()) setTimeout(()=>ensureMissingCharacterPortraits().catch(console.error),1800);
   cloudClient.auth.onAuthStateChange(async(_event,session)=>{cloudUser=session?.user||null;if(cloudUser){try{await loadCloudProfile();await cloudRefreshGames();if(cloudReady())setTimeout(()=>ensureMissingCharacterPortraits().catch(console.error),1200)}catch(e){cloudSyncError(e)}}else{cloudGames=[];cloudCurrentGame=null;cloudProfile=null}cloudUpdateTopStatus();renderEntryGate();renderCloudModal()});
 }
-document.getElementById('cloudAccountBtn').onclick=openCloudModal;
+document.getElementById('cloudAccountBtn').onclick=()=>cloudUser?openProfileModal():openCloudModal();
 document.getElementById('cloudCloseBtn').onclick=closeCloudModal;
-document.getElementById('cloudModal').onclick=e=>{if(e.target.id==='cloudModal')closeCloudModal()};
+document.getElementById('cloudModal').onclick=e=>{if(e.target.id==='cloudModal')closeCloudModal()};document.getElementById('profileModal').onclick=e=>{if(e.target.id==='profileModal')closeProfileModal()};document.getElementById('profileCloseBtn').onclick=closeProfileModal;
 initCloud().catch(cloudSyncError);
 
 // Répare aussi une session déjà touchée par l'ancienne synchro, sans attendre une nouvelle ouverture cloud.
