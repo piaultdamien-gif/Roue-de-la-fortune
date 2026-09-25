@@ -1685,6 +1685,28 @@ function characterOriginsLineageHtml(s){
   const rows=characterOriginsLineageRows(s);
   return rows.length?rows.map(([k,v])=>`<div class="detail-row"><b>${k} :</b> ${v}</div>`).join(''):'<div class="detail-row">—</div>';
 }
+function characterSheetBonusHtml(s,kind){
+  const oldState=state;
+  try{state=s;return kind==='race'?raceBonusText():archBonusText()}catch(e){return '—'}finally{state=oldState}
+}
+function fullExtraDetailsHtml(s){
+  let out=`<div class="detail-row"><b>Extra :</b> ${s.extra||'—'}</div>`;
+  const safe=v=>v===null||v===undefined||v===''?'—':String(v);
+  (s.extraDetail||[]).forEach(o=>{
+    let label=o.kind||o.source||'Détail', vals=[];
+    for(const [k,v] of Object.entries(o||{})){
+      if(['kind','source','ref'].includes(k)||v===null||v===undefined||v===''||(Array.isArray(v)&&!v.length))continue;
+      if(typeof v==='object'&&!Array.isArray(v))continue;
+      vals.push(`${k} : ${Array.isArray(v)?v.join(', '):safe(v)}`);
+    }
+    if(o.ref&&typeof o.ref==='object')for(const [k,v] of Object.entries(o.ref)){if(v!==null&&v!==undefined&&v!==''&&!(Array.isArray(v)&&!v.length))vals.push(`${k} : ${Array.isArray(v)?v.join(', '):safe(v)}`)}
+    out+=`<div class="detail-row"><b>${label} :</b> ${vals.join(' • ')||'—'}</div>`;
+  });
+  (s.blessings||[]).forEach(b=>out+=`<div class="detail-row"><b>Bénédiction :</b> ${b.name||'—'}${b.intensity!=null?` — ${b.intensity}/10 — ${rankLabel(Number(b.intensity),'intensity')}`:''}${b.source?` <span class="muted">(${b.source})</span>`:''}</div>`);
+  (s.curses||[]).forEach(c=>out+=`<div class="detail-row"><b>Malédiction :</b> ${c.name||'—'}${c.intensity!=null?` — ${c.intensity}/10 — ${rankLabel(Number(c.intensity),'intensity')}`:''}${c.source?` <span class="muted">(${c.source})</span>`:''}</div>`);
+  return out;
+}
+function exactHistoryHtml(s){return (s.logs||[]).length?(s.logs||[]).map(x=>`<div class="detail-row"><span class="tag">${x.cat||'—'}</span> ${x.val??'—'}</div>`).join(''):'<div class="detail-row">—</div>'}
 function openCharacterDetail(id){
   setTimeout(()=>refreshIllustrationFor(id),0);
   setTimeout(()=>{
@@ -1722,8 +1744,8 @@ function openCharacterDetail(id){
     <div class="detail-title">${s.name||'Sans nom'}</div><div class="muted">${id} • ${s.title||'Sans titre'}</div>
     <div class="detail-grid">
       <div class="detail-box"><h4>Identité</h4>
-        <div class="detail-row"><b>Race :</b> ${s.race||'—'}</div><div class="detail-row"><b>Genre :</b> ${s.gender||'—'}</div>
-        <div class="detail-row"><b>Taille :</b> ${s.size||'—'}</div><div class="detail-row"><b>Archétype :</b> ${s.arch||'—'}${s.slayerTarget?` — cible ${s.slayerTarget}`:''}</div>${s.summon?summonerSummaryHtml(s):''}
+        <div class="detail-row"><b>Race :</b> ${s.race||'—'}</div><div class="detail-row"><b>Bonus de race :</b> ${characterSheetBonusHtml(s,'race')}</div><div class="detail-row"><b>Genre :</b> ${s.gender||'—'}</div>
+        <div class="detail-row"><b>Taille :</b> ${s.size||'—'}</div><div class="detail-row"><b>Archétype :</b> ${s.arch||'—'}${s.slayerTarget?` — cible ${s.slayerTarget}`:''}</div><div class="detail-row"><b>Bonus archétype :</b> ${characterSheetBonusHtml(s,'arch')}</div>${s.summon?summonerSummaryHtml(s):''}
         <div class="detail-row"><b>Métier :</b> ${s.job||'—'}</div><div class="detail-row"><b>Histoire :</b> ${s.history?.join(' + ')||'—'}</div>
         <div class="detail-row"><b>Personnalité :</b> ${s.personality||'—'}</div>
       </div>
@@ -1733,7 +1755,7 @@ function openCharacterDetail(id){
         <div class="detail-row"><b>Pouvoirs :</b> ${powers.length?powers.join('<br>'):'—'}</div>
         <div class="detail-row"><b>Armes :</b> ${weapons.length?weapons.join('<br>'):'—'}</div>
         <div class="detail-row"><b>Faiblesse :</b> ${s.weakness||'—'}</div>
-        <div class="detail-row"><b>Extra :</b> ${s.extra||'—'}</div>
+        ${fullExtraDetailsHtml(s)}
       </div>
       <div class="detail-box"><h4>Famille & lignée</h4>
         <div class="detail-row"><b>Parents :</b> ${g.parents?.length?g.parents.join(', '):'—'}</div>
@@ -1749,6 +1771,7 @@ function openCharacterDetail(id){
         <div class="detail-row"><b>Style vestimentaire :</b> ${s.clothingStyle||'—'}</div>
         <div class="detail-row"><b>Signe distinctif :</b> ${s.appearance?.sign||'—'}</div>
       </div>
+      <div class="detail-box"><h4>Historique exact</h4>${exactHistoryHtml(s)}</div>
     </div>
   </div>`;
   characterDetail.classList.add('active');
@@ -4038,8 +4061,8 @@ const RACE_CODEX_LORE={
  'Géant':{origin:'Ancienne race biologique de Yndara, distincte de la lignée des Titans. Plusieurs populations anciennes se sont établies dans les grands reliefs, notamment les sommets et hautes vallées de Kharadryn.',development:'Leur gigantisme a conduit à des sociétés adaptées à des territoires capables de soutenir des organismes de très grande taille. Dans les régions froides, leurs communautés ont développé vêtements, habitats et pratiques compatibles avec les hautes altitudes et les hivers prolongés.',geography:'Présents surtout dans les régions de Yndara offrant de vastes espaces et d’importantes ressources. Kharadryn constitue l’un de leurs foyers historiques les plus importants.',biology:'Humanoïdes gigantesques dont la taille dépasse largement celle des peuples communs, mais reste très inférieure à celle des Titans. Leur squelette, leur musculature et leur système circulatoire sont adaptés à ce gigantisme naturel.'},
  'Vampire':{origin:'Le vampirisme est une condition ou une lignée transformative pouvant apparaître au sein de différentes races biologiques de Vaeloria. Les Vampires ne possèdent donc pas une ascendance morphologique unique : leur forme dépend en partie du peuple dont ils sont issus.',development:'Les lignées vampiriques se sont développées de manière différente selon les peuples, les régions et les époques. Malgré des caractères vampiriques communs, elles conservent une part importante de leur héritage d’origine, ce qui produit une grande diversité de morphologies et de modes de vie.',geography:'Les Vampires peuvent apparaître partout où vivent les races susceptibles de porter le vampirisme. Certaines lignées anciennes sont implantées à Mor\'khal, mais aucune région ni aucune strate ne regroupe à elle seule l’ensemble des Vampires de Vaeloria.',biology:'Le vampirisme modifie un organisme préexistant plutôt qu’il ne remplace entièrement son anatomie. Il entraîne généralement des canines prédatrices, des sens surnaturels, une régénération importante, une longévité exceptionnelle et diverses modifications du regard, de la peau ou du métabolisme. Les caractères biologiques de la race d’origine peuvent être conservés et se combiner aux caractères vampiriques.'},
  'Loup-garou':{origin:'La lycanthropie est une lignée ou transformation lupine pouvant se manifester chez différentes races biologiques de Vaeloria. Les Loups-garous ne constituent donc pas une population issue d’une morphologie humanoïde unique.',development:'La transformation combine les caractéristiques de l’ascendance d’origine avec une morphologie lupine puissante. Les lignées peuvent différer par leur apparence, leur stature et l’intensité de leurs caractères animaux, tout en partageant un ensemble de traits liés à la lycanthropie.',geography:'Des Loups-garous existent dans plusieurs régions et strates de Vaeloria, leur répartition suivant en partie celle des peuples dont ils sont issus. Certaines populations privilégient de vastes territoires sauvages comme les forêts de Sylvaeryn, sans que la race y soit limitée.',biology:'La forme transformée développe généralement fourrure, tête et dentition lupines, griffes, sens surnaturels, musculature accrue et capacités de régénération. La taille, les proportions et certains caractères corporels restent influencés par la race d’origine, ce qui peut produire des différences considérables entre individus.'},
- 'Démon':{origin:'Peuple natif de Nharak.',development:'Le terme ne détermine ni sa morale ni ses pouvoirs.',geography:'Nharak est sa strate d’origine.',biology:'À développer.'},
- 'Ange':{origin:'Peuple natif d’Elyrion, distinct des Divinités.',development:'Les Anges ne sont pas nécessairement au service des Divinités.',geography:'Elyrion est sa strate d’origine.',biology:'À développer.'},
+ 'Démon':{origin:'Peuple natif de Nharak.',development:'Le terme ne détermine ni sa morale ni ses pouvoirs. Certains Démons évoluent en Archdémons : l’Archdémon est la forme évoluée de cette même lignée et non une race séparée.',geography:'Nharak est sa strate d’origine.',biology:'La fiche raciale regroupe la forme de base Démon et son évolution Archdémon. Les caractéristiques biologiques détaillées restent à développer.'},
+ 'Ange':{origin:'Peuple natif d’Elyrion, distinct des Divinités.',development:'Les Anges ne sont pas nécessairement au service des Divinités. Certains Anges évoluent en Archanges : l’Archange est la forme évoluée de cette même lignée et non une race séparée.',geography:'Elyrion est sa strate d’origine.',biology:'La fiche raciale regroupe la forme de base Ange et son évolution Archange. Les caractéristiques biologiques détaillées restent à développer.'},
  'Esprit':{origin:'Les Esprits constituent un ensemble d’êtres immatériels ou partiellement immatériels de Vaeloria. Certains naissent de phénomènes naturels, de lieux ou d’énergies particulières, tandis que d’autres proviennent de la persistance spirituelle d’un être autrefois vivant.',development:'Leur forme et leur identité dépendent fortement de leur origine. Un Esprit issu d’un ancien être vivant peut conserver une silhouette et certains marqueurs de son ascendance, tandis qu’un Esprit né directement d’un phénomène ou d’un lieu peut adopter une apparence beaucoup moins humanoïde.',geography:'Les Esprits peuvent apparaître dans Elyrion, Yndara et Nharak. Leur présence est particulièrement fréquente autour de lieux chargés d’énergie, de phénomènes naturels persistants ou de sites marqués par une longue histoire. Kythera compte notamment de nombreuses manifestations spirituelles liées à ses environnements cristallins et souterrains.',biology:'Les Esprits ne reposent pas sur un organisme biologique ordinaire. Leur forme peut être translucide, lumineuse, intangible ou partiellement matérialisée, et leur cohésion dépend d’une énergie spirituelle. Ceux issus d’êtres vivants peuvent conserver des caractéristiques anatomiques de leur ancienne race sans retrouver pour autant un fonctionnement biologique complet.'},
 'Dragon humanoïde':{origin:'Forme d’entrée actuelle de la lignée draconique de Vaeloria. Un Dragon humanoïde peut appartenir à une ascendance de Dragon ancestral ou de Dragon originel.',development:'La lignée draconique est déterminée par l’ascendance et la pureté du sang. Sous 50 %, l’individu reste Dragon humanoïde. Entre 50 et 90 %, il conserve cette forme mais manifeste plus fortement les affinités et l’esprit de sa lignée ancienne. Au-delà de 90 %, il atteint la forme pure correspondant à sa lignée : Dragon ancestral ou Dragon originel.',geography:'Présents dans les trois strates de Vaeloria. Leur implantation dépend de leur lignée, de leur affinité et de leur histoire.',biology:'Morphologie principalement humanoïde avec des caractères draconiques variables : écailles, cornes, queue, yeux, griffes, crocs et autres traits hérités. Un Dragon humanoïde ne produit pas seul de descendant ; en revanche, un Dragon ancestral ou originel peut engendrer une descendance même sans second parent. Lorsqu’un Dragon humanoïde a un enfant avec un second parent, la transmission raciale suit les règles de descendance, avec 50 % de chances pour chacune des deux races parentales.'},
  'Dragon originel':{origin:'L’une des deux anciennes lignées draconiques coexistantes de Vaeloria, distincte des Dragons ancestraux et ne descendant pas d’eux.',development:'Les Dragons originels développent la Domination primordiale : ils projettent et contrôlent avec une précision extrême les phénomènes liés à leur affinité. Leur maîtrise s’affine avec l’âge et l’expérience.',geography:'Extrêmement rares sous leur forme pure. Ils peuvent vivre dans les trois strates de Vaeloria selon leur affinité et leur histoire.',biology:'Véritables dragons non humanoïdes au corps très long et serpentin, quatre membres et aucune aile. Ils possèdent généralement cornes, crinière, longues structures sensorielles et des rubans translucides biologiques semblables à du verre vivant, servant à percevoir et canaliser leur Domination primordiale. Leur vol ne dépend pas d’ailes.'},
@@ -4096,7 +4119,7 @@ function raceCodexData(){
  const superior=new Set(superiorNames);
  // Le choix combiné « Divinité / Demi-dieu » reste intact dans la roue, mais le Codex les affiche séparément.
  // Cyborg appartient à la famille Nexus dans le Codex : il reste inchangé dans la roue, mais n'est plus affiché parmi les races communes.
- const common=opts.filter(o=>!superior.has(o.label)&&o.label!=='Cyborg');
+ const common=opts.filter(o=>!superior.has(o.label)&&o.label!=='Cyborg'&&o.label!=='Demi-dieu');
  const high=opts.filter(o=>superior.has(o.label)&&o.label!=='Divinité / Demi-dieu');
  // Entrées de Codex uniquement : elles ne sont jamais ajoutées à la roue des races.
  const codexOnlyHigh=['Demi-dieu','Divinité','Dieu céleste','Dragon originel','Dragon ancestral','Titan primordial','Titan fondateur','Cyborg','N.E.X.U.S.','Neoxus'];
@@ -4111,6 +4134,12 @@ function raceCodexTile(name,extra=''){
  const escaped=name.replace(/"/g,'&quot;');
  if(name==='Squelette'){
   return `<button type="button" class="race-codex-tile secondary" data-race-codex="Squelette"><span class="race-codex-icon" style="display:grid;grid-template-columns:1fr 1fr;overflow:hidden"><img src="assets/universe/races/squelette.webp" alt="Squelette" style="width:100%;height:100%;object-fit:cover;min-width:0" onerror="this.style.display='none'"><img src="assets/universe/races/liche.webp" alt="Liche — évolution du Squelette" style="width:100%;height:100%;object-fit:cover;min-width:0" onerror="this.style.display='none'"></span><span class="race-codex-name">Squelette</span><small class="muted">Évolution : Liche</small></button>`;
+ }
+ if(name==='Ange'){
+  return `<button type="button" class="race-codex-tile secondary" data-race-codex="Ange"><span class="race-codex-icon" style="display:grid;grid-template-columns:1fr 1fr;overflow:hidden"><img src="assets/universe/races/ange.webp" alt="Ange" style="width:100%;height:100%;object-fit:cover;min-width:0" onerror="this.style.display='none'"><img src="assets/universe/races/archange.webp" alt="Archange — évolution de l’Ange" style="width:100%;height:100%;object-fit:cover;min-width:0" onerror="this.style.display='none'"></span><span class="race-codex-name">Ange</span><small class="muted">Évolution : Archange</small></button>`;
+ }
+ if(name==='Démon'){
+  return `<button type="button" class="race-codex-tile secondary" data-race-codex="Démon"><span class="race-codex-icon" style="display:grid;grid-template-columns:1fr 1fr;overflow:hidden"><img src="assets/universe/races/demon.webp" alt="Démon" style="width:100%;height:100%;object-fit:cover;min-width:0" onerror="this.style.display='none'"><img src="assets/universe/races/archdemon.webp" alt="Archdémon — évolution du Démon" style="width:100%;height:100%;object-fit:cover;min-width:0" onerror="this.style.display='none'"></span><span class="race-codex-name">Démon</span><small class="muted">Évolution : Archdémon</small></button>`;
  }
  if(dragonCross){
   const slug=raceCodexSlug(name);
@@ -4147,7 +4176,10 @@ function openRaceCodex(name){
  const dragonCross=DRAGON_CODEX_CROSSES.find(x=>x.label===name);
  const block=(title,val)=>`<div class="race-detail-block"><h4>${title}</h4><p class="${!val||val==='À développer.'?'race-detail-missing':''}">${val||'À développer.'}</p></div>`;
  const onePortrait=(path,label)=>`<div class="race-detail-portrait"><img src="${path}" alt="${label}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><div class="vae-placeholder" style="display:none"><div><b>Portrait prévu</b><br>${label}<br><small>${path}</small></div></div><small class="muted" style="display:block;text-align:center;margin-top:8px">${label}</small></div>`;
- const portraits=name==='Squelette'?`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">${onePortrait('assets/universe/races/squelette.webp','Squelette — forme de base')}${onePortrait('assets/universe/races/liche.webp','Liche — évolution du Squelette')}</div>`:(dragonCross?`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">${onePortrait(`assets/universe/races/${raceCodexSlug(name)}-ancestral.webp`,`${name} — lignée ancestrale`)}${onePortrait(`assets/universe/races/${raceCodexSlug(name)}-originel.webp`,`${name} — lignée originelle`)}</div>`:onePortrait(src,`Portrait — ${name}`));
+ const portraits=name==='Squelette'?`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">${onePortrait('assets/universe/races/squelette.webp','Squelette — forme de base')}${onePortrait('assets/universe/races/liche.webp','Liche — évolution du Squelette')}</div>`:
+  name==='Ange'?`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">${onePortrait('assets/universe/races/ange.webp','Ange — forme de base')}${onePortrait('assets/universe/races/archange.webp','Archange — évolution de l’Ange')}</div>`:
+  name==='Démon'?`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">${onePortrait('assets/universe/races/demon.webp','Démon — forme de base')}${onePortrait('assets/universe/races/archdemon.webp','Archdémon — évolution du Démon')}</div>`:
+  (dragonCross?`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">${onePortrait(`assets/universe/races/${raceCodexSlug(name)}-ancestral.webp`,`${name} — lignée ancestrale`)}${onePortrait(`assets/universe/races/${raceCodexSlug(name)}-originel.webp`,`${name} — lignée originelle`)}</div>`:onePortrait(src,`Portrait — ${name}`));
  box.innerHTML=`<div class="race-detail-shell"><button type="button" class="race-detail-close secondary" aria-label="Fermer" title="Fermer">×</button><div class="race-detail-layout"><div>${portraits}</div><div class="race-detail-copy"><h2>${name}</h2>${block('Origines',lore.origin)}${block('Développement',lore.development)}${block('Répartition géographique',lore.geography)}${block('Biologie',lore.biology)}</div></div></div>`;
  box.classList.add('active'); document.body.style.overflow='hidden'; box.scrollTop=0;
  const close=()=>{box.classList.remove('active');box.innerHTML='';document.body.style.overflow=''};
