@@ -1239,9 +1239,10 @@ function loadCharacterById(id){
   const roster=loadRoster(), saved=roster[id];
   if(!saved) return false;
 
-  // V20 : un descendant nouveau-format est déjà une fiche complète figée ; ses logs
-  // ne doivent jamais être rejoués comme des roues (cause historique des décalages de champs).
-  if(saved.isDescendant && saved._generationComplete){
+  // V21 : toute fiche terminée est un instantané complet et ne doit jamais être
+  // rejouée depuis ses anciens logs. L'ajout de nouvelles sous-roues changerait sinon
+  // l'alignement des logs et décalerait Genre/Taille/Archétype/etc.
+  if(saved._generationComplete){
     state=ensureGenealogyShape(JSON.parse(JSON.stringify(saved)));
     queue=[];index=0;rotation=0;spinNumber=Array.isArray(state.logs)?state.logs.length:0;
     auto=false;spinning=false;autoBtn.textContent='Auto : OFF';spinBtn.disabled=false;
@@ -3824,7 +3825,7 @@ function raceBonusText(){
  let sources=[];
  const L=state.lineage||{};
  if(L.primaryComponent){let v=componentProfile(L.primaryComponent);sources.push(`${L.primaryComponent.race}${L.primaryComponent.species?` (${L.primaryComponent.species})`:''}: ${statNames.map((st,i)=>v[i]?`${st} ${v[i]>0?'+':''}${v[i]}`:null).filter(Boolean).join(', ')||'aucun bonus de stat'}`)}
- for(const p of state.raceParts||[]){const normalized=String(p).startsWith('Homme-bête')?'Homme-bête':p;if(L.primaryComponent&&normalized===L.primaryComponent.race)continue;let v=componentProfile(p);sources.push(`${p}: ${statNames.map((st,i)=>v[i]?`${st} ${v[i]>0?'+':''}${v[i]}`:null).filter(Boolean).join(', ')||'aucun bonus de stat'}`)}
+ for(const p of state.raceParts||[]){const normalized=String(p).startsWith('Homme-bête')?'Homme-bête':p;if(L.primaryComponent){const c=L.primaryComponent,st=superiorStage(c);let displayed=c.race;if(c.race==='Demi-dieu')displayed=st===1?'Demi-dieu':st===2?'Divinité':'Dieu céleste';else if(c.race==='Cyborg')displayed=st===1?'Cyborg':st===2?'N.E.X.U.S.':'Neoxus';else if(c.race==='Titan')displayed=st===1?'Titan':st===2?'Titan primordial':'Titan fondateur';else if(c.race==='Dragon humanoïde')displayed=st===1?'Dragon humanoïde':st===2?'Dragon humanoïde — Esprit dragon':`Dragon ${String(c.dragonBlood||'Ancestral').toLowerCase()}`;if(normalized===c.race||p===displayed)continue}let v=componentProfile(p);sources.push(`${p}: ${statNames.map((st,i)=>v[i]?`${st} ${v[i]>0?'+':''}${v[i]}`:null).filter(Boolean).join(', ')||'aucun bonus de stat'}`)}
  return `${sources.length?sources.join(' • '):`Race / lignée : ${xs.join(', ')||'aucun bonus de stat'}`}<br><span class="muted">Total racial : ${xs.join(', ')||'aucun'} • Maîtrise pouvoir: ${pm?`${pm>0?'+':''}${pm}`:'aucun'} • Maîtrise arme: ${wm?`${wm>0?'+':''}${wm}`:'aucun'}</span>`;
 }
 function archBonusText(){let stat=activeArchs().map(a=>{let m=amods[a];if(!m)return a==='Prodige'?(state.prodigeMods.map(x=>`${x.stat} +${x.value}`).join(', ')||'à déterminer'):'spécial';return `${a}: `+(statNames.map((st,i)=>m[i]?`${st} ${m[i]>0?'+':''}${m[i]}`:null).filter(Boolean).join(', ')||'aucun')}).join(' • ');let pm=fmtMods(pma,activeArchs()),wm=fmtMods(wma,activeArchs());return `${stat||'aucun'}<br><span class="muted">Maîtrise pouvoir: ${pm} • Maîtrise arme: ${wm}</span>`}
