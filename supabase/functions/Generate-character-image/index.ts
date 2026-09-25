@@ -180,66 +180,107 @@ async function callGemini(
   throw new Error("Gemini indisponible après plusieurs tentatives.");
 }
 
-async function buildDirectorPrompt(apiKey: string, character: any, legacyPrompt: string) {
+async function buildDirectorPrompt(apiKey: string, character: any) {
   const system = `You are the art director for a procedural dark-fantasy / science-fiction character generator.
 Your job is to convert raw character JSON into a concise, highly effective English image prompt for FLUX.2 Klein 4B.
 
-CORE RULES:
-- Preserve the generated character exactly. Strange and contradictory combinations are intentional.
-- CRITICAL facts must be unmistakable: species/race, gender when visually relevant, unusual height/scale, body type, visible age, dominant colors, exact weapon or absence of weapon, familiar/summon, and distinctive physical signs.
-- You MAY invent secondary visual details when they enrich the illustration and are coherent with the data: clothing cuts, facial details, race-appropriate anatomy, environmental props, lighting, or visual metaphors for powers/jobs.
-- Invented details must NEVER contradict, replace, resize, remove, or weaken an explicit character fact.
-- Scale is strict. If the main character is 0.60 m tall and a summoned Human has no special size specified, the Human remains normal adult human size and must visibly tower over the main character. Never make companions miniature merely to fit the protagonist's scale.
-- Keep companions secondary but clearly readable when they are mandatory.
-- Translate hard-to-show information into intelligent visual composition rather than explanatory text.
-- Write the FLUX prompt as natural, coherent descriptive prose, but make it CHARACTER-FIRST. Spend most of the descriptive detail on the main character before describing the environment. Prefer complete descriptive sentences and connected clauses over comma-separated keyword piles, tag lists, or booru-style prompting.
-- Describe the character with high visual specificity: face and expression, skin or racial anatomy, hair, body morphology, distinctive signs, clothing silhouette and layering, material textures, ornamentation, exact equipment/weapon construction, and clearly visible manifestations of powers, transformations, curses, familiars, summons, or Extras when the JSON makes them visually relevant.
-- The main character must remain the primary visual subject and receive substantially more fine detail than the scenery. Environmental detail must NEVER come at the expense of character anatomy, clothing, equipment, racial identity, or other explicit visual traits.
-- After the character is fully established, describe the region/environment more briefly, using enough distinctive landscape, architecture, vegetation, climate, lighting, and atmosphere to identify the setting without turning it into the dominant subject.
-- Integrate every important visually representable source fact into that narrative instead of merely appending isolated keywords. Repeat a crucial fact naturally only when needed for clarity, but avoid contradictory or redundant descriptors.
-- Do not overload the image with every statistic or abstract mechanic.
-- No written or pseudo-written text anywhere: no words, letters, numbers, names, labels, logos, UI, watermark, poster/card typography, or text-like runes.
-- Full body vertical portrait, head and feet visible, dark fantasy + science-fiction production art.
-- FLUX may receive canonical visual references selected specifically for THIS character. Race reference image(s) are authoritative only for racial anatomy, morphology, and species markers. Never copy their clothing, pose, weapon, identity, or background unless the source JSON independently requires it.
-- A region reference image is authoritative only for the environment: landscape, architecture, vegetation, climate, atmosphere, and regional visual identity. It must NEVER alter the character's race, anatomy, face, body, or species markers.
-- The source character's clothingStyle is a strong visual requirement: make the outfit visibly follow that clothing style through cut, materials, ornamentation, layering, and silhouette while remaining coherent with explicit equipment.
-- Keep the overall rendering dark-fantasy / science-fiction cinematic production art without relying on unrelated style-reference characters.
+The system generates many radically different characters. Apply every rule GENERICALLY from the supplied JSON. Never assume that examples or characteristics mentioned here are present unless they actually appear in the current character data.
 
-Return ONLY valid JSON with this exact shape:
+CORE PRINCIPLE — SHOW, DON'T LABEL
+FLUX must be told what to DRAW, not merely what a concept is called. For every important visually representable fact: identify the exact source fact; determine what a viewer could actually see; translate it into concrete visual manifestations; and include those manifestations in the FLUX prompt if the fact is CRITICAL. Examples illustrate reasoning only and must never be copied unless supported by the current JSON.
+
+VISUAL PRIORITY
+CRITICAL includes every explicit fact whose absence would make the illustrated character meaningfully less faithful or recognizable. This may include race/species and components, racial state/lineage, important active transformations, gender when visually relevant, unusual height/scale, body morphology, visible age, distinctive signs, dominant colors, clothing style, weapons/major equipment, visually expressible job, visible History consequences, curses/blessings, visible Extras, familiars/summons/clones/required companions, important powers and elemental identity. Do not make a field critical merely because it exists: it must have a meaningful visual consequence.
+SECONDARY includes supporting information such as archetype pose/demeanor, personality when useful, culture beyond explicit clothing, regional environment, atmosphere, minor equipment and secondary consequences.
+NON_VISUAL is only for information that genuinely should not be directly represented: names, titles when text is forbidden, raw combat statistics, IDs, internal metadata and mechanics with no visible consequence. Never discard a visible consequence merely because its parent mechanic is abstract.
+
+SOURCE VS CONSEQUENCE
+A History or Extra name may be abstract while its consequence is visual. A mastery/intensity value is not literal text but can guide visual prominence. Preserve the visual consequence.
+
+MECHANICAL VALUES AND VISUAL STRENGTH
+Raw Combat/Force/Intelligence/Résilience/Vitesse/Pouvoir/Arme statistics are non-visual unless the source explicitly defines a visible consequence. A value describing intensity, mastery, severity or magnitude of a visually representable effect is VISUAL GUIDANCE: associate it with that source fact, use it to calibrate prominence/control/intensity, and never display the number. Interpret values relative to the scale provided by the data; do not assume every scale has the same maximum.
+
+CRITICAL-TO-PROMPT GUARANTEE
+Every CRITICAL item MUST have its concrete visible_expression represented in flux_prompt. Before returning JSON, compare every CRITICAL item against flux_prompt and rewrite it if any visible expression is absent. Merely repeating an abstract label does not satisfy this requirement.
+
+STRICT SOURCE FIDELITY
+Preserve the generated character exactly. Strange, contradictory, unconventional or unexpected combinations are intentional. Never remove, weaken, normalize, beautify, resize, replace or reinterpret an explicit source fact for aesthetics. Preserve explicit morphology literally: corpulent stays corpulent, thin stays thin, muscular stays muscular, small stays small, giant stays giant. Apply the same fidelity to age, height, proportions, gender, race/components, anatomy, skin, signs, colors, clothing, equipment, weapons, transformations, companions and powers.
+
+CONTROLLED VISUAL INVENTION
+You may invent MINOR concrete details only when necessary to make an explicit source fact visually understandable. They must directly serve that fact, remain local, be plausible, not contradict explicit data, and not establish new canon/worldbuilding. You may choose a few plausible tools for an explicit profession or devise a coherent visible manifestation for an explicit supernatural effect. These are visual interpretations, not canonical facts.
+
+DO NOT INVENT WORLDBUILDING
+Do not invent unsupported canonical characteristics for races, cultures, regions, strata, factions, civilizations, religions, organizations, technologies, architecture, ecosystems, symbols or cultural motifs. A proper noun alone is not permission to invent its visual identity.
+
+NAMES, TITLES AND IDENTIFIERS
+Do not include character names, titles or IDs in flux_prompt unless they encode a visually necessary fact that cannot otherwise be expressed. Describe the character visually instead.
+
+CANONICAL VISUAL REFERENCES
+FLUX may receive canonical references selected specifically for the current character.
+Race references are authoritative only for racial anatomy, morphology, biological characteristics, species markers and canonical racial identity. When supplied, do not invent unsupported anatomy that contradicts or competes with them. Never copy their clothing, pose, weapon, individual identity or background unless independently required by JSON.
+Region references are authoritative only for landscape, architecture, vegetation, climate, atmosphere and environmental regional identity. When supplied and JSON gives no extra environmental facts, do NOT invent environmental specifics. Use neutral wording such as "within the environment shown by the supplied canonical region reference". A region reference must never alter character race, anatomy, face, morphology, body type, species markers, equipment, clothing or powers.
+Reference priority: explicit JSON defines WHAT the character is; race references define unsupported canonical racial appearance; region references define unsupported canonical environment; controlled invention fills only small gaps needed for readability. Never let a reference overwrite explicit JSON.
+
+CLOTHING
+clothingStyle is a strong visual requirement. Make it influence overall cut, layering, silhouette, construction and reasonably inferable materials while remaining compatible with explicit equipment. Do not invent culture-specific symbols, motifs, heraldry, iconography, religious or faction markings merely from a culture name.
+
+POWERS AND SUPERNATURAL EFFECTS
+Describe concrete manifestations when visually important. Keep multiple effects distinguishable where possible and tie them to the relevant anatomy, object, action or source fact rather than collapsing everything into generic particles or auras.
+
+CLONES, DOUBLES, FAMILIARS, SUMMONS AND COMPANIONS
+If explicitly required and visually present, they must be clearly readable. Preserve required species, scale, number and required similarity/difference. A physical clone must read as a physical duplicate when required, not a ghost/reflection/shadow/aura. Keep secondary figures compositionally subordinate unless source data requires otherwise.
+
+SCALE
+Scale is strict. Preserve explicit height and relative scale. Use companions/equipment/environment as natural scale cues when useful. Never resize another character merely to make composition easier.
+
+COMPOSITION — CHARACTER FIRST
+Write flux_prompt as natural coherent descriptive prose, never a keyword/tag pile. The main character is the primary visual subject. Spend most detail on anatomy, face, morphology, racial identity, signs, clothing, equipment, profession, powers, transformations, curses/blessings, Extras and other CRITICAL elements. Only then establish the environment briefly. Environmental detail must never come at the expense of character detail.
+
+PROMPT LENGTH AND EFFICIENCY
+Be detailed enough to preserve every CRITICAL fact but concise enough that important traits are not drowned in prose. Prefer precise visual descriptions over redundant adjectives. Every sentence should contribute useful visual information.
+
+STYLE AND FRAMING
+Unless source data explicitly requires otherwise: full-body vertical portrait; entire head and feet visible; character clearly readable; cinematic dark-fantasy + science-fiction production art; highly detailed main subject; coherent lighting; environment visible but subordinate. Do not crop important equipment, wings, tails, companions or other required traits.
+
+NO TEXT IN IMAGE
+No written or pseudo-written text: no words, letters, numbers, names, titles, labels, logos, UI, watermark, captions, poster/card typography, readable inscriptions or text-like runes.
+
+FINAL AUDIT
+Before returning, internally verify: every CRITICAL fact and visible_expression appears concretely in flux_prompt; no CRITICAL item exists only as an abstract label; morphology/age/scale/race/anatomy/colors/equipment remain faithful; nothing was normalized or beautified; no unsupported racial/cultural/regional/factional/technological lore was invented; unsupported region/race specifics are left to canonical references; no visible consequence was discarded because its parent mechanic is abstract; intensity/mastery/severity guides relevant effects without displaying numbers; multiple effects remain distinguishable; required secondary beings are represented; relative scale is faithful; environment stays secondary; names/titles/IDs are omitted; prose is coherent; no written text is requested. If any check fails, revise before answering.
+
+Return ONLY valid JSON with this exact structure:
 {
-  "critical": ["..."],
-  "secondary": ["..."],
+  "critical": [{"source_fact":"...","visible_expression":"..."}],
+  "secondary": [{"source_fact":"...","visible_expression":"..."}],
   "non_visual": ["..."],
   "flux_prompt": "one complete concise English image prompt"
 }`;
 
-  const user = `CHARACTER JSON:\n${JSON.stringify(character, null, 2)}\n\nA legacy hand-written prompt is included only as a fallback/reference for terminology. Do not blindly copy it and do not let it override the JSON:\n${legacyPrompt || "(none)"}`;
+  const user = `CHARACTER JSON:\n${JSON.stringify(character, null, 2)}\n\nRead this JSON as the authoritative source. Apply the rules generically to this character. Do not assume that any characteristic from a previous character exists in this one.`;
 
-  const { text, data } = await callGemini(
-    apiKey,
-    system,
-    [{ text: user }],
-    { maxTokens: 3500, temperature: 0.2 },
-  );
-
+  const { text, data } = await callGemini(apiKey, system, [{ text: user }], { maxTokens: 4500, temperature: 0.2 });
   const parsed = parseLooseJson(text);
   const fluxPrompt = String(parsed?.flux_prompt || extractFluxPromptFromText(text) || "").trim();
   if (!fluxPrompt) {
-  console.log("DIRECTOR_PARSE_FAILED", JSON.stringify({
-    textLength: text.length,
-    parsed: !!parsed,
-    finish: data?.candidates?.[0]?.finishReason ?? null,
-    hasContent: !!data?.candidates?.[0]?.content?.parts?.length,
-    contentPreview: text.slice(0, 500),
-  }));
-  throw new Error("Gemini n'a pas produit de FLUX prompt exploitable.");
+    console.log("DIRECTOR_PARSE_FAILED", JSON.stringify({ textLength: text.length, parsed: !!parsed, finish: data?.candidates?.[0]?.finishReason ?? null, contentPreview: text.slice(0, 500) }));
+    throw new Error("Gemini n'a pas produit de FLUX prompt exploitable.");
   }
 
+  const normalizeVisualItems = (items: any) => Array.isArray(items)
+    ? items.slice(0, 40).map((item: any) => {
+        if (item && typeof item === "object") return {
+          source_fact: String(item.source_fact || "").trim(),
+          visible_expression: String(item.visible_expression || "").trim(),
+        };
+        return { source_fact: String(item ?? "").trim(), visible_expression: "" };
+      }).filter((x: any) => x.source_fact)
+    : [];
+
   return {
-    critical: Array.isArray(parsed?.critical) ? parsed.critical.map(String).slice(0, 30) : [],
-    secondary: Array.isArray(parsed?.secondary) ? parsed.secondary.map(String).slice(0, 30) : [],
-    nonVisual: Array.isArray(parsed?.non_visual) ? parsed.non_visual.map(String).slice(0, 30) : [],
-    fluxPrompt: `${fluxPrompt}\n\nReference images 0-3 are canonical character/region references selected for this character. Race references govern racial anatomy only; the region reference governs environment only. Preserve the generated character data and do not copy unrelated clothing, pose, weapon, or identity from references.`,
+    critical: normalizeVisualItems(parsed?.critical),
+    secondary: normalizeVisualItems(parsed?.secondary),
+    nonVisual: Array.isArray(parsed?.non_visual) ? parsed.non_visual.map(String).slice(0, 40) : [],
+    fluxPrompt,
     raw: text,
   };
 }
@@ -247,7 +288,7 @@ Return ONLY valid JSON with this exact shape:
 async function validatePortrait(
   apiKey: string,
   character: any,
-  critical: string[],
+  critical: any[],
   currentPrompt: string,
   imageBase64: string,
 ) {
@@ -285,7 +326,7 @@ Return ONLY valid JSON:
   "corrected_flux_prompt": "complete replacement prompt, or empty string if no correction is needed"
 }`;
 
-  const userText = `SOURCE CHARACTER JSON:\n${JSON.stringify(character, null, 2)}\n\nVALIDATION SOURCE:
+  const userText = `SOURCE CHARACTER JSON:\n${JSON.stringify(character, null, 2)}\n\nDIRECTOR CRITICAL VISUAL CONTRACT:\n${JSON.stringify(critical, null, 2)}\n\nVALIDATION SOURCE:
 Use only the SOURCE CHARACTER JSON and the generated image as authoritative evidence.
 Do not treat the director interpretation or generation prompt as validation requirements.`;
 
@@ -358,33 +399,49 @@ function requestedRaceReferences(character: any): string[] {
     ? character.raceParts.map((x: any) => String(x ?? "").trim()).filter(Boolean)
     : [];
 
-  // A special final cross has its own canonical portrait. For draconic crosses,
-  // select only the branch actually requested by the generated character.
   const special = ["Deus Machina", "Titan céleste", "Colosse Nexus", "Drakéon", "Nexaryx", "Tyrakhan"]
     .find((x) => finalRace.includes(x) || parts.includes(x));
+
+  let main: string[] = [];
   if (special) {
     if (["Drakéon", "Nexaryx", "Tyrakhan"].includes(special)) {
       const lineageText = JSON.stringify(character?.lineage || {}) + " " + finalRace + " " + parts.join(" ");
-      if (/originel/i.test(lineageText)) return [`${raceAssetSlug(special)}-originel`];
-      if (/ancestral/i.test(lineageText)) return [`${raceAssetSlug(special)}-ancestral`];
+      if (/originel/i.test(lineageText)) main = [`${raceAssetSlug(special)}-originel`];
+      else if (/ancestral/i.test(lineageText)) main = [`${raceAssetSlug(special)}-ancestral`];
+      else main = [raceAssetSlug(special)];
+    } else main = [raceAssetSlug(special)];
+  } else {
+    const stateLike = new Set(["Hybride"]);
+    let names = parts.filter((x: string) => !stateLike.has(x));
+    if (!names.length && finalRace) {
+      if (RACE_FILE_MAP[finalRace]) names = [finalRace];
+      else names = finalRace.split(/\s*\/\s*|\s*\+\s*/).filter(Boolean);
     }
-    return [raceAssetSlug(special)];
+    main = uniqueStrings(names).map(raceAssetSlug).filter(Boolean);
   }
 
-  // For a true hybrid, use only its actual biological components rather than
-  // the generic Hybride codex portrait. States/forms are kept only when they
-  // are explicitly part of the requested final race.
-  const stateLike = new Set(["Hybride"]);
-  let names = parts.filter((x: string) => !stateLike.has(x));
-  if (!names.length && finalRace) {
-    // Exact known race first; otherwise split common composite display strings.
-    if (RACE_FILE_MAP[finalRace]) names = [finalRace];
-    else names = finalRace.split(/\s*\/\s*|\s*\+\s*/).filter(Boolean);
-  }
+  // Secondary visible beings can need their own canonical racial reference too.
+  // They are considered only after the protagonist's race/component references.
+  const secondaryNames: string[] = [];
+  const addRace = (v: any) => {
+    const value = String(v ?? "").trim();
+    if (value) secondaryNames.push(value);
+  };
+  const scanBeing = (being: any) => {
+    if (!being || typeof being !== "object") return;
+    addRace(being.race);
+    if (Array.isArray(being.raceParts)) being.raceParts.forEach(addRace);
+  };
+  scanBeing(character?.summon);
+  scanBeing(character?.familiar);
+  scanBeing(character?.companion);
+  if (Array.isArray(character?.summons)) character.summons.forEach(scanBeing);
+  if (Array.isArray(character?.familiars)) character.familiars.forEach(scanBeing);
+  if (Array.isArray(character?.companions)) character.companions.forEach(scanBeing);
 
-  // Never send unrelated race images. Maximum three race references leaves
-  // one FLUX slot for the character's region reference.
-  return uniqueStrings(names).map(raceAssetSlug).filter(Boolean).slice(0, 3);
+  // Reserve one of FLUX's four image slots for the region whenever possible.
+  const secondary = uniqueStrings(secondaryNames).map(raceAssetSlug).filter(Boolean);
+  return uniqueStrings([...main, ...secondary]).slice(0, 3);
 }
 
 async function fetchReference(url: string, name: string) {
@@ -607,7 +664,7 @@ Deno.serve(async (req) => {
 
     if (character && !correctionMode) {
       try {
-        director = await buildDirectorPrompt(GEMINI_API_KEY, character, legacyPrompt);
+        director = await buildDirectorPrompt(GEMINI_API_KEY, character);
         fluxPrompt = director.fluxPrompt;
       } catch (e: any) {
         warnings.push(`Gemini director unavailable: ${String(e?.message || e).slice(0, 300)}`);
