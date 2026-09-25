@@ -1367,11 +1367,6 @@ function newCharacterAtCurrentId(){
     taskTitle.textContent='Saison verrouillée — tournoi à terminer ⚔️';
     spinBtn.textContent='⚔️ Voir le tournoi';
     result.innerHTML=`Impossible de commencer ${currentCharacterId()}<small>Le tournoi de S${seasonNumber-1} doit avoir un champion avant toute création en S${seasonNumber}.</small>`;
-  }else if(descendantsAwaitingSelectionForSeason(seasonNumber).length){
-    const n=descendantsAwaitingSelectionForSeason(seasonNumber).length;
-    taskTitle.textContent='Saison verrouillée — descendants à sélectionner 🩸';
-    spinBtn.textContent='🩸 Sélectionner les descendants';
-    result.innerHTML=`Impossible de commencer ${currentCharacterId()}<small>${n} descendant${n>1?'s sont':' est'} éligible${n>1?'s':''} à S${seasonNumber}. Sélectionne-les d’abord dans « Descendants & lignées ».</small>`;
   }else{
     result.innerHTML=selectedDesc?`Clique sur « Commencer »<small>🩸 Descendant prioritaire ${selectedDesc.id} → ${currentCharacterId()} • héritage chargé automatiquement.</small>`:'Clique sur « Commencer »<small>Nouveau personnage : '+currentCharacterId()+'.</small>';
   }
@@ -1542,7 +1537,7 @@ function blockGenerationIfPreviousTournamentIncomplete(){
 function descendantsAwaitingSelectionForSeason(season=seasonNumber){
   if(Number(season)<=1)return [];
   const d=descendants();
-  return Object.values(d).filter(x=>x&&Number(x.eligibleSeason)===Number(season)&&x.selectedForSeason==null);
+  return Object.values(d).filter(x=>x && !x.legacy && !!x.fullFighterData && Number(x.eligibleSeason)===Number(season) && x.selectedForSeason==null);
 }
 function blockGenerationIfDescendantsNotSelected(){ return false; } // V20: la sélection ne bloque plus les roues normales.
 
@@ -2008,17 +2003,19 @@ function childCountRoll(){let r=Math.random()*100;if(r<90)return 1;if(r<98)retur
 // V20 — migration unique : tout descendant existant avant ce moteur devient Legacy.
 function migrateExistingDescendantsToLegacy(){
   const meta=universeMeta();
-  if(Number(meta.descendantEngineVersion||0)>=20)return;
   const ds=descendants();
+  let changed=false;
+  // Tout descendant provenant de l'ancien moteur n'a pas de fullFighterData figée.
+  // On le marque Legacy même si une tentative précédente avait déjà posé engineVersion=20.
+  // Cela évite qu'un ancien DESC puisse à nouveau bloquer ou piloter les roues normales.
   for(const d of Object.values(ds)){
-    if(!d)continue;
-    d.legacy=true;
-    d.status=d.status?.includes('Legacy')?d.status:`Legacy — ${d.status||'ancien descendant'}`;
-    d.selectedForSeason=false;
+    if(!d || d.fullFighterData)continue;
+    if(!d.legacy){d.legacy=true;changed=true;}
+    const legacyStatus=d.status?.includes('Legacy')?d.status:`Legacy — ${d.status||'ancien descendant'}`;
+    if(d.status!==legacyStatus){d.status=legacyStatus;changed=true;}
   }
-  meta.descendantEngineVersion=20;
-  meta.selectedBySeason={};
-  saveStore(STORAGE_DESC,ds);saveStore(STORAGE_META,meta);
+  if(Number(meta.descendantEngineVersion||0)<20){meta.descendantEngineVersion=20;changed=true;}
+  if(changed){saveStore(STORAGE_DESC,ds);saveStore(STORAGE_META,meta);}
 }
 
 // Génère une fiche complète avec EXACTEMENT le moteur normal, sans rendu, sauvegarde de
