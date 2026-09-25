@@ -6,7 +6,7 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const OPENROUTER_MODEL = "inclusionai/ling-3.0-flash-vl:free";
+const GEMINI_MODEL = "gemini-3.5-flash-lite";
 const CF_MODEL_NORMAL = "@cf/black-forest-labs/flux-2-klein-4b";
 const CF_MODEL_CHAMPION = "@cf/black-forest-labs/flux-2-klein-9b";
 const BUCKET = "character-images";
@@ -81,17 +81,14 @@ function base64ToBytes(base64: string) {
   return bytes;
 }
 
-function openRouterText(data: any): string {
-  const content = data?.choices?.[0]?.message?.content;
-  if (typeof content === "string") return content.trim();
-  if (Array.isArray(content)) {
-    return content
-      .map((x: any) => (typeof x?.text === "string" ? x.text : typeof x === "string" ? x : ""))
-      .filter(Boolean)
-      .join("\n")
-      .trim();
-  }
-  return "";
+function geminiText(data: any): string {
+  const parts = data?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return "";
+  return parts
+    .map((part: any) => typeof part?.text === "string" ? part.text : "")
+    .filter(Boolean)
+    .join("\n")
+    .trim();
 }
 
 function parseLooseJson(text: string): any | null {
@@ -123,109 +120,64 @@ function extractFluxPromptFromText(text: string): string | null {
 }
 
 function neutralizeForCloudflare(prompt: string) {
+  // Fallback used ONLY after Cloudflare returns error 3030.
+  // Keep ordinary dark-fantasy visual vocabulary intact (blood, scars, wounds,
+  // injuries, bleeding, flesh, death, vampire, regeneration, etc.) so Flux can
+  // represent the JSON faithfully. Neutralize only unusually graphic/anatomical
+  // formulations that are more likely to trigger the provider filter.
   return String(prompt || "")
     .replace(/life[- ]?drain(?:ing)?/gi, "subtle dark arcane siphoning effect")
-    .replace(/vampir(?:e|ism|ic)/gi, "dark nocturnal arcane")
-    .replace(/mutat(?:ion|ed|ing)/gi, "one clearly visible unusual physical trait")
-    .replace(/altered anatomy/gi, "distinctive fantasy anatomy")
-    .replace(/artificial(?:ly)?/gi, "engineered")
-    .replace(/experiment(?:al|ation)?/gi, "arcane-scientific")
-    .replace(/possess(?:ed|ion)/gi, "eerie supernatural influence")
-    .replace(/blood magic/gi, "crimson arcane energy")
-    .replace(/\bblood\b/gi, "crimson essence")
-    .replace(/\bdeath\b/gi, "otherworldly")
-
-    .replace(/visible bone anatomy/gi, "clearly defined skeletal fantasy structure")
-    .replace(/exposed bones?/gi, "skeletal fantasy structure")
     .replace(/extra organ nodules?/gi, "subtle unusual fantasy forms")
     .replace(/layered tissue lumps?/gi, "layered fantasy forms")
     .replace(/tissue lumps?/gi, "fantasy forms")
     .replace(/organ nodules?/gi, "fantasy structures")
     .replace(/thin translucent membranes?/gi, "soft translucent fantasy surfaces")
-    .replace(/translucent membranes?/gi, "translucent fantasy surfaces")
-    .replace(/multiple visible scars?/gi, "multiple visible healed marks")
-    .replace(/\bscars?\b/gi, "healed marks")
-    .replace(/wound cicatrices?/gi, "healed marks")
-    .replace(/small wound/gi, "subtle damaged area")
-    .replace(/\bwounds?\b/gi, "damaged area")
-    .replace(/\binjur(?:y|ies|ed)\b/gi, "damaged area")
-    .replace(/mends?/gi, "restores")
-    .replace(/\bflesh\b/gi, "physical form")
-    .replace(/healing threads?/gi, "restorative light")
-    .replace(/\bbleed(?:ing)?\b/gi, "crimson magical glow")
-    .replace(/\bwound(?:ed)?\b/gi, "magical mark")
-    .replace(/\binjur(?:y|ed)\b/gi, "magical mark")
-    .replace(/damaged area/gi, "glowing marked area")
-    .replace(/clawed hands and feet/gi, "fantasy hands and feet")
-    .replace(/clawed hands/gi, "fantasy hands")
-    .replace(/clawed feet/gi, "fantasy feet")
     .replace(/restraint shackles/gi, "arcane connection")
-    .replace(/\bshackles?\b/gi, "arcane links")
-    .replace(/regeneration effect/gi, "healing light effect")
-    .replace(/physical form knitting/gi, "glowing form restoring")
-    .replace(/\bregeneration\b/gi, "healing light")
-    
     .slice(0, 7000);
 }
 
-async function callOpenRouter(
+async function callGemini(
   apiKey: string,
-  messages: any[],
+  systemInstruction: string,
+  parts: any[],
   opts: { maxTokens?: number; temperature?: number } = {},
 ) {
   const maxAttempts = 3;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const r = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://piaultdamien-gif.github.io/Roue-de-la-fortune/",
-        "X-Title": "Hazard Game Tournament",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: OPENROUTER_MODEL,
-        messages,
-        max_tokens: opts.maxTokens ?? 1400,
-        temperature: opts.temperature ?? 0.25,
-        reasoning: { max_tokens: 400 },
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        contents: [{ role: "user", parts }],
+        generationConfig: {
+          temperature: opts.temperature ?? 0.2,
+          maxOutputTokens: opts.maxTokens ?? 3500,
+          responseMimeType: "application/json",
+        },
       }),
     });
 
     const raw = await r.text();
     let data: any = null;
-
-    try {
-      data = JSON.parse(raw);
-    } catch (_) {}
+    try { data = JSON.parse(raw); } catch (_) {}
 
     if (r.ok) {
-      const text = openRouterText(data);
-     
-      if (text) {
-        return { text, data };
-      }
-
-      if (attempt === maxAttempts) {
-        throw new Error("OpenRouter a renvoyé une réponse vide.");
-      }
+      const text = geminiText(data);
+      if (text) return { text, data };
+      if (attempt === maxAttempts) throw new Error("Gemini a renvoyé une réponse vide.");
     } else if (r.status !== 429 || attempt === maxAttempts) {
-      throw new Error(
-        `OpenRouter ${r.status}: ${data?.error?.message || raw.slice(0, 500)}`
-      );
+      throw new Error(`Gemini ${r.status}: ${data?.error?.message || raw.slice(0, 500)}`);
     }
 
     const delayMs = attempt * 2000;
-
-    console.log(
-      `OPENROUTER_RETRY attempt=${attempt}/${maxAttempts} status=${r.status} delay=${delayMs}ms`
-    );
-
+    console.log(`GEMINI_RETRY attempt=${attempt}/${maxAttempts} status=${r.status} delay=${delayMs}ms`);
     await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 
-  throw new Error("OpenRouter indisponible après plusieurs tentatives.");
+  throw new Error("Gemini indisponible après plusieurs tentatives.");
 }
 
 async function buildDirectorPrompt(apiKey: string, character: any, legacyPrompt: string) {
@@ -240,6 +192,8 @@ CORE RULES:
 - Scale is strict. If the main character is 0.60 m tall and a summoned Human has no special size specified, the Human remains normal adult human size and must visibly tower over the main character. Never make companions miniature merely to fit the protagonist's scale.
 - Keep companions secondary but clearly readable when they are mandatory.
 - Translate hard-to-show information into intelligent visual composition rather than explanatory text.
+- Write the FLUX prompt as natural, coherent descriptive prose: a short visual narrative describing the character, action/pose, clothing/equipment, supernatural effects, and environment in a logical order. Prefer complete descriptive sentences and connected clauses over comma-separated keyword piles, tag lists, or booru-style prompting.
+- Integrate every important visually representable source fact into that narrative instead of merely appending isolated keywords. Repeat a crucial fact naturally only when needed for clarity, but avoid contradictory or redundant descriptors.
 - Do not overload the image with every statistic or abstract mechanic.
 - No written or pseudo-written text anywhere: no words, letters, numbers, names, labels, logos, UI, watermark, poster/card typography, or text-like runes.
 - Full body vertical portrait, head and feet visible, dark fantasy + science-fiction production art.
@@ -258,13 +212,11 @@ Return ONLY valid JSON with this exact shape:
 
   const user = `CHARACTER JSON:\n${JSON.stringify(character, null, 2)}\n\nA legacy hand-written prompt is included only as a fallback/reference for terminology. Do not blindly copy it and do not let it override the JSON:\n${legacyPrompt || "(none)"}`;
 
-  const { text, data } = await callOpenRouter(
+  const { text, data } = await callGemini(
     apiKey,
-    [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
-    { maxTokens: 3500, temperature: 0.25 },
+    system,
+    [{ text: user }],
+    { maxTokens: 3500, temperature: 0.2 },
   );
 
   const parsed = parseLooseJson(text);
@@ -273,18 +225,18 @@ Return ONLY valid JSON with this exact shape:
   console.log("DIRECTOR_PARSE_FAILED", JSON.stringify({
     textLength: text.length,
     parsed: !!parsed,
-    finish: data?.choices?.[0]?.finish_reason ?? null,
-    hasContent: !!data?.choices?.[0]?.message?.content,
+    finish: data?.candidates?.[0]?.finishReason ?? null,
+    hasContent: !!data?.candidates?.[0]?.content?.parts?.length,
     contentPreview: text.slice(0, 500),
   }));
-  throw new Error("Ling n'a pas produit de FLUX prompt exploitable.");
+  throw new Error("Gemini n'a pas produit de FLUX prompt exploitable.");
   }
 
   return {
     critical: Array.isArray(parsed?.critical) ? parsed.critical.map(String).slice(0, 30) : [],
     secondary: Array.isArray(parsed?.secondary) ? parsed.secondary.map(String).slice(0, 30) : [],
     nonVisual: Array.isArray(parsed?.non_visual) ? parsed.non_visual.map(String).slice(0, 30) : [],
-    fluxPrompt: `${fluxPrompt}\n\nReference images 0-3 are style references only. Preserve the generated character data; do not copy subjects or specific traits from the references.`,
+    fluxPrompt: `${fluxPrompt}\n\nReference images 0-3 are canonical character/region references selected for this character. Race references govern racial anatomy only; the region reference governs environment only. Preserve the generated character data and do not copy unrelated clothing, pose, weapon, or identity from references.`,
     raw: text,
   };
 }
@@ -309,6 +261,7 @@ Rules:
 - "critical_pass" may be true only if every important critical trait is clearly satisfied.
 - score is 0-100 for overall visual conformity, not beauty.
 - If the image fails, provide a COMPLETE replacement FLUX prompt that preserves successful traits and clearly fixes the failures. Do not merely list corrections.
+- Any corrected_flux_prompt must also be written as natural, coherent descriptive prose with complete sentences/connected clauses, not as a stack of keywords or tags. Weave the required corrections into the visual narrative.
 
 SOURCE-OF-TRUTH RULES:
 - Only facts explicitly present in SOURCE CHARACTER JSON may be treated as required character traits.
@@ -332,20 +285,12 @@ Return ONLY valid JSON:
 Use only the SOURCE CHARACTER JSON and the generated image as authoritative evidence.
 Do not treat the director interpretation or generation prompt as validation requirements.`;
 
-  const { text, data } = await callOpenRouter(
+  const { text, data } = await callGemini(
     apiKey,
+    system,
     [
-      { role: "system", content: system },
-      {
-        role: "user",
-        content: [
-          { type: "text", text: userText },
-          {
-            type: "image_url",
-            image_url: { url: `data:image/png;base64,${stripDataUri(imageBase64)}` },
-          },
-        ],
-      },
+      { text: userText },
+      { inlineData: { mimeType: "image/png", data: stripDataUri(imageBase64) } },
     ],
     { maxTokens: 3500, temperature: 0 },
   );
@@ -355,8 +300,8 @@ Do not treat the director interpretation or generation prompt as validation requ
 if (!parsed) {
   console.log("VALIDATOR_PARSE_FAILED", JSON.stringify({
     textLength: text.length,
-    finish: data?.choices?.[0]?.finish_reason ?? null,
-    hasContent: !!data?.choices?.[0]?.message?.content,
+    finish: data?.candidates?.[0]?.finishReason ?? null,
+    hasContent: !!data?.candidates?.[0]?.content?.parts?.length,
     contentPreview: text.slice(0, 700),
   }));
 
@@ -602,7 +547,7 @@ Deno.serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const CF_TOKEN = Deno.env.get("CLOUDFLARE_API_TOKEN") || "";
     const CF_ACCOUNT_ID = Deno.env.get("CLOUDFLARE_ACCOUNT_ID") || "";
-    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY") || "";
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || "";
 
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
       return jsonResponse({ success: false, error: "Supabase environment variables missing" }, 500);
@@ -610,8 +555,8 @@ Deno.serve(async (req) => {
     if (!CF_TOKEN || !CF_ACCOUNT_ID) {
       return jsonResponse({ success: false, error: "Cloudflare secrets missing" }, 500);
     }
-    if (!OPENROUTER_API_KEY) {
-      return jsonResponse({ success: false, error: "OPENROUTER_API_KEY missing" }, 500);
+    if (!GEMINI_API_KEY) {
+      return jsonResponse({ success: false, error: "GEMINI_API_KEY missing" }, 500);
     }
 
     const authHeader = req.headers.get("Authorization") || "";
@@ -658,10 +603,10 @@ Deno.serve(async (req) => {
 
     if (character && !correctionMode) {
       try {
-        director = await buildDirectorPrompt(OPENROUTER_API_KEY, character, legacyPrompt);
+        director = await buildDirectorPrompt(GEMINI_API_KEY, character, legacyPrompt);
         fluxPrompt = director.fluxPrompt;
       } catch (e: any) {
-        warnings.push(`Ling director unavailable: ${String(e?.message || e).slice(0, 300)}`);
+        warnings.push(`Gemini director unavailable: ${String(e?.message || e).slice(0, 300)}`);
         if (!fluxPrompt) throw e;
       }
     }
@@ -681,14 +626,14 @@ Deno.serve(async (req) => {
     if (character) {
       try {
         firstValidation = await validatePortrait(
-          OPENROUTER_API_KEY,
+          GEMINI_API_KEY,
           character,
           director?.critical || [],
           chosenPrompt,
           first.image,
         );
       } catch (e: any) {
-        warnings.push(`Ling validator unavailable: ${String(e?.message || e).slice(0, 300)}`);
+        warnings.push(`Gemini validator unavailable: ${String(e?.message || e).slice(0, 300)}`);
       }
 
       const firstPass = !!firstValidation?.criticalPass && Number(firstValidation?.score || 0) >= VALIDATION_SCORE_MIN;
@@ -716,7 +661,7 @@ Do not place both characters on the same ground plane when this makes the size r
 Never enlarge the protagonist merely because they are the main subject.
 If an exact height is specified, preserve it visually through clear relative scale cues.
 
-Reference images 0-3 are style references only. Preserve the generated character data; do not copy subjects or specific traits from the references.`;
+Reference images 0-3 are canonical character/region references selected for this character. Race references govern racial anatomy only; the region reference governs environment only. Preserve the generated character data and do not copy unrelated clothing, pose, weapon, or identity from references.`;
           
           const second = await generateFlux(
             CF_ACCOUNT_ID,
@@ -729,14 +674,14 @@ Reference images 0-3 are style references only. Preserve the generated character
 
           try {
             secondValidation = await validatePortrait(
-              OPENROUTER_API_KEY,
+              GEMINI_API_KEY,
               character,
               director?.critical || [],
               second.promptUsed,
               second.image,
             );
           } catch (e: any) {
-            warnings.push(`Ling second validation unavailable: ${String(e?.message || e).slice(0, 300)}`);
+            warnings.push(`Gemini second validation unavailable: ${String(e?.message || e).slice(0, 300)}`);
           }
 
           const s1 = Number(firstValidation?.score || 0);
@@ -836,8 +781,8 @@ Reference images 0-3 are style references only. Preserve the generated character
       path,
       characterInstanceId,
       model,
-      directorModel: character ? OPENROUTER_MODEL : null,
-      validatorModel: character ? OPENROUTER_MODEL : null,
+      directorModel: character ? GEMINI_MODEL : null,
+      validatorModel: character ? GEMINI_MODEL : null,
       portraitNumber,
       generationMode,
       championSeason,
@@ -857,7 +802,7 @@ Reference images 0-3 are style references only. Preserve the generated character
           }
         : null,
       warnings,
-      promptSource: director ? "ling-director" : "legacy-fallback",
+      promptSource: director ? "gemini-director" : "legacy-fallback",
       finalPrompt: chosenPrompt,
     });
   } catch (e: any) {
