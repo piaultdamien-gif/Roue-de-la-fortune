@@ -4763,7 +4763,10 @@ async function scheduleAutomaticCharacterImageGeneration(characterId){
         // Une fois l'appel réellement lancé, invokeCharacterImageGeneration gère lui-même
         // son succès, son erreur et son délai maximal. Ne pas relancer automatiquement
         // le même portrait derrière : cela pouvait laisser plusieurs requêtes concurrentes.
-        return await invokeCharacterImageGeneration(id);
+        const ok=await invokeCharacterImageGeneration(id);
+        if(ok)__portraitAutoFailedThisSession.delete(id);
+        else __portraitAutoFailedThisSession.add(id);
+        return ok;
       }
     }catch(e){console.warn(`Génération automatique ${id} — tentative ${attempt}`,e)}
     if(attempt<8)await portraitRetrySleep(1500);
@@ -4853,7 +4856,10 @@ async function regenerateCharacterIllustration(characterId){
   await invokeCharacterImageGeneration(characterId,{regenerate:true});
 }
 let __portraitCatchupRunning=false;
-const PORTRAIT_AUTO_RETRIES=3;
+// Évite qu'un portrait refusé/flagged ou en erreur déclenche une boucle de requêtes automatiques.
+// Le verrou ne vaut que pour la session courante : la régénération manuelle reste toujours disponible.
+const __portraitAutoFailedThisSession=new Set();
+const PORTRAIT_AUTO_RETRIES=1;
 const portraitRetrySleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function ensureMissingCharacterPortraits(){
   if(!cloudReady()||__portraitCatchupRunning)return;
@@ -4865,13 +4871,16 @@ async function ensureMissingCharacterPortraits(){
       let img=null;
       try{img=await getIllustration(c.id)}catch(e){console.warn('Vérification portrait',c.id,e)}
       if(img)continue;
-      for(let attempt=1;attempt<=PORTRAIT_AUTO_RETRIES&&!img;attempt++){
-        if(!cloudReady())break;
-        try{
-          const ok=await invokeCharacterImageGeneration(c.id);
-          if(ok){try{img=await getIllustration(c.id)}catch(_){img=null}}
-        }catch(e){console.warn(`Portrait auto ${c.id} tentative ${attempt}`,e)}
-        if(!img&&attempt<PORTRAIT_AUTO_RETRIES)await portraitRetrySleep(1500*attempt);
+      // Une seule tentative automatique par personnage et par session. En cas de refus
+      // (notamment output flagged) ou d'erreur, on s'arrête au lieu de marteler l'Edge Function.
+      if(__portraitAutoFailedThisSession.has(c.id))continue;
+      try{
+        const ok=await invokeCharacterImageGeneration(c.id);
+        if(ok){try{img=await getIllustration(c.id)}catch(_){img=null}}
+        if(!ok||!img)__portraitAutoFailedThisSession.add(c.id);
+      }catch(e){
+        __portraitAutoFailedThisSession.add(c.id);
+        console.warn(`Portrait auto ${c.id} arrêté après échec`,e);
       }
       // Petite pause entre deux personnages : évite de marteler Edge Function / Storage.
       await portraitRetrySleep(500);
