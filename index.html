@@ -509,10 +509,33 @@ button,.tabbtn,input,select,textarea{touch-action:manipulation}
  .combat-stage{min-height:56vw;margin-top:4px}
  .combat-params{grid-template-columns:1fr!important}
 }
+
+/* HGT V21 — écran d'entrée + identité publique joueur */
+body.hgt-gated{overflow:hidden}
+#hgtEntry{position:fixed;inset:0;z-index:30000;display:flex;align-items:center;justify-content:center;padding:22px;background:radial-gradient(circle at 50% 20%,#281922 0,#0b080d 46%,#050406 100%)}
+#hgtEntry[hidden]{display:none!important}
+.hgt-entry-card{width:min(560px,94vw);padding:28px;border:1px solid #654553;border-radius:20px;background:rgba(12,8,12,.94);box-shadow:0 28px 90px #000b;text-align:center}
+.hgt-entry-art{height:min(34vh,260px);border:1px solid #49333d;border-radius:15px;margin-bottom:20px;background:linear-gradient(145deg,#171019,#09070b);display:grid;place-items:center;overflow:hidden}
+.hgt-entry-art img{width:100%;height:100%;object-fit:cover}.hgt-entry-placeholder{font-family:Cinzel,serif;color:#a58c96;letter-spacing:.08em}
+.hgt-entry-title{font-family:Cinzel,serif;font-size:clamp(25px,5vw,42px);color:#e5c77d;margin:0 0 5px}.hgt-entry-sub{color:#a99aa2;margin-bottom:18px}
+.hgt-entry-form{display:grid;gap:10px}.hgt-entry-form input{width:100%;box-sizing:border-box;padding:12px;border-radius:9px;border:1px solid #59404a;background:#100c11;color:#eee;font:inherit}
+.hgt-entry-actions{display:flex;gap:9px}.hgt-entry-actions button{flex:1}.hgt-entry-message{min-height:20px;color:#b9aab1;font-size:13px;margin-top:8px}
+.hgt-player-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #5a414c;border-radius:999px;background:#100b10;color:#ead3a0;font-weight:700}
+@media(max-width:600px){.hgt-entry-card{padding:18px}.hgt-entry-actions{flex-direction:column}.hgt-entry-art{height:190px}}
 </style>
-</head><body><header><div><h1>⚔️ Hazard Game Tournament</h1><div class="muted">Chaque donnée aléatoire affichée provient de la roue que tu vois tourner.</div></div><div class="pill" id="charId">S1-001</div></header>
+</head><body class="hgt-gated"><div id="hgtEntry">
+  <div class="hgt-entry-card">
+    <div class="hgt-entry-art" id="hgtEntryArt"><div class="hgt-entry-placeholder">ILLUSTRATION HGT À DÉFINIR</div></div>
+    <h1 class="hgt-entry-title">Hazard Game Tournament</h1>
+    <div class="hgt-entry-sub" id="hgtEntrySubtitle">Connecte-toi pour entrer dans Vaeloria.</div>
+    <div id="hgtEntryContent"></div>
+    <div class="hgt-entry-message" id="hgtEntryMessage"></div>
+  </div>
+</div>
+<header><div><h1>⚔️ Hazard Game Tournament</h1><div class="muted">Chaque donnée aléatoire affichée provient de la roue que tu vois tourner.</div></div><div class="pill" id="charId">S1-001</div></header>
 
 <div class="cloud-bar">
+  <span id="playerPseudo" class="hgt-player-chip" hidden>👤 —</span>
   <span id="cloudStatus" class="cloud-status">☁️ Mode local</span>
   <button type="button" class="secondary" id="cloudAccountBtn">☁️ Connexion</button>
 </div>
@@ -4001,7 +4024,7 @@ function multiplayerHistoryHtml(meta,type){
 let __onlineDuelStats=null,__onlineDuelPoll=null,__onlineDuelMatch=null;
 async function multiplayerDuelCall(action,extra={}){
   if(!cloudClient||!cloudUser)throw new Error('Connecte-toi à ton compte pour utiliser les duels en ligne.');
-  const {data,error}=await cloudClient.functions.invoke('multiplayer-duel',{body:{action,...extra}});
+  const {data,error}=await cloudClient.functions.invoke('multiplayer-duel',{body:{action,username:cloudProfile?.username||null,...extra}});
   if(error)throw error;if(data?.error)throw new Error(data.error);if(data?.stats)__onlineDuelStats=data.stats;return data;
 }
 function onlineDuelHistoryHtml(){
@@ -4252,9 +4275,36 @@ const SUPABASE_PUBLISHABLE_KEY='sb_publishable_cRbNvF-wSAkFrSUYq_Uc6g_sJ56grrF';
 const CLOUD_GAME_KEY='roue_cloud_game_id_v1';
 const CLOUD_LOADED_GAME_KEY='roue_cloud_loaded_game_id_v1';
 const CLOUD_BACKUP_KEY='roue_local_backup_before_cloud_v1';
-let cloudClient=null,cloudUser=null,cloudGames=[],cloudCurrentGame=null;
+let cloudClient=null,cloudUser=null,cloudGames=[],cloudCurrentGame=null,cloudProfile=null;
+const PLAYER_PROFILE_TABLE='player_profiles';
 let __cloudCharacterTimers=new Map(),__cloudUniverseTimer=null,__cloudGameTimer=null,__cloudTournamentTimer=null;
 let __cloudSyncBusy=false;
+
+function hgtEntryMessage(text,kind=''){const e=document.getElementById('hgtEntryMessage');if(e){e.textContent=text||'';e.style.color=kind==='error'?'#f0b5b5':'#b9aab1'}}
+function validPseudo(v){return typeof v==='string'&&v.trim().length>=3&&v.trim().length<=24&&/^[A-Za-zÀ-ÖØ-öø-ÿ0-9 _.-]+$/u.test(v.trim())}
+async function loadCloudProfile(){
+  cloudProfile=null;if(!cloudClient||!cloudUser)return null;
+  const {data,error}=await cloudClient.from(PLAYER_PROFILE_TABLE).select('user_id,username,created_at,updated_at').eq('user_id',cloudUser.id).maybeSingle();
+  if(error){console.warn('Profil joueur indisponible',error);return null}cloudProfile=data||null;return cloudProfile;
+}
+async function createCloudProfile(username){
+  const clean=String(username||'').trim();if(!validPseudo(clean))throw new Error('Pseudo : 3 à 24 caractères, lettres/chiffres/espaces/._- uniquement.');
+  const {data,error}=await cloudClient.from(PLAYER_PROFILE_TABLE).insert({user_id:cloudUser.id,username:clean}).select('user_id,username,created_at,updated_at').single();
+  if(error){if(error.code==='23505')throw new Error('Ce pseudo exact existe déjà. La casse compte : Damien et damien sont différents.');throw error}
+  cloudProfile=data;updatePlayerPseudo();return data;
+}
+function updatePlayerPseudo(){const e=document.getElementById('playerPseudo');if(!e)return;if(cloudUser&&cloudProfile?.username){e.hidden=false;e.textContent='👤 '+cloudProfile.username}else e.hidden=true}
+function enterHgt(){if(!cloudUser||!cloudProfile?.username)return;document.getElementById('hgtEntry').hidden=true;document.body.classList.remove('hgt-gated');updatePlayerPseudo();}
+function leaveHgtGate(){document.getElementById('hgtEntry').hidden=false;document.body.classList.add('hgt-gated');renderEntryGate()}
+function renderEntryGate(){
+  const root=document.getElementById('hgtEntryContent');if(!root)return;
+  const sub=document.getElementById('hgtEntrySubtitle');hgtEntryMessage('');
+  if(!cloudUser){sub.textContent='Connecte-toi pour entrer dans Vaeloria.';root.innerHTML=`<div class="hgt-entry-form"><input id="entryEmail" type="email" autocomplete="email" placeholder="Adresse e-mail"><input id="entryPassword" type="password" autocomplete="current-password" placeholder="Mot de passe (6 caractères minimum)"><div class="hgt-entry-actions"><button id="entryLogin">Se connecter</button><button class="secondary" id="entrySignup">Créer un compte</button></div></div>`;document.getElementById('entryLogin').onclick=entryLogin;document.getElementById('entrySignup').onclick=entrySignup;return}
+  if(!cloudProfile?.username){sub.textContent='Choisis ton identité publique pour les combats en ligne.';root.innerHTML=`<div class="hgt-entry-form"><input id="entryPseudo" maxlength="24" autocomplete="nickname" placeholder="Pseudo (3–24 caractères)"><button id="entryPseudoBtn">Créer mon pseudo</button><button class="secondary" id="entryLogout">Se déconnecter</button></div><div class="muted" style="margin-top:8px">Le pseudo est unique à l’identique. La casse compte : « Damien » et « damien » peuvent coexister.</div>`;document.getElementById('entryPseudoBtn').onclick=async()=>{const b=document.getElementById('entryPseudoBtn');b.disabled=true;try{await createCloudProfile(document.getElementById('entryPseudo').value);renderEntryGate()}catch(e){hgtEntryMessage(e.message||String(e),'error')}finally{b.disabled=false}};document.getElementById('entryLogout').onclick=cloudLogout;return}
+  sub.textContent=`Bienvenue, ${cloudProfile.username}.`;root.innerHTML=`<div class="hgt-entry-form"><button id="entryPlay">⚔️ Jouer</button><button class="secondary" id="entryAccount">☁️ Mes parties</button><button class="secondary" id="entryLogout">Se déconnecter</button></div>`;document.getElementById('entryPlay').onclick=enterHgt;document.getElementById('entryAccount').onclick=()=>{enterHgt();openCloudModal()};document.getElementById('entryLogout').onclick=cloudLogout;
+}
+async function entryLogin(){const email=document.getElementById('entryEmail')?.value.trim(),password=document.getElementById('entryPassword')?.value||'';if(!email||!password){hgtEntryMessage('Entre ton e-mail et ton mot de passe.','error');return}hgtEntryMessage('Connexion…');const {error}=await cloudClient.auth.signInWithPassword({email,password});if(error)hgtEntryMessage('Connexion impossible : '+error.message,'error')}
+async function entrySignup(){const email=document.getElementById('entryEmail')?.value.trim(),password=document.getElementById('entryPassword')?.value||'';if(!email||password.length<6){hgtEntryMessage('Entre un e-mail et un mot de passe d’au moins 6 caractères.','error');return}hgtEntryMessage('Création du compte…');const {data,error}=await cloudClient.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});if(error){hgtEntryMessage('Inscription impossible : '+error.message,'error');return}if(!data.session)hgtEntryMessage('Compte créé. Vérifie ton e-mail si une confirmation est demandée.');}
 
 function cloudReady(){return !!(cloudClient&&cloudUser&&cloudCurrentGame?.id)}
 function cloudStatus(text,kind=''){
@@ -4345,7 +4395,7 @@ async function cloudSignup(){
   if(error){cloudSetMessage('Inscription impossible : '+error.message);return}
   if(data.session)cloudSetMessage('Compte créé et connecté ✓');else cloudSetMessage('Compte créé. Vérifie ton e-mail si Supabase demande une confirmation.');
 }
-async function cloudLogout(){if(cloudReady())try{await cloudSyncAllData()}catch(e){} await cloudClient.auth.signOut();localStorage.removeItem(CLOUD_GAME_KEY);localStorage.removeItem(CLOUD_LOADED_GAME_KEY);cloudCurrentGame=null;closeCloudModal()}
+async function cloudLogout(){if(cloudReady())try{await cloudSyncAllData()}catch(e){} await cloudClient.auth.signOut();localStorage.removeItem(CLOUD_GAME_KEY);localStorage.removeItem(CLOUD_LOADED_GAME_KEY);cloudCurrentGame=null;cloudProfile=null;closeCloudModal();leaveHgtGate()}
 async function cloudCreateGame(){
   const name=prompt('Nom de la nouvelle partie :','Ma partie');if(name===null)return;
   const {data,error}=await cloudClient.from('games').insert({owner_id:cloudUser.id,name:(name.trim()||'Ma partie')}).select().single();
@@ -4732,9 +4782,9 @@ async function cloudDeleteIllustration(characterId){if(!cloudReady())return;cons
 function cloudSyncError(e){console.error('Supabase sync',e);cloudStatus('☁️ Erreur de synchronisation','error')}
 function cloudUpdateTopStatus(){
   const btn=document.getElementById('cloudAccountBtn');
-  if(!cloudUser){cloudStatus('☁️ Mode local');if(btn)btn.textContent='☁️ Connexion';return}
+  if(!cloudUser){cloudStatus('☁️ Déconnecté');if(btn)btn.textContent='☁️ Compte';updatePlayerPseudo();return}
   if(cloudCurrentGame){cloudStatus(`☁️ ${cloudCurrentGame.name} • synchronisé`,'online');if(btn)btn.textContent='☁️ Mes parties'}
-  else{cloudStatus('☁️ Connecté • aucune partie','online');if(btn)btn.textContent='☁️ Mes parties'}
+  else{cloudStatus('☁️ Connecté • aucune partie','online');if(btn)btn.textContent='☁️ Mes parties'}updatePlayerPseudo();
 }
 async function initCloud(){
   if(!window.supabase){cloudStatus('☁️ Supabase indisponible','error');return}
@@ -4742,6 +4792,7 @@ async function initCloud(){
   const {data}=await cloudClient.auth.getSession();cloudUser=data.session?.user||null;
   if(cloudUser){
     try{
+      await loadCloudProfile();
       await cloudRefreshGames();
       if(seasonCursorReconciled && cloudCurrentGame){
         await cloudSaveGameState();
@@ -4751,8 +4802,9 @@ async function initCloud(){
     }catch(e){cloudSyncError(e)}
   }
   cloudUpdateTopStatus();
+  renderEntryGate();
   if(cloudReady()) setTimeout(()=>ensureMissingCharacterPortraits().catch(console.error),1800);
-  cloudClient.auth.onAuthStateChange(async(_event,session)=>{cloudUser=session?.user||null;if(cloudUser){try{await cloudRefreshGames();if(cloudReady())setTimeout(()=>ensureMissingCharacterPortraits().catch(console.error),1200)}catch(e){cloudSyncError(e)}}else{cloudGames=[];cloudCurrentGame=null}cloudUpdateTopStatus();renderCloudModal()});
+  cloudClient.auth.onAuthStateChange(async(_event,session)=>{cloudUser=session?.user||null;if(cloudUser){try{await loadCloudProfile();await cloudRefreshGames();if(cloudReady())setTimeout(()=>ensureMissingCharacterPortraits().catch(console.error),1200)}catch(e){cloudSyncError(e)}}else{cloudGames=[];cloudCurrentGame=null;cloudProfile=null}cloudUpdateTopStatus();renderEntryGate();renderCloudModal()});
 }
 document.getElementById('cloudAccountBtn').onclick=openCloudModal;
 document.getElementById('cloudCloseBtn').onclick=closeCloudModal;
