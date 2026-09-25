@@ -4724,10 +4724,32 @@ async function refreshNeuronStatus(){
   el.textContent='10 000 max/jour (quota partagé)';
 }
 refreshNeuronStatus();
+async function ensureCloudGameForImageGeneration(){
+  if(cloudReady())return true;
+  if(!cloudClient||!cloudUser)return false;
+  // Après l'ajout de l'écran d'accueil, une session pouvait être connectée sans que
+  // cloudCurrentGame soit restaurée. La génération d'image quittait alors silencieusement.
+  try{
+    if(!cloudGames.length)await cloudRefreshGames();
+    const preferredId=localStorage.getItem(CLOUD_GAME_KEY)||localStorage.getItem(CLOUD_LOADED_GAME_KEY);
+    let game=(preferredId&&cloudGames.find(g=>g.id===preferredId))||null;
+    if(!game&&cloudGames.length===1)game=cloudGames[0];
+    if(game){
+      cloudCurrentGame=game;
+      localStorage.setItem(CLOUD_GAME_KEY,game.id);
+      cloudUpdateTopStatus();
+      return true;
+    }
+  }catch(e){console.warn('Restauration partie pour génération image',e)}
+  return false;
+}
 async function invokeCharacterImageGeneration(characterId,{regenerate=false,champion=false,championSeason=null}={}){
   const busyKey=champion?`${characterId}::champion`:characterId;
-  if(!cloudReady()||__imageGenerationBusy.has(busyKey))return false;
-  const roster=loadRoster(),c=roster[characterId];if(!c||!isCharacterGenerationComplete(c))return false;
+  if(__imageGenerationBusy.has(busyKey)){illustrationStatus(characterId,'⏳ Une génération est déjà en cours…');return false}
+  if(!await ensureCloudGameForImageGeneration()){illustrationStatus(characterId,'⚠️ Aucune partie cloud active. Ouvre Profil → Mes parties et sélectionne la partie à utiliser.');return false}
+  const roster=loadRoster(),c=roster[characterId];
+  if(!c){illustrationStatus(characterId,'⚠️ Personnage introuvable.');return false}
+  if(!isCharacterGenerationComplete(c)){illustrationStatus(characterId,'⚠️ Fiche du personnage incomplète : génération impossible.');return false}
   if(!champion&&regenerate&&regenCounterFor(c)>=IMAGE_REGEN_LIMIT_PER_DAY){illustrationStatus(characterId,'Limite atteinte : 5 régénérations aujourd’hui.');return false}
   if(!champion&&!regenerate){const existing=await getIllustration(characterId);if(existing)return true}
   __imageGenerationBusy.add(busyKey);
