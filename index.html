@@ -1181,15 +1181,18 @@ function loadCharacterById(id){
   const roster=loadRoster(), saved=roster[id];
   if(!saved) return false;
 
-  // Les descendants V20 sont déjà générés intégralement à la naissance.
-  // On charge donc leur fiche figée directement : rejouer leurs logs dans la roue
-  // normale décalerait les champs et recréerait précisément l'ancien bug de priorité.
-  if(saved.descendantSourceId && saved._generationComplete){
+  // V20 : un descendant nouveau-format est déjà une fiche complète figée ; ses logs
+  // ne doivent jamais être rejoués comme des roues (cause historique des décalages de champs).
+  if(saved.isDescendant && saved._generationComplete){
     state=ensureGenealogyShape(JSON.parse(JSON.stringify(saved)));
     queue=[];index=0;rotation=0;spinNumber=Array.isArray(state.logs)?state.logs.length:0;
-  }else{
-    rebuildGenerationFromLogs(saved);
+    auto=false;spinning=false;autoBtn.textContent='Auto : OFF';spinBtn.disabled=false;
+    spinBtn.textContent='Nouveau personnage';taskTitle.textContent='Personnage terminé';
+    result.innerHTML='Fiche terminée et sauvegardée<small>'+state.id+' — '+state.name+'</small>';
+    count.textContent=`${state.logs?.length||0} tirages`;render();drawWheel([W('✓')]);return true;
   }
+
+  rebuildGenerationFromLogs(saved);
 
   // If an old file contains fields that are not reconstructed from wheel logs,
   // preserve them without replacing the rebuilt queue/index.
@@ -1356,8 +1359,8 @@ function prepareSelectedDescendantForWheel(d){
 }
 function newCharacterAtCurrentId(){
   reset();
-  const selectedDesc=selectedDescendantForCurrentSlot();
-  if(selectedDesc)prepareSelectedDescendantForWheel(selectedDesc);
+  // V20 : les descendants ne passent plus par la roue lorsqu'ils deviennent combattants.
+  const selectedDesc=null;
   taskTitle.textContent='Prêt';
   count.textContent='0 roue';
   if(seasonNumber>1 && !tournamentChampionForSeason(seasonNumber-1)){
@@ -1541,16 +1544,8 @@ function descendantsAwaitingSelectionForSeason(season=seasonNumber){
   const d=descendants();
   return Object.values(d).filter(x=>x&&Number(x.eligibleSeason)===Number(season)&&x.selectedForSeason==null);
 }
-function blockGenerationIfDescendantsNotSelected(){
-  const pending=descendantsAwaitingSelectionForSeason(seasonNumber);
-  if(!pending.length)return false;
-  auto=false;
-  if(typeof autoBtn!=='undefined'&&autoBtn)autoBtn.textContent='Auto : OFF';
-  alert(`Avant de poursuivre S${seasonNumber}, tu dois d'abord sélectionner les descendants éligibles à cette saison.\n\n${pending.length} descendant${pending.length>1?'s sont':' est'} en attente de sélection.`);
-  showTab('genealogy');
-  renderGenealogy();
-  return true;
-}
+function blockGenerationIfDescendantsNotSelected(){ return false; } // V20: la sélection ne bloque plus les roues normales.
+
 function priorityDescendantFighterForSeason(season=seasonNumber){
   if(Number(season)<=1)return null;
   const roster=loadRoster(), ds=descendants(), meta=universeMeta();
@@ -1567,27 +1562,8 @@ function priorityDescendantFighterForSeason(season=seasonNumber){
 }
 function advanceCharacter(){
   saveCurrentCharacter();
-
-  // PRIORITÉ ABSOLUE : terminer d'abord tout descendant sélectionné déjà matérialisé.
-  // Ainsi, tant qu'un descendant disponible a encore des roues à tirer, la génération
-  // ne part jamais créer/continuer un personnage normal à sa place.
-  const priorityDescId=priorityDescendantFighterForSeason(seasonNumber);
-  if(priorityDescId && priorityDescId!==currentCharacterId()){
-    const m=String(priorityDescId).match(/^S(\d+)-(\d+)$/);
-    if(m){
-      seasonNumber=Number(m[1]);characterNumber=Number(m[2]);
-      localStorage.setItem(STORAGE_SEASON,String(seasonNumber));
-      localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
-      if(!loadCharacterById(priorityDescId))newCharacterAtCurrentId();
-      return;
-    }
-  }
-
-  // Ensuite, le premier emplacement libre est attribué en priorité à un descendant
-  // sélectionné non encore matérialisé via selectedDescendantForCurrentSlot().
-  // Ce n'est que lorsqu'il n'en reste plus que la roue crée un personnage normal.
-  // Tant qu'il existe un trou dans la saison, on le remplit avant toute autre chose.
-  // Cela évite notamment de rester bloqué sur l'ID recréé après une suppression.
+  // V20 : aucune priorité descendant. Les descendants sélectionnés sont déjà des fiches
+  // complètes matérialisées dans le roster ; la roue ne sert qu'aux personnages normaux.
   const firstFree=firstEmptyCharacterNumber(seasonNumber);
   if(firstFree!=null){
     characterNumber=firstFree;
@@ -1595,8 +1571,6 @@ function advanceCharacter(){
     newCharacterAtCurrentId();
     return;
   }
-
-  // Les 64 emplacements sont occupés : aucune 65e génération dans cette saison.
   if(blockSeasonAdvanceForBirths()) return;
   if(blockSeasonAdvanceForTournament(seasonNumber)) return;
   seasonNumber++;
@@ -2031,6 +2005,61 @@ function mergedLineage(pa,pb){
   return [...new Set(x.filter(Boolean))];
 }
 function childCountRoll(){let r=Math.random()*100;if(r<90)return 1;if(r<98)return 2;if(r<99.5)return 3;return 4+Math.floor(Math.random()*5)}
+// V20 — migration unique : tout descendant existant avant ce moteur devient Legacy.
+function migrateExistingDescendantsToLegacy(){
+  const meta=universeMeta();
+  if(Number(meta.descendantEngineVersion||0)>=20)return;
+  const ds=descendants();
+  for(const d of Object.values(ds)){
+    if(!d)continue;
+    d.legacy=true;
+    d.status=d.status?.includes('Legacy')?d.status:`Legacy — ${d.status||'ancien descendant'}`;
+    d.selectedForSeason=false;
+  }
+  meta.descendantEngineVersion=20;
+  meta.selectedBySeason={};
+  saveStore(STORAGE_DESC,ds);saveStore(STORAGE_META,meta);
+}
+
+// Génère une fiche complète avec EXACTEMENT le moteur normal, sans rendu, sauvegarde de
+// combattant ni génération d'image. Le contexte descendant ne fait que précharger l'héritage.
+function generateCompleteDescendantData(child){
+  const snapshot={state,queue,index,rotation,spinNumber,auto,spinning};
+  try{
+    state=blankCharacterState(child.id);
+    queue=[];index=0;rotation=0;spinNumber=0;auto=false;spinning=false;
+    buildInitial();
+    prepareSelectedDescendantForWheel(child);
+    let guard=0;
+    while(index<queue.length && guard++<1000){
+      const t=queue[index];
+      const opts=typeof t.options==='function'?t.options():t.options;
+      if(!Array.isArray(opts)||!opts.length)throw new Error(`Aucune option pour ${t.title}`);
+      const chosen=opts[weightedPick(opts)]?.label;
+      t.apply(chosen);
+      state.logs.push({cat:t.title,val:chosen});
+      index++;spinNumber++;
+    }
+    if(guard>=1000)throw new Error('Boucle de génération descendant trop longue');
+    state._generationComplete=true;
+    state._autoSavedAtFinish=true;
+    state.isDescendant=true;
+    state.descendantSourceId=child.id;
+    state.name=child.name||state.name;
+    state.genealogy=JSON.parse(JSON.stringify(child.genealogy||state.genealogy));
+    state.genealogy.parents=[...(child.parentIds||[])];
+    // Pas encore combattant : l'ID saisonnier sera attribué à la sélection.
+    const full=JSON.parse(JSON.stringify(state));
+    full.id=null;
+    full.instanceId=null;
+    full._portraitGenerated=false;
+    return full;
+  } finally {
+    state=snapshot.state;queue=snapshot.queue;index=snapshot.index;rotation=snapshot.rotation;
+    spinNumber=snapshot.spinNumber;auto=snapshot.auto;spinning=snapshot.spinning;
+  }
+}
+
 function createChild(pa,pb,origin,event,meta,descStore){
   let raceInfo=pb?combineComponents(transmittedComponent(pa),transmittedComponent(pb)):singleParentRace(pa);
   let mutation=mutationForChild(raceInfo);
@@ -2038,7 +2067,16 @@ function createChild(pa,pb,origin,event,meta,descStore){
   if(mutation&&mutation.type!=='Ascension raciale')inheritedMut.push(mutation);
   let id=`DESC-${String(meta.nextDesc++).padStart(4,'0')}`;
   let generation=Math.max(pa.genealogy?.generation||1,pb?.genealogy?.generation||1)+1;
-  let child={id,name:childName(),status:`Descendant — en attente S${event.eligibleSeason}`,birthSeason:event.birthSeason,eligibleSeason:event.eligibleSeason,selectedForSeason:null,origin,parentIds:[pa.id,...(pb?[pb.id]:[])],gender:rpick(['Homme','Femme','Autre / indéterminé']),race:raceInfo.race,raceParts:raceInfo.parts,racialTraits:raceTraitsFor(raceInfo.race,raceInfo.parts),inheritedPowers:inheritPowers(pa,pb),mutations:inheritedMut,appearance:inheritedAppearance(pa,pb,raceInfo.race),genealogy:{parents:[pa.id,...(pb?[pb.id]:[])],children:[],siblings:[],generation,lineage:mergedLineage(pa,pb),partnerLinks:[]},fighterDataGenerated:false};
+  let child={id,name:childName(),status:`Descendant complet — en attente de sélection S${event.eligibleSeason}`,birthSeason:event.birthSeason,eligibleSeason:event.eligibleSeason,selectedForSeason:null,origin,parentIds:[pa.id,...(pb?[pb.id]:[])],gender:rpick(['Homme','Femme','Autre / indéterminé']),race:raceInfo.race,raceParts:raceInfo.parts,racialTraits:raceTraitsFor(raceInfo.race,raceInfo.parts),inheritedPowers:inheritPowers(pa,pb),mutations:inheritedMut,appearance:inheritedAppearance(pa,pb,raceInfo.race),genealogy:{parents:[pa.id,...(pb?[pb.id]:[])],children:[],siblings:[],generation,lineage:mergedLineage(pa,pb),partnerLinks:[]},fighterDataGenerated:true,legacy:false};
+  child.fullFighterData=generateCompleteDescendantData(child);
+  // La fiche complète devient la source de vérité du descendant dès sa naissance.
+  if(child.fullFighterData){
+    child.name=child.fullFighterData.name||child.name;
+    child.race=child.fullFighterData.race||child.race;
+    child.raceParts=JSON.parse(JSON.stringify(child.fullFighterData.raceParts||child.raceParts));
+    child.gender=child.fullFighterData.gender||child.gender;
+    child.appearance=JSON.parse(JSON.stringify(child.fullFighterData.appearance||child.appearance));
+  }
   descStore[id]=child;return child;
 }
 async function resolveBirthEvents(){
@@ -2103,242 +2141,42 @@ async function resolveBirthEvents(){
   alert(events?`${made} descendant${made>1?'s':''} généré${made>1?'s':''} à partir de ${events} événement${events>1?'s':''}.${seasonText?`\n${seasonText}`:''}${suffix}`:`Aucune naissance en attente à résoudre jusqu'à S${seasonNumber}.${suffix}`);
 }
 function selectDescendantsForNextSeason(){
-  const d=descendants(), meta=universeMeta();
-  // Si des descendants d'une saison précédente doivent déjà participer à la saison courante,
-  // on les traite avant ceux de la saison suivante.
+  migrateExistingDescendantsToLegacy();
+  const d=descendants(), meta=universeMeta(), roster=loadRoster();
   const pendingTargets=[...new Set(Object.values(d)
-    .filter(x=>x&&x.selectedForSeason==null&&Number.isFinite(Number(x.eligibleSeason)))
-    .map(x=>Number(x.eligibleSeason))
-    .filter(s=>s<=seasonNumber+1))].sort((a,b)=>a-b);
+    .filter(x=>x&&!x.legacy&&x.selectedForSeason==null&&x.fullFighterData&&Number.isFinite(Number(x.eligibleSeason)))
+    .map(x=>Number(x.eligibleSeason)).filter(s=>s<=seasonNumber+1))].sort((a,b)=>a-b);
   const target=pendingTargets.find(s=>s>=seasonNumber) ?? pendingTargets[0] ?? seasonNumber+1;
-  let eligible=Object.values(d).filter(x=>Number(x.eligibleSeason)===target&&x.selectedForSeason==null);
-  if(!eligible.length){alert(`Aucun descendant à sélectionner pour S${target}.`);return}
+  let eligible=Object.values(d).filter(x=>!x.legacy&&Number(x.eligibleSeason)===target&&x.selectedForSeason==null&&x.fullFighterData);
+  if(!eligible.length){alert(`Aucun nouveau descendant complet à sélectionner pour S${target}.`);return}
   for(let i=eligible.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[eligible[i],eligible[j]]=[eligible[j],eligible[i]]}
-  let selected=eligible.slice(0,16), chosen=new Set(selected.map(x=>x.id));
+  const selected=eligible.slice(0,20), chosen=new Set(selected.map(x=>x.id));
+  const occupied=new Set(Object.keys(roster).filter(id=>id.startsWith(`S${target}-`)).map(id=>Number(id.split('-')[1])));
+  const free=[];for(let n=1;n<=CHARACTERS_PER_SEASON;n++)if(!occupied.has(n))free.push(n);
+  if(free.length<selected.length){alert(`Impossible d'intégrer ${selected.length} descendants : seulement ${free.length} emplacement(s) libre(s) en S${target}.`);return}
+  const portraits=[];
   for(const x of eligible){
-    if(chosen.has(x.id)){x.selectedForSeason=target;x.status=`Sélectionné pour S${target}`}
-    else{x.selectedForSeason=false;x.status='PNJ actif — garantie de tournoi perdue'}
+    if(chosen.has(x.id)){
+      const n=free.shift(), fid=`S${target}-${String(n).padStart(3,'0')}`;
+      const fighter=JSON.parse(JSON.stringify(x.fullFighterData));
+      fighter.id=fid;fighter.instanceId=newCharacterInstanceId();fighter.isDescendant=true;fighter.descendantSourceId=x.id;
+      fighter._generationComplete=true;fighter._autoSavedAtFinish=true;fighter._portraitGenerated=false;
+      ensureGenealogyShape(fighter);fighter.genealogy.parents=[...(x.parentIds||[])];
+      roster[fid]=fighter;
+      x.selectedForSeason=target;x.fighterId=fid;x.status=`Combattant S${target} — ${fid}`;x.fighterDataGenerated=true;
+      portraits.push(fid);
+    }else{
+      x.selectedForSeason=false;x.status='PNJ descendant — non sélectionné';x.fighterId=null;
+    }
     d[x.id]=x;
   }
   meta.selectedBySeason[target]=selected.map(x=>x.id);
-  saveStore(STORAGE_DESC,d);saveStore(STORAGE_META,meta);renderRoster();renderGenealogy();
-  alert(`${selected.length} descendant${selected.length>1?'s':''} sélectionné${selected.length>1?'s':''} pour S${target}${eligible.length>16?` sur ${eligible.length} éligibles`:''}.`);
+  saveRoster(roster);saveStore(STORAGE_DESC,d);saveStore(STORAGE_META,meta);
+  renderRoster();renderGenealogy();
+  // L'image n'est demandée qu'une fois le descendant devenu combattant.
+  for(const fid of portraits)setTimeout(()=>invokeCharacterImageGeneration(fid).catch(console.error),200);
+  alert(`${selected.length} descendant${selected.length>1?'s':''} intégré${selected.length>1?'s':''} comme combattant${selected.length>1?'s':''} de S${target}${eligible.length>20?` sur ${eligible.length} éligibles`:''}. Les autres deviennent PNJ.`);
 }
-
-
-/* ============================================================
-   DESCENDANTS V20 — naissance complète, sélection manuelle, legacy (25/09/2026)
-   Le descendant utilise le moteur normal en mode headless ; le contexte
-   descendant injecte uniquement ce qui est déterminé par l'hérédité.
-   ============================================================ */
-const DESCENDANT_FIGHTER_CAP=20;
-const DESC_SPECIAL_CROSS={
-  'Dieu céleste|Neoxus':'Deus Machina','Dieu céleste|Titan fondateur':'Titan céleste','Neoxus|Titan fondateur':'Colosse Nexus',
-  'Dieu céleste|Dragon ancestral':'Drakéon ancestral','Dieu céleste|Dragon originel':'Drakéon originel',
-  'Neoxus|Dragon ancestral':'Nexaryx ancestral','Neoxus|Dragon originel':'Nexaryx originel',
-  'Titan fondateur|Dragon ancestral':'Tyrakhan ancestral','Titan fondateur|Dragon originel':'Tyrakhan originel'
-};
-const DESC_SPECIAL_PARTS={
-  'Deus Machina':['Dieu céleste','Neoxus'],'Titan céleste':['Dieu céleste','Titan fondateur'],'Colosse Nexus':['Neoxus','Titan fondateur'],
-  'Drakéon':['Dieu céleste','Dragon ancestral'],'Drakéon ancestral':['Dieu céleste','Dragon ancestral'],'Drakéon originel':['Dieu céleste','Dragon originel'],
-  'Nexaryx':['Neoxus','Dragon ancestral'],'Nexaryx ancestral':['Neoxus','Dragon ancestral'],'Nexaryx originel':['Neoxus','Dragon originel'],
-  'Tyrakhan':['Titan fondateur','Dragon ancestral'],'Tyrakhan ancestral':['Titan fondateur','Dragon ancestral'],'Tyrakhan originel':['Titan fondateur','Dragon originel']
-};
-function descUnique(a){return [...new Set((a||[]).filter(Boolean))]}
-function descEntityMap(roster=loadRoster(),ds=descendants(),ns=npcs()){
-  const m={}; for(const o of [roster,ds,ns])for(const x of Object.values(o||{}))if(x?.id)m[x.id]=x; return m;
-}
-function descParents(x){return descUnique(x?.parentIds||x?.genealogy?.parents||[])}
-function descAncestors(id,map,seen=new Set()){
-  if(!id||seen.has(id))return seen; seen.add(id);
-  for(const p of descParents(map[id])){if(!seen.has(p)){seen.add(p);descAncestors(p,map,seen)}} return seen;
-}
-function descRelated(a,b,map){
-  if(!a?.id||!b?.id)return false; if(a.id===b.id)return true;
-  const A=descAncestors(a.id,map,new Set()),B=descAncestors(b.id,map,new Set());
-  if(A.has(b.id)||B.has(a.id))return true;
-  for(const x of A)if(B.has(x))return true; return false;
-}
-function descIsReproductiveFighter(x){
-  if(!x?.id)return false;
-  if(/^PNJ-/.test(x.id)||x.selectedForSeason===false||/PNJ/i.test(x.status||''))return false;
-  return true;
-}
-function chooseOtherFighter(parent,roster){
-  const map=descEntityMap(roster,descendants(),npcs());
-  const candidates=Object.values(roster||{}).filter(x=>x?.id!==parent.id&&descIsReproductiveFighter(x)&&compatibleGender(parent.gender,x.gender)&&!descRelated(parent,x,map));
-  return candidates.length?rpick(candidates):null;
-}
-function descRacePool(s){
-  if(!s)return ['Humain'];
-  let raw=[];
-  if(Array.isArray(s.transmissibleRaceComponents)&&s.transmissibleRaceComponents.length)raw=s.transmissibleRaceComponents;
-  else if(DESC_SPECIAL_PARTS[s.race])raw=DESC_SPECIAL_PARTS[s.race];
-  else raw=(s.raceParts||[]).filter(x=>x&&!/^Ascension |^Martial God/.test(x));
-  if(!raw.length&&s.biologicalRaceParts?.length)raw=s.biologicalRaceParts;
-  if(!raw.length&&s.race)raw=[s.race];
-  return descUnique(raw.flatMap(x=>DESC_SPECIAL_PARTS[x]||[x]));
-}
-function transmittedComponent(s){return rpick(descRacePool(s))}
-function descFamily(c){return CHAIN_FAMILY[c]||(/Dragon/.test(c||'')?'dragon':null)}
-function descMax(c){return ['Dieu céleste','Neoxus','Titan fondateur','Dragon ancestral','Dragon originel'].includes(c)}
-function descPowerRoll(component,pairIsSuperior){
-  const fam=descFamily(component); if(!fam)return component;
-  if(descMax(component)&&pairIsSuperior)return component;
-  const r=Math.random()*100;
-  if(fam==='divine')return r<60?'Demi-dieu':r<90?'Divinité':'Dieu céleste';
-  if(fam==='nexus')return r<60?'Cyborg':r<90?'N.E.X.U.S.':'Neoxus';
-  if(fam==='titan')return r<60?'Titan':r<90?'Titan primordial':'Titan fondateur';
-  if(fam==='dragon'){
-    const branch=/originel/i.test(component)?'originel':'ancestral';
-    return r<90?'Dragon humanoïde':`Dragon ${branch}`;
-  }
-  return component;
-}
-function descResolveRace(pa,pb){
-  let a=transmittedComponent(pa),b=transmittedComponent(pb);
-  const aSup=!!descFamily(a),bSup=!!descFamily(b);
-  a=descPowerRoll(a,bSup); b=descPowerRoll(b,aSup);
-  if(a===b)return {race:a,parts:[a],birthParts:[a,b]};
-  const cross=DESC_SPECIAL_CROSS[[a,b].sort().join('|')]||DESC_SPECIAL_CROSS[[b,a].sort().join('|')];
-  if(cross)return {race:cross,parts:[a,b],birthParts:[a,b]};
-  return {race:`${a}/${b}`,parts:[a,b],birthParts:[a,b]};
-}
-function descTraitList(p){
-  const out=(p?.racialTraits||[]).filter(t=>t?.name&&!t.temporary).map(t=>JSON.parse(JSON.stringify(t)));
-  const seen=new Set(out.map(t=>t.name));
-  // Une modification raciale permanente acquise après la naissance transmet aussi ses traits naturels.
-  for(const comp of descRacePool(p))for(const name of (RACIAL_TRAITS[comp]||[]))if(!seen.has(name)){
-    out.push({name,origin:comp,active:ACTIVE_RACIAL_TRAITS.has(name),mastery:ACTIVE_RACIAL_TRAITS.has(name)?centeredRoll():null,natural:true,acquiredRacialTrait:true});seen.add(name);
-  }
-  return out;
-}
-function descInheritedTraits(pa,pb){
-  const map={}; for(const p of [pa,pb])for(const t of descTraitList(p)){(map[t.name]??=[]).push({t,p})}
-  const out=[]; for(const [name,src] of Object.entries(map)){if(src.length>1||chance(50)){const t=JSON.parse(JSON.stringify(src[0].t));t.inherited=true;t.natural=false;t.originIds=descUnique(src.map(z=>z.p.id));out.push(t)}} return out;
-}
-function personalPowers(s){return (s?.powers||[]).filter(p=>p?.name).map(p=>({name:p.name,source:s.id||s.name})).concat(s?.chi?[{name:'Chi',source:s.id||s.name}]:[],s?.npcPower?[{name:s.npcPower,source:s.id||s.name}]:[])}
-function inheritPowers(pa,pb){
-  const map={};for(const p of [pa,pb])for(const pow of personalPowers(p)){(map[pow.name]??=[]).push(pow.source)}
-  const out=[];for(const [name,origins] of Object.entries(map))if(origins.length>1||chance(50))out.push({name,mastery:centeredRoll(),masteryBase:null,inherited:true,origins:descUnique(origins)});return out;
-}
-function descStates(pa,pb){
-  const has=(p,k)=>!!(p?.hereditaryStates?.[k]||new RegExp(k,'i').test([p?.race,p?.lineage?.vampire,p?.lineage?.werewolf,p?.lineage?.undeadForm].filter(Boolean).join(' ')));
-  const v=[pa,pb].some(p=>has(p,'Vampire')),w=[pa,pb].some(p=>has(p,'Loup-garou'));
-  let vampire=false,werewolf=false;if(v&&w){let r=Math.random();vampire=r<.25;werewolf=r>=.25&&r<.5}else if(v)vampire=chance(50);else if(w)werewolf=chance(50);
-  const spirit=[pa,pb].some(p=>has(p,'Esprit'))&&chance(50);
-  const liche=[pa,pb].some(p=>/Liche/i.test([p?.race,p?.lineage?.undeadForm].filter(Boolean).join(' ')))&&chance(50);
-  return {Vampire:vampire,'Loup-garou':werewolf,Esprit:spirit,licheHalfBonus:liche};
-}
-function descFallbackNpc(parent,meta,npcStore){
-  const id=`PNJ-${String(meta.nextNpc++).padStart(3,'0')}`,gender=parent.gender==='Homme'?'Femme':parent.gender==='Femme'?'Homme':'Autre / indéterminé';
-  // Race pondérée par une région temporaire, sans fiche de personnage complète.
-  const savedState=state;let race='Humain',parts=['Humain'];try{state={race:'Humain',raceParts:['Humain'],lineage:{},birthStratum:'',birthRegion:'',culture:'',powers:[]};let so=vaeloriaBirthStrataOptions();state.birthStratum=so[weightedPick(so)].label;let ro=vaeloriaRegionOptions();state.birthRegion=ro[weightedPick(ro)].label;let opts=raceOptions();race=opts[weightedPick(opts)].label;if(race==='Hybride'){let a=rpick(ORDINARY_COMPONENTS),b=rpick(ORDINARY_COMPONENTS.filter(x=>x!==a));race=`${a}/${b}`;parts=[a,b]}else parts=[race]}catch(e){}finally{state=savedState}
-  const npc={id,name:childName(),gender,race,raceParts:parts,biologicalRaceParts:[...parts],transmissibleRaceComponents:[...parts],racialTraits:raceTraitsFor(race,parts),powers:[],genealogy:{parents:[],children:[],siblings:[],generation:1,lineage:[],partnerLinks:[]},status:'PNJ génétique — hors reproduction',geneticSupportOnly:true};
-  npcStore[id]=npc;return npc;
-}
-function descDedupPowers(s){const seen=new Set();s.powers=(s.powers||[]).filter(p=>p?.name&&!seen.has(p.name)&&(seen.add(p.name),true))}
-const __vaeloriaPowerOptionsBase=vaeloriaPowerOptions;
-vaeloriaPowerOptions=function(){const owned=new Set((state?.powers||[]).map(p=>p?.name));return __vaeloriaPowerOptionsBase().filter(o=>!owned.has(o.label))}
-function descBlankState(id){return {alienBiology:null,id,instanceId:newCharacterInstanceId(),name:'',title:'',raceParts:[],race:'',lineage:{},birthStratum:'',birthRegion:'',culture:'',gender:'',size:'',arch:'',archParts:[],slayerTarget:null,job:'',history:[],extra:'',extraDetail:[],extraStatMods:[],relationships:[],genealogy:{parents:[],children:[],siblings:[],generation:1,lineage:[],partnerLinks:[]},personality:'',stats:{},powers:[],weapons:[],weakness:'',blessings:[],curses:[],clothingStyle:'',appearance:{},transformation:null,awakening:null,chi:null,prodigeMods:[],logs:[]}}
-function descRunHeadless(context){
-  const saved={state,queue,index,rotation,spinNumber,auto,spinning};
-  try{
-    state=descBlankState(context.id);state.descendantContext=context;state.race=context.race;state.raceParts=[...context.raceParts];state.biologicalRaceParts=[...context.birthRaceParts];state.transmissibleRaceComponents=[...context.raceParts];state.birthStratum=context.birthStratum;state.birthRegion=context.birthRegion;state.parentIds=[...context.parentIds];state.genealogy=JSON.parse(JSON.stringify(context.genealogy));state.hereditaryStates=context.states;
-    // Les états héréditaires modifient réellement la fiche et les stats, sans devenir des composantes biologiques transmissibles.
-    for(const st of ['Vampire','Loup-garou','Esprit'])if(context.states?.[st]&&!state.raceParts.includes(st))state.raceParts.push(st);
-    state.race=state.raceParts.join(' / ');
-    state.racialTraits=[...raceTraitsFor(context.race,context.raceParts),...['Vampire','Loup-garou','Esprit'].filter(st=>context.states?.[st]).flatMap(st=>raceTraitsFor(st,[st])),...context.inheritedTraits];
-    state.racialTraits=[...new Map(state.racialTraits.filter(t=>t?.name).map(t=>[t.name,t])).values()];
-    state.powers=context.inheritedPowers.map(p=>JSON.parse(JSON.stringify(p))); if(context.states.licheHalfBonus)state.extraStatMods.push({stat:'Combat',value:1,source:'Héritage de Liche'},{stat:'Intelligence',value:1,source:'Héritage de Liche'},{stat:'Résilience',value:1,source:'Héritage de Liche'},{stat:'Pouvoir',value:2,source:'Héritage de Liche'});
-    buildInitial(); queue=queue.filter(t=>!['Race','Strate de naissance','Région'].includes(t.title));index=0;
-    let guard=0;while(index<queue.length&&guard++<1000){const t=queue[index],opts=t.options();if(!opts?.length){index++;continue}const pick=opts[weightedPick(opts)].label;state.logs.push({cat:t.title,val:pick,headless:true});t.apply(pick);index++}
-    descDedupPowers(state);state._generationComplete=true;state.birthDataGenerated=true;state.fighterDataGenerated=false;state.birthSeason=context.birthSeason;state.eligibleSeason=context.eligibleSeason;state.birthEventId=context.birthEventId;state.multipleBirthId=context.multipleBirthId;state.parentIds=[...context.parentIds];state.biologicalRaceParts=[...context.birthRaceParts];state.transmissibleRaceComponents=descUnique([...(state.transmissibleRaceComponents||[]),...(state.raceParts||[]).filter(x=>!['Vampire','Loup-garou','Esprit','Squelette','Liche'].includes(x))]);state.hereditaryStates=context.states;state.status=`Descendant — généré pour S${context.eligibleSeason}`;return JSON.parse(JSON.stringify(state));
-  } finally {state=saved.state;queue=saved.queue;index=saved.index;rotation=saved.rotation;spinNumber=saved.spinNumber;auto=saved.auto;spinning=saved.spinning}
-}
-function createChild(pa,pb,origin,event,meta,descStore,sharedBirth=null,multipleBirthId=null){
-  const ri=descResolveRace(pa,pb),id=`DESC-${String(meta.nextDesc++).padStart(4,'0')}`,generation=Math.max(pa.genealogy?.generation||1,pb?.genealogy?.generation||1)+1;
-  const states=descStates(pa,pb),inheritedTraits=descInheritedTraits(pa,pb),inheritedPowers=inheritPowers(pa,pb);
-  const ctx={id,parentIds:[pa.id,pb.id],race:ri.race,raceParts:ri.parts,birthRaceParts:ri.birthParts,birthStratum:sharedBirth.stratum,birthRegion:sharedBirth.region,birthSeason:event.birthSeason,eligibleSeason:event.eligibleSeason,birthEventId:event.birthEventId,multipleBirthId,states,inheritedTraits,inheritedPowers,genealogy:{parents:[pa.id,pb.id],children:[],siblings:[],generation,lineage:mergedLineage(pa,pb),partnerLinks:[]}};
-  const child=descRunHeadless(ctx);child.origin=origin;child.inheritedPowers=inheritedPowers;child.inheritedRacialTraits=inheritedTraits;descStore[id]=child;return child;
-}
-async function resolveBirthEvents(){
-  saveCurrentCharacter();const roster=loadRoster(),descStore=descendants(),npcStore=npcs(),meta=universeMeta();repairMissingBirthEvents(roster,descStore);let made=0,events=0;
-  for(const pa of Object.values(roster)){
-    ensureGenealogyShape(pa);for(const ev of (pa.extraDetail||[]).filter(x=>x?.kind==='Enfant'&&birthEventChildIds(x).length===0)){
-      ev.birthSeason=Number(ev.birthSeason||characterSeasonFromId(pa,seasonNumber));if(ev.birthSeason>seasonNumber)continue;ev.eligibleSeason=Number(ev.eligibleSeason||ev.birthSeason+1);ev.birthEventId=ev.birthEventId||`BIRTH-${pa.id}-${ev.birthSeason}`;events++;
-      let pb=chooseOtherFighter(pa,roster);if(!pb)pb=descFallbackNpc(pa,meta,npcStore);ev.origin=pb.geneticSupportOnly?'PNJ génétique de secours':'Autre combattant';ev.otherParentId=pb.id;ev.childIds=[];delete ev.childId;
-      // Lieu partagé par toute naissance multiple.
-      const ss=state;let shared;try{state={race:pa.race,raceParts:pa.raceParts||[],lineage:pa.lineage||{},birthStratum:'',birthRegion:'',culture:'',powers:[]};let so=vaeloriaBirthStrataOptions();state.birthStratum=so[weightedPick(so)].label;let ro=vaeloriaRegionOptions();state.birthRegion=ro[weightedPick(ro)].label;shared={stratum:state.birthStratum,region:state.birthRegion}}finally{state=ss}
-      const n=childCountRoll(),multipleBirthId=n>1?`${ev.birthEventId}-MULTI`:null,siblings=[];
-      for(let i=0;i<n;i++){const c=createChild(pa,pb,ev.origin,ev,meta,descStore,shared,multipleBirthId);ev.childIds.push(c.id);siblings.push(c.id);made++}
-      for(const id of siblings){descStore[id].genealogy.siblings=siblings.filter(x=>x!==id);descStore[id].siblingType=n===2?'Jumeau/Jumelle':n===3?'Triplé(e)':n>3?`Naissance multiple (${n})`:null}
-      pa.genealogy.children=descUnique([...(pa.genealogy.children||[]),...siblings]);ensureGenealogyShape(pb);pb.genealogy.children=descUnique([...(pb.genealogy.children||[]),...siblings]);pa.genealogy.partnerLinks=descUnique([...(pa.genealogy.partnerLinks||[]),pb.id]);pb.genealogy.partnerLinks=descUnique([...(pb.genealogy.partnerLinks||[]),pa.id]);if(roster[pb.id])roster[pb.id]=pb;else npcStore[pb.id]=pb;ev.status=`${n} naissance${n>1?'s':''} résolue${n>1?'s':''}`;
-    }roster[pa.id]=pa;
-  }
-  saveRoster(roster);saveStore(STORAGE_DESC,descStore);saveStore(STORAGE_NPCS,npcStore);saveStore(STORAGE_META,meta);if(typeof saveEmergencyLocalBackup==='function')saveEmergencyLocalBackup();if(typeof cloudSyncAllData==='function')try{await cloudSyncAllData()}catch(e){console.warn('Sync naissances',e)}renderRoster();renderGenealogy();return {made,events};
-}
-function descendantLegacyMigrationV20(){
-  const meta=universeMeta();if(meta.descendantLegacyMigrationV20)return;
-  const ds=descendants(),roster=loadRoster();
-  for(const d of Object.values(ds)){
-    if(!d)continue;d.legacy=true;d.legacyVersion='pre-V20';d.reproductionDisabled=true;
-    d.status=`Legacy — ${d.status||'ancien descendant'}`;ds[d.id]=d;
-  }
-  for(const c of Object.values(roster)){
-    if(!c?.descendantSourceId||!ds[c.descendantSourceId]?.legacy)continue;
-    c.legacyDescendantSourceId=c.descendantSourceId;delete c.descendantSourceId;c.isLegacyDescendant=true;
-    roster[c.id]=c;
-  }
-  meta.descendantLegacyMigrationV20=true;saveStore(STORAGE_DESC,ds);saveRoster(roster);saveStore(STORAGE_META,meta);
-}
-descendantLegacyMigrationV20();
-function descendantsAwaitingSelectionForSeason(season=seasonNumber){
-  if(Number(season)<=1)return [];return Object.values(descendants()).filter(x=>x&&!x.legacy&&Number(x.eligibleSeason)===Number(season)&&x.selectedForSeason==null&&x.birthDataGenerated===true);
-}
-function selectedDescendantForCurrentSlot(){return null}
-function priorityDescendantFighterForSeason(){return null}
-function prepareSelectedDescendantForWheel(){return false}
-function nextFreeRosterIdForSeason(target,roster){
-  for(let n=1;n<=CHARACTERS_PER_SEASON;n++){const id=`S${target}-${String(n).padStart(3,'0')}`;if(!roster[id])return id}return null;
-}
-function materializeSelectedDescendant(d,target,roster){
-  const fighterId=nextFreeRosterIdForSeason(target,roster);if(!fighterId)return null;
-  const fighter=JSON.parse(JSON.stringify(d));
-  fighter.id=fighterId;fighter.descendantSourceId=d.id;fighter.isDescendant=true;fighter.legacy=false;fighter.selectedForSeason=target;
-  fighter.status=`Combattant descendant S${target}`;fighter._generationComplete=true;fighter._autoSavedAtFinish=true;fighter.fighterDataGenerated=true;
-  fighter.imageGeneration=fighter.imageGeneration||{};
-  roster[fighterId]=fighter;
-  d.fighterId=fighterId;d.fighterDataGenerated=true;d.selectedForSeason=target;d.status=`Combattant S${target} — ${fighterId}`;
-  return fighterId;
-}
-async function selectDescendantsForNextSeason(silent=false){
-  const d=descendants(),meta=universeMeta(),roster=loadRoster();
-  const targets=descUnique(Object.values(d).filter(x=>x&&!x.legacy&&x.birthDataGenerated===true&&x.selectedForSeason==null&&Number.isFinite(Number(x.eligibleSeason))).map(x=>Number(x.eligibleSeason))).sort((a,b)=>a-b);
-  const target=targets.find(s=>s>=seasonNumber)??targets[0]??seasonNumber+1;
-  let eligible=Object.values(d).filter(x=>!x.legacy&&x.birthDataGenerated===true&&Number(x.eligibleSeason)===target&&x.selectedForSeason==null);
-  if(!eligible.length){if(!silent)alert(`Aucun descendant complet à sélectionner pour S${target}.`);return []}
-  for(let i=eligible.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[eligible[i],eligible[j]]=[eligible[j],eligible[i]]}
-  const selected=eligible.slice(0,DESCENDANT_FIGHTER_CAP),chosen=new Set(selected.map(x=>x.id)),fighterIds=[];
-  for(const x of eligible){
-    if(chosen.has(x.id)){
-      const fid=materializeSelectedDescendant(x,target,roster);
-      if(fid)fighterIds.push(fid);else{x.selectedForSeason=false;x.status='PNJ descendant — saison complète';x.reproductionDisabled=true}
-    }else{x.selectedForSeason=false;x.status='PNJ descendant — généalogie uniquement';x.reproductionDisabled=true}
-    d[x.id]=x;
-  }
-  meta.selectedBySeason[target]=selected.filter(x=>x.fighterId).map(x=>x.id);
-  saveRoster(roster);saveStore(STORAGE_DESC,d);saveStore(STORAGE_META,meta);renderRoster();renderGenealogy();
-  if(typeof cloudSyncAllData==='function')try{await cloudSyncAllData()}catch(e){console.warn('Sync sélection descendants',e)}
-  // Le portrait n'est créé qu'après l'intégration comme combattant, jamais à la naissance.
-  for(const fid of fighterIds){try{await invokeCharacterImageGeneration(fid)}catch(e){console.warn('Portrait descendant',fid,e)}}
-  if(!silent)alert(`${fighterIds.length} descendant${fighterIds.length>1?'s':''} intégré${fighterIds.length>1?'s':''} comme combattant${fighterIds.length>1?'s':''} pour S${target}${eligible.length>DESCENDANT_FIGHTER_CAP?` sur ${eligible.length} éligibles`:''}. Les autres restent PNJ.`);
-  return fighterIds;
-}
-
-function blockSeasonAdvanceForBirths(){return false}
-
-
 function alienBiologyHtml(s){
   if(s?.race!=='Extraterrestre' || !s.alienBiology) return '';
   return `<b>Biologie extraterrestre</b><span>${s.alienBiology.trait} • ${s.alienBiology.mods.map(x=>`${x.stat} ${x.value>0?'+':''}${x.value}`).join(' • ')}</span>`;
@@ -4347,6 +4185,7 @@ if(importCharactersBtn&&importCharactersInput){
 const exportUniverseBtn=document.getElementById('exportUniverseBtn');
 if(resolveChildrenBtn)resolveChildrenBtn.onclick=resolveBirthEvents;
 if(selectDescBtn)selectDescBtn.onclick=selectDescendantsForNextSeason;
+try{migrateExistingDescendantsToLegacy()}catch(e){console.warn('Migration descendants legacy',e)}
 
 if(exportUniverseBtn)exportUniverseBtn.onclick=exportUniverse;
 
