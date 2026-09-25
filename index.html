@@ -4322,14 +4322,12 @@ let hgtHomeMusicMuted=false,hgtHomeMusicFade=null,hgtHomeMusicGestureUnlocked=fa
 function syncHgtHomeSoundButton(){const b=document.getElementById('hgtHomeSound');if(!b)return;b.textContent=hgtHomeMusicMuted?'🔇':'🔊';b.setAttribute('aria-label',hgtHomeMusicMuted?'Activer la musique':'Couper la musique');b.title=hgtHomeMusicMuted?'Activer la musique':'Couper la musique'}
 async function startHgtHomeMusic(fromGesture=false){const a=document.getElementById('hgtHomeMusic');if(!a||hgtHomeMusicMuted||document.getElementById('hgtEntry')?.hidden)return false;clearInterval(hgtHomeMusicFade);a.volume=HGT_HOME_MUSIC_VOLUME;if(fromGesture){a.muted=false;hgtHomeMusicGestureUnlocked=true}try{await a.play();return !a.paused}catch(e){return false}}
 function fadeOutHgtHomeMusic(){const a=document.getElementById('hgtHomeMusic');if(!a||a.paused)return;clearInterval(hgtHomeMusicFade);const start=a.volume||HGT_HOME_MUSIC_VOLUME,steps=12;let i=0;hgtHomeMusicFade=setInterval(()=>{i++;a.volume=Math.max(0,start*(1-i/steps));if(i>=steps){clearInterval(hgtHomeMusicFade);hgtHomeMusicFade=null;a.pause();a.currentTime=0;a.volume=HGT_HOME_MUSIC_VOLUME}},35)}
-function initHgtHomeMusic(){const a=document.getElementById('hgtHomeMusic'),b=document.getElementById('hgtHomeSound');if(!a||!b)return;a.volume=HGT_HOME_MUSIC_VOLUME;syncHgtHomeSoundButton();
-  // Les navigateurs mobiles autorisent l'autoplay s'il est muet. On lance donc
-  // immédiatement le morceau en sourdine, puis on active le son au premier geste.
-  a.muted=true;a.play().catch(()=>{});
-  const unlock=e=>{if(hgtHomeMusicMuted||hgtHomeMusicGestureUnlocked)return;if(e?.target?.closest?.('#hgtHomeSound'))return;a.muted=false;hgtHomeMusicGestureUnlocked=true;a.volume=HGT_HOME_MUSIC_VOLUME;a.play().catch(()=>{});removeUnlock()};
-  const removeUnlock=()=>{document.removeEventListener('pointerdown',unlock,true);document.removeEventListener('touchstart',unlock,true);document.removeEventListener('keydown',unlock,true);document.removeEventListener('click',unlock,true)};
-  document.addEventListener('pointerdown',unlock,true);document.addEventListener('touchstart',unlock,true);document.addEventListener('keydown',unlock,true);document.addEventListener('click',unlock,true);
-  b.onclick=async e=>{e.stopPropagation();hgtHomeMusicMuted=!hgtHomeMusicMuted;if(hgtHomeMusicMuted){a.muted=true;a.pause()}else{a.muted=false;hgtHomeMusicGestureUnlocked=true;a.volume=HGT_HOME_MUSIC_VOLUME;try{await a.play()}catch(_){}}syncHgtHomeSoundButton()};
+function initHgtHomeMusic(){const a=document.getElementById('hgtHomeMusic'),b=document.getElementById('hgtHomeSound'),gate=document.getElementById('hgtEntry');if(!a||!b||!gate)return;a.volume=HGT_HOME_MUSIC_VOLUME;syncHgtHomeSoundButton();
+  // IMPORTANT : aucun écouteur global sur document. La musique d'accueil reste
+  // strictement confinée à l'écran d'entrée et ne peut pas intercepter les clics HGT.
+  const tryStart=async()=>{if(hgtHomeMusicMuted||gate.hidden)return false;a.muted=false;a.volume=HGT_HOME_MUSIC_VOLUME;try{await a.play();hgtHomeMusicGestureUnlocked=!a.paused;return hgtHomeMusicGestureUnlocked}catch(_){return false}};
+  gate.addEventListener('pointerup',e=>{if(e.target?.closest?.('#hgtHomeSound'))return;tryStart()},{passive:true});
+  b.onclick=async e=>{e.stopPropagation();hgtHomeMusicMuted=!hgtHomeMusicMuted;if(hgtHomeMusicMuted){a.muted=true;a.pause()}else{a.muted=false;a.volume=HGT_HOME_MUSIC_VOLUME;await tryStart()}syncHgtHomeSoundButton()};
 }
 function enterHgt(){if(!cloudUser||!cloudProfile?.username)return;fadeOutHgtHomeMusic();document.getElementById('hgtEntry').hidden=true;document.body.classList.remove('hgt-gated');updatePlayerPseudo();}
 function leaveHgtGate(){document.getElementById('hgtEntry').hidden=false;document.body.classList.add('hgt-gated');renderEntryGate();startHgtHomeMusic()}
