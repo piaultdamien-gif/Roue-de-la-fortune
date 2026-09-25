@@ -528,7 +528,16 @@ body.hgt-gated{overflow:hidden}
     <div class="hgt-entry-art" id="hgtEntryArt"><div class="hgt-entry-placeholder">ILLUSTRATION HGT À DÉFINIR</div></div>
     <h1 class="hgt-entry-title">Hazard Game Tournament</h1>
     <div class="hgt-entry-sub" id="hgtEntrySubtitle">Connecte-toi pour entrer dans Vaeloria.</div>
-    <div id="hgtEntryContent"></div>
+    <div id="hgtEntryContent">
+      <div class="hgt-entry-form">
+        <input id="entryEmail" type="email" autocomplete="email" placeholder="Adresse e-mail">
+        <input id="entryPassword" type="password" autocomplete="current-password" placeholder="Mot de passe (6 caractères minimum)">
+        <div class="hgt-entry-actions">
+          <button id="entryLogin" type="button">Se connecter</button>
+          <button class="secondary" id="entrySignup" type="button">Créer un compte</button>
+        </div>
+      </div>
+    </div>
     <div class="hgt-entry-message" id="hgtEntryMessage"></div>
   </div>
 </div>
@@ -4306,6 +4315,10 @@ async function setProfileAvatarFocus(x,y){x=Math.max(0,Math.min(100,Math.round(N
 async function fillProfileChampionAvatars(root){if(!root)return;const roster=loadRoster();for(const el of root.querySelectorAll('[data-profile-avatar-id]')){const id=el.dataset.profileAvatarId,c=roster[id]||{},path=c?.imageGeneration?.championPath||c?.imageGeneration?.selectedPortrait;if(!path)continue;try{const blob=await cloudDownloadPortraitPath(path);if(!blob)continue;const u=URL.createObjectURL(blob),img=document.createElement('img');img.src=u;img.alt=c.name||id;img.onload=()=>URL.revokeObjectURL(u);el.replaceChildren(img)}catch(e){}}}
 function enterHgt(){if(!cloudUser||!cloudProfile?.username)return;document.getElementById('hgtEntry').hidden=true;document.body.classList.remove('hgt-gated');updatePlayerPseudo();}
 function leaveHgtGate(){document.getElementById('hgtEntry').hidden=false;document.body.classList.add('hgt-gated');renderEntryGate()}
+function bindEntryGateFallback(){
+ const login=document.getElementById('entryLogin'),signup=document.getElementById('entrySignup');
+ if(login)login.onclick=entryLogin;if(signup)signup.onclick=entrySignup;
+}
 function renderEntryGate(){
   const root=document.getElementById('hgtEntryContent');if(!root)return;
   const sub=document.getElementById('hgtEntrySubtitle');hgtEntryMessage('');
@@ -4950,6 +4963,7 @@ document.querySelectorAll('[data-region-map]').forEach(initVaeloriaRegionMap);
   const img=layer.querySelector('img');if(img&&!img.complete)img.addEventListener('load',reset,{once:true});else reset();
   window.addEventListener('resize',apply);
 })();
+document.addEventListener('DOMContentLoaded',bindEntryGateFallback);
 </script></body></html>
 
 <style id="tournament-compact-fix">
