@@ -192,7 +192,10 @@ CORE RULES:
 - Scale is strict. If the main character is 0.60 m tall and a summoned Human has no special size specified, the Human remains normal adult human size and must visibly tower over the main character. Never make companions miniature merely to fit the protagonist's scale.
 - Keep companions secondary but clearly readable when they are mandatory.
 - Translate hard-to-show information into intelligent visual composition rather than explanatory text.
-- Write the FLUX prompt as natural, coherent descriptive prose: a short visual narrative describing the character, action/pose, clothing/equipment, supernatural effects, and environment in a logical order. Prefer complete descriptive sentences and connected clauses over comma-separated keyword piles, tag lists, or booru-style prompting.
+- Write the FLUX prompt as natural, coherent descriptive prose, but make it CHARACTER-FIRST. Spend most of the descriptive detail on the main character before describing the environment. Prefer complete descriptive sentences and connected clauses over comma-separated keyword piles, tag lists, or booru-style prompting.
+- Describe the character with high visual specificity: face and expression, skin or racial anatomy, hair, body morphology, distinctive signs, clothing silhouette and layering, material textures, ornamentation, exact equipment/weapon construction, and clearly visible manifestations of powers, transformations, curses, familiars, summons, or Extras when the JSON makes them visually relevant.
+- The main character must remain the primary visual subject and receive substantially more fine detail than the scenery. Environmental detail must NEVER come at the expense of character anatomy, clothing, equipment, racial identity, or other explicit visual traits.
+- After the character is fully established, describe the region/environment more briefly, using enough distinctive landscape, architecture, vegetation, climate, lighting, and atmosphere to identify the setting without turning it into the dominant subject.
 - Integrate every important visually representable source fact into that narrative instead of merely appending isolated keywords. Repeat a crucial fact naturally only when needed for clarity, but avoid contradictory or redundant descriptors.
 - Do not overload the image with every statistic or abstract mechanic.
 - No written or pseudo-written text anywhere: no words, letters, numbers, names, labels, logos, UI, watermark, poster/card typography, or text-like runes.
@@ -262,6 +265,7 @@ Rules:
 - score is 0-100 for overall visual conformity, not beauty.
 - If the image fails, provide a COMPLETE replacement FLUX prompt that preserves successful traits and clearly fixes the failures. Do not merely list corrections.
 - Any corrected_flux_prompt must also be written as natural, coherent descriptive prose with complete sentences/connected clauses, not as a stack of keywords or tags. Weave the required corrections into the visual narrative.
+- Keep corrected prompts CHARACTER-FIRST as well: devote most fine detail to the character's anatomy, face, racial markers, clothing materials/layers, equipment and visible supernatural traits. Keep the environment identifiable but comparatively concise, and never let scenery consume detail that should belong to the character.
 
 SOURCE-OF-TRUTH RULES:
 - Only facts explicitly present in SOURCE CHARACTER JSON may be treated as required character traits.
