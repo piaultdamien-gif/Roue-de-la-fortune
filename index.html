@@ -1595,9 +1595,6 @@ function advanceCharacter(){
   characterNumber=1;
   localStorage.setItem(STORAGE_SEASON,String(seasonNumber));
   localStorage.setItem(STORAGE_CURRENT,String(characterNumber));
-  integrateDescendantsIntoSeason(seasonNumber);
-  const firstAfterDesc=firstEmptyCharacterNumber(seasonNumber);
-  if(firstAfterDesc!=null){characterNumber=firstAfterDesc;localStorage.setItem(STORAGE_CURRENT,String(characterNumber));}
   if(!loadCharacterById(currentCharacterId())) newCharacterAtCurrentId();
 }
 function relationSummary(s){
@@ -2119,190 +2116,6 @@ function selectDescendantsForNextSeason(){
   saveStore(STORAGE_DESC,d);saveStore(STORAGE_META,meta);renderRoster();renderGenealogy();
   alert(`${selected.length} descendant${selected.length>1?'s':''} sélectionné${selected.length>1?'s':''} pour S${target}${eligible.length>16?` sur ${eligible.length} éligibles`:''}.`);
 }
-
-
-/* ============================================================
-   DESCENDANTS V19 — moteur héréditaire validé (24/09/2026)
-   Le descendant utilise le moteur normal en mode headless ; le contexte
-   descendant injecte uniquement ce qui est déterminé par l'hérédité.
-   ============================================================ */
-const DESCENDANT_FIGHTER_CAP=20;
-const DESC_SPECIAL_CROSS={
-  'Dieu céleste|Neoxus':'Deus Machina','Dieu céleste|Titan fondateur':'Titan céleste','Neoxus|Titan fondateur':'Colosse Nexus',
-  'Dieu céleste|Dragon ancestral':'Drakéon ancestral','Dieu céleste|Dragon originel':'Drakéon originel',
-  'Neoxus|Dragon ancestral':'Nexaryx ancestral','Neoxus|Dragon originel':'Nexaryx originel',
-  'Titan fondateur|Dragon ancestral':'Tyrakhan ancestral','Titan fondateur|Dragon originel':'Tyrakhan originel'
-};
-const DESC_SPECIAL_PARTS={
-  'Deus Machina':['Dieu céleste','Neoxus'],'Titan céleste':['Dieu céleste','Titan fondateur'],'Colosse Nexus':['Neoxus','Titan fondateur'],
-  'Drakéon':['Dieu céleste','Dragon ancestral'],'Drakéon ancestral':['Dieu céleste','Dragon ancestral'],'Drakéon originel':['Dieu céleste','Dragon originel'],
-  'Nexaryx':['Neoxus','Dragon ancestral'],'Nexaryx ancestral':['Neoxus','Dragon ancestral'],'Nexaryx originel':['Neoxus','Dragon originel'],
-  'Tyrakhan':['Titan fondateur','Dragon ancestral'],'Tyrakhan ancestral':['Titan fondateur','Dragon ancestral'],'Tyrakhan originel':['Titan fondateur','Dragon originel']
-};
-function descUnique(a){return [...new Set((a||[]).filter(Boolean))]}
-function descEntityMap(roster=loadRoster(),ds=descendants(),ns=npcs()){
-  const m={}; for(const o of [roster,ds,ns])for(const x of Object.values(o||{}))if(x?.id)m[x.id]=x; return m;
-}
-function descParents(x){return descUnique(x?.parentIds||x?.genealogy?.parents||[])}
-function descAncestors(id,map,seen=new Set()){
-  if(!id||seen.has(id))return seen; seen.add(id);
-  for(const p of descParents(map[id])){if(!seen.has(p)){seen.add(p);descAncestors(p,map,seen)}} return seen;
-}
-function descRelated(a,b,map){
-  if(!a?.id||!b?.id)return false; if(a.id===b.id)return true;
-  const A=descAncestors(a.id,map,new Set()),B=descAncestors(b.id,map,new Set());
-  if(A.has(b.id)||B.has(a.id))return true;
-  for(const x of A)if(B.has(x))return true; return false;
-}
-function descIsReproductiveFighter(x){
-  if(!x?.id)return false;
-  if(/^PNJ-/.test(x.id)||x.selectedForSeason===false||/PNJ/i.test(x.status||''))return false;
-  return true;
-}
-function chooseOtherFighter(parent,roster){
-  const map=descEntityMap(roster,descendants(),npcs());
-  const candidates=Object.values(roster||{}).filter(x=>x?.id!==parent.id&&descIsReproductiveFighter(x)&&compatibleGender(parent.gender,x.gender)&&!descRelated(parent,x,map));
-  return candidates.length?rpick(candidates):null;
-}
-function descRacePool(s){
-  if(!s)return ['Humain'];
-  let raw=[];
-  if(Array.isArray(s.transmissibleRaceComponents)&&s.transmissibleRaceComponents.length)raw=s.transmissibleRaceComponents;
-  else if(DESC_SPECIAL_PARTS[s.race])raw=DESC_SPECIAL_PARTS[s.race];
-  else raw=(s.raceParts||[]).filter(x=>x&&!/^Ascension |^Martial God/.test(x));
-  if(!raw.length&&s.biologicalRaceParts?.length)raw=s.biologicalRaceParts;
-  if(!raw.length&&s.race)raw=[s.race];
-  return descUnique(raw.flatMap(x=>DESC_SPECIAL_PARTS[x]||[x]));
-}
-function transmittedComponent(s){return rpick(descRacePool(s))}
-function descFamily(c){return CHAIN_FAMILY[c]||(/Dragon/.test(c||'')?'dragon':null)}
-function descMax(c){return ['Dieu céleste','Neoxus','Titan fondateur','Dragon ancestral','Dragon originel'].includes(c)}
-function descPowerRoll(component,pairIsSuperior){
-  const fam=descFamily(component); if(!fam)return component;
-  if(descMax(component)&&pairIsSuperior)return component;
-  const r=Math.random()*100;
-  if(fam==='divine')return r<60?'Demi-dieu':r<90?'Divinité':'Dieu céleste';
-  if(fam==='nexus')return r<60?'Cyborg':r<90?'N.E.X.U.S.':'Neoxus';
-  if(fam==='titan')return r<60?'Titan':r<90?'Titan primordial':'Titan fondateur';
-  if(fam==='dragon'){
-    const branch=/originel/i.test(component)?'originel':'ancestral';
-    return r<90?'Dragon humanoïde':`Dragon ${branch}`;
-  }
-  return component;
-}
-function descResolveRace(pa,pb){
-  let a=transmittedComponent(pa),b=transmittedComponent(pb);
-  const aSup=!!descFamily(a),bSup=!!descFamily(b);
-  a=descPowerRoll(a,bSup); b=descPowerRoll(b,aSup);
-  if(a===b)return {race:a,parts:[a],birthParts:[a,b]};
-  const cross=DESC_SPECIAL_CROSS[[a,b].sort().join('|')]||DESC_SPECIAL_CROSS[[b,a].sort().join('|')];
-  if(cross)return {race:cross,parts:[a,b],birthParts:[a,b]};
-  return {race:`${a}/${b}`,parts:[a,b],birthParts:[a,b]};
-}
-function descTraitList(p){
-  const out=(p?.racialTraits||[]).filter(t=>t?.name&&!t.temporary).map(t=>JSON.parse(JSON.stringify(t)));
-  const seen=new Set(out.map(t=>t.name));
-  // Une modification raciale permanente acquise après la naissance transmet aussi ses traits naturels.
-  for(const comp of descRacePool(p))for(const name of (RACIAL_TRAITS[comp]||[]))if(!seen.has(name)){
-    out.push({name,origin:comp,active:ACTIVE_RACIAL_TRAITS.has(name),mastery:ACTIVE_RACIAL_TRAITS.has(name)?centeredRoll():null,natural:true,acquiredRacialTrait:true});seen.add(name);
-  }
-  return out;
-}
-function descInheritedTraits(pa,pb){
-  const map={}; for(const p of [pa,pb])for(const t of descTraitList(p)){(map[t.name]??=[]).push({t,p})}
-  const out=[]; for(const [name,src] of Object.entries(map)){if(src.length>1||chance(50)){const t=JSON.parse(JSON.stringify(src[0].t));t.inherited=true;t.natural=false;t.originIds=descUnique(src.map(z=>z.p.id));out.push(t)}} return out;
-}
-function personalPowers(s){return (s?.powers||[]).filter(p=>p?.name).map(p=>({name:p.name,source:s.id||s.name})).concat(s?.chi?[{name:'Chi',source:s.id||s.name}]:[],s?.npcPower?[{name:s.npcPower,source:s.id||s.name}]:[])}
-function inheritPowers(pa,pb){
-  const map={};for(const p of [pa,pb])for(const pow of personalPowers(p)){(map[pow.name]??=[]).push(pow.source)}
-  const out=[];for(const [name,origins] of Object.entries(map))if(origins.length>1||chance(50))out.push({name,mastery:centeredRoll(),masteryBase:null,inherited:true,origins:descUnique(origins)});return out;
-}
-function descStates(pa,pb){
-  const has=(p,k)=>!!(p?.hereditaryStates?.[k]||new RegExp(k,'i').test([p?.race,p?.lineage?.vampire,p?.lineage?.werewolf,p?.lineage?.undeadForm].filter(Boolean).join(' ')));
-  const v=[pa,pb].some(p=>has(p,'Vampire')),w=[pa,pb].some(p=>has(p,'Loup-garou'));
-  let vampire=false,werewolf=false;if(v&&w){let r=Math.random();vampire=r<.25;werewolf=r>=.25&&r<.5}else if(v)vampire=chance(50);else if(w)werewolf=chance(50);
-  const spirit=[pa,pb].some(p=>has(p,'Esprit'))&&chance(50);
-  const liche=[pa,pb].some(p=>/Liche/i.test([p?.race,p?.lineage?.undeadForm].filter(Boolean).join(' ')))&&chance(50);
-  return {Vampire:vampire,'Loup-garou':werewolf,Esprit:spirit,licheHalfBonus:liche};
-}
-function descFallbackNpc(parent,meta,npcStore){
-  const id=`PNJ-${String(meta.nextNpc++).padStart(3,'0')}`,gender=parent.gender==='Homme'?'Femme':parent.gender==='Femme'?'Homme':'Autre / indéterminé';
-  // Race pondérée par une région temporaire, sans fiche de personnage complète.
-  const savedState=state;let race='Humain',parts=['Humain'];try{state={race:'Humain',raceParts:['Humain'],lineage:{},birthStratum:'',birthRegion:'',culture:'',powers:[]};let so=vaeloriaBirthStrataOptions();state.birthStratum=so[weightedPick(so)].label;let ro=vaeloriaRegionOptions();state.birthRegion=ro[weightedPick(ro)].label;let opts=raceOptions();race=opts[weightedPick(opts)].label;if(race==='Hybride'){let a=rpick(ORDINARY_COMPONENTS),b=rpick(ORDINARY_COMPONENTS.filter(x=>x!==a));race=`${a}/${b}`;parts=[a,b]}else parts=[race]}catch(e){}finally{state=savedState}
-  const npc={id,name:childName(),gender,race,raceParts:parts,biologicalRaceParts:[...parts],transmissibleRaceComponents:[...parts],racialTraits:raceTraitsFor(race,parts),powers:[],genealogy:{parents:[],children:[],siblings:[],generation:1,lineage:[],partnerLinks:[]},status:'PNJ génétique — hors reproduction',geneticSupportOnly:true};
-  npcStore[id]=npc;return npc;
-}
-function descDedupPowers(s){const seen=new Set();s.powers=(s.powers||[]).filter(p=>p?.name&&!seen.has(p.name)&&(seen.add(p.name),true))}
-const __vaeloriaPowerOptionsBase=vaeloriaPowerOptions;
-vaeloriaPowerOptions=function(){const owned=new Set((state?.powers||[]).map(p=>p?.name));return __vaeloriaPowerOptionsBase().filter(o=>!owned.has(o.label))}
-function descBlankState(id){return {alienBiology:null,id,instanceId:newCharacterInstanceId(),name:'',title:'',raceParts:[],race:'',lineage:{},birthStratum:'',birthRegion:'',culture:'',gender:'',size:'',arch:'',archParts:[],slayerTarget:null,job:'',history:[],extra:'',extraDetail:[],extraStatMods:[],relationships:[],genealogy:{parents:[],children:[],siblings:[],generation:1,lineage:[],partnerLinks:[]},personality:'',stats:{},powers:[],weapons:[],weakness:'',blessings:[],curses:[],clothingStyle:'',appearance:{},transformation:null,awakening:null,chi:null,prodigeMods:[],logs:[]}}
-function descRunHeadless(context){
-  const saved={state,queue,index,rotation,spinNumber,auto,spinning};
-  try{
-    state=descBlankState(context.id);state.descendantContext=context;state.race=context.race;state.raceParts=[...context.raceParts];state.biologicalRaceParts=[...context.birthRaceParts];state.transmissibleRaceComponents=[...context.raceParts];state.birthStratum=context.birthStratum;state.birthRegion=context.birthRegion;state.parentIds=[...context.parentIds];state.genealogy=JSON.parse(JSON.stringify(context.genealogy));state.hereditaryStates=context.states;
-    // Les états héréditaires modifient réellement la fiche et les stats, sans devenir des composantes biologiques transmissibles.
-    for(const st of ['Vampire','Loup-garou','Esprit'])if(context.states?.[st]&&!state.raceParts.includes(st))state.raceParts.push(st);
-    state.race=state.raceParts.join(' / ');
-    state.racialTraits=[...raceTraitsFor(context.race,context.raceParts),...['Vampire','Loup-garou','Esprit'].filter(st=>context.states?.[st]).flatMap(st=>raceTraitsFor(st,[st])),...context.inheritedTraits];
-    state.racialTraits=[...new Map(state.racialTraits.filter(t=>t?.name).map(t=>[t.name,t])).values()];
-    state.powers=context.inheritedPowers.map(p=>JSON.parse(JSON.stringify(p))); if(context.states.licheHalfBonus)state.extraStatMods.push({stat:'Combat',value:1,source:'Héritage de Liche'},{stat:'Intelligence',value:1,source:'Héritage de Liche'},{stat:'Résilience',value:1,source:'Héritage de Liche'},{stat:'Pouvoir',value:2,source:'Héritage de Liche'});
-    buildInitial(); queue=queue.filter(t=>!['Race','Strate de naissance','Région'].includes(t.title));index=0;
-    let guard=0;while(index<queue.length&&guard++<1000){const t=queue[index],opts=t.options();if(!opts?.length){index++;continue}const pick=opts[weightedPick(opts)].label;state.logs.push({cat:t.title,val:pick,headless:true});t.apply(pick);index++}
-    descDedupPowers(state);state._generationComplete=true;state.fighterDataGenerated=true;state.birthSeason=context.birthSeason;state.eligibleSeason=context.eligibleSeason;state.birthEventId=context.birthEventId;state.multipleBirthId=context.multipleBirthId;state.parentIds=[...context.parentIds];state.biologicalRaceParts=[...context.birthRaceParts];state.transmissibleRaceComponents=descUnique([...(state.transmissibleRaceComponents||[]),...(state.raceParts||[]).filter(x=>!['Vampire','Loup-garou','Esprit','Squelette','Liche'].includes(x))]);state.hereditaryStates=context.states;state.status=`Descendant — généré pour S${context.eligibleSeason}`;return JSON.parse(JSON.stringify(state));
-  } finally {state=saved.state;queue=saved.queue;index=saved.index;rotation=saved.rotation;spinNumber=saved.spinNumber;auto=saved.auto;spinning=saved.spinning}
-}
-function createChild(pa,pb,origin,event,meta,descStore,sharedBirth=null,multipleBirthId=null){
-  const ri=descResolveRace(pa,pb),id=`DESC-${String(meta.nextDesc++).padStart(4,'0')}`,generation=Math.max(pa.genealogy?.generation||1,pb?.genealogy?.generation||1)+1;
-  const states=descStates(pa,pb),inheritedTraits=descInheritedTraits(pa,pb),inheritedPowers=inheritPowers(pa,pb);
-  const ctx={id,parentIds:[pa.id,pb.id],race:ri.race,raceParts:ri.parts,birthRaceParts:ri.birthParts,birthStratum:sharedBirth.stratum,birthRegion:sharedBirth.region,birthSeason:event.birthSeason,eligibleSeason:event.eligibleSeason,birthEventId:event.birthEventId,multipleBirthId,states,inheritedTraits,inheritedPowers,genealogy:{parents:[pa.id,pb.id],children:[],siblings:[],generation,lineage:mergedLineage(pa,pb),partnerLinks:[]}};
-  const child=descRunHeadless(ctx);child.origin=origin;child.inheritedPowers=inheritedPowers;child.inheritedRacialTraits=inheritedTraits;descStore[id]=child;return child;
-}
-async function resolveBirthEvents(){
-  saveCurrentCharacter();const roster=loadRoster(),descStore=descendants(),npcStore=npcs(),meta=universeMeta();repairMissingBirthEvents(roster,descStore);let made=0,events=0;
-  for(const pa of Object.values(roster)){
-    ensureGenealogyShape(pa);for(const ev of (pa.extraDetail||[]).filter(x=>x?.kind==='Enfant'&&birthEventChildIds(x).length===0)){
-      ev.birthSeason=Number(ev.birthSeason||characterSeasonFromId(pa,seasonNumber));if(ev.birthSeason>seasonNumber)continue;ev.eligibleSeason=Number(ev.eligibleSeason||ev.birthSeason+1);ev.birthEventId=ev.birthEventId||`BIRTH-${pa.id}-${ev.birthSeason}`;events++;
-      let pb=chooseOtherFighter(pa,roster);if(!pb)pb=descFallbackNpc(pa,meta,npcStore);ev.origin=pb.geneticSupportOnly?'PNJ génétique de secours':'Autre combattant';ev.otherParentId=pb.id;ev.childIds=[];delete ev.childId;
-      // Lieu partagé par toute naissance multiple.
-      const ss=state;let shared;try{state={race:pa.race,raceParts:pa.raceParts||[],lineage:pa.lineage||{},birthStratum:'',birthRegion:'',culture:'',powers:[]};let so=vaeloriaBirthStrataOptions();state.birthStratum=so[weightedPick(so)].label;let ro=vaeloriaRegionOptions();state.birthRegion=ro[weightedPick(ro)].label;shared={stratum:state.birthStratum,region:state.birthRegion}}finally{state=ss}
-      const n=childCountRoll(),multipleBirthId=n>1?`${ev.birthEventId}-MULTI`:null,siblings=[];
-      for(let i=0;i<n;i++){const c=createChild(pa,pb,ev.origin,ev,meta,descStore,shared,multipleBirthId);ev.childIds.push(c.id);siblings.push(c.id);made++}
-      for(const id of siblings){descStore[id].genealogy.siblings=siblings.filter(x=>x!==id);descStore[id].siblingType=n===2?'Jumeau/Jumelle':n===3?'Triplé(e)':n>3?`Naissance multiple (${n})`:null}
-      pa.genealogy.children=descUnique([...(pa.genealogy.children||[]),...siblings]);ensureGenealogyShape(pb);pb.genealogy.children=descUnique([...(pb.genealogy.children||[]),...siblings]);pa.genealogy.partnerLinks=descUnique([...(pa.genealogy.partnerLinks||[]),pb.id]);pb.genealogy.partnerLinks=descUnique([...(pb.genealogy.partnerLinks||[]),pa.id]);if(roster[pb.id])roster[pb.id]=pb;else npcStore[pb.id]=pb;ev.status=`${n} naissance${n>1?'s':''} résolue${n>1?'s':''}`;
-    }roster[pa.id]=pa;
-  }
-  saveRoster(roster);saveStore(STORAGE_DESC,descStore);saveStore(STORAGE_NPCS,npcStore);saveStore(STORAGE_META,meta);selectDescendantsForNextSeason(true);if(typeof saveEmergencyLocalBackup==='function')saveEmergencyLocalBackup();if(typeof cloudSyncAllData==='function')try{await cloudSyncAllData()}catch(e){console.warn('Sync naissances',e)}renderRoster();renderGenealogy();return {made,events};
-}
-function selectDescendantsForNextSeason(silent=false){
-  const d=descendants(),meta=universeMeta(),targets=descUnique(Object.values(d).filter(x=>x&&x.selectedForSeason==null&&Number.isFinite(Number(x.eligibleSeason))).map(x=>Number(x.eligibleSeason))).sort((a,b)=>a-b),target=targets.find(s=>s>=seasonNumber)??targets[0]??seasonNumber+1;
-  let eligible=Object.values(d).filter(x=>Number(x.eligibleSeason)===target&&x.selectedForSeason==null);if(!eligible.length)return [];
-  for(let i=eligible.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[eligible[i],eligible[j]]=[eligible[j],eligible[i]]}const selected=eligible.slice(0,DESCENDANT_FIGHTER_CAP),chosen=new Set(selected.map(x=>x.id));
-  for(const x of eligible){if(chosen.has(x.id)){x.selectedForSeason=target;x.status=`Sélectionné pour S${target}`}else{x.selectedForSeason=false;x.status='PNJ descendant — généalogie uniquement';x.reproductionDisabled=true}d[x.id]=x}meta.selectedBySeason[target]=selected.map(x=>x.id);saveStore(STORAGE_DESC,d);saveStore(STORAGE_META,meta);if(Number(target)===Number(seasonNumber))integrateDescendantsIntoSeason(target);if(!silent)alert(`${selected.length} descendant${selected.length>1?'s':''} sélectionné${selected.length>1?'s':''} pour S${target}${eligible.length>DESCENDANT_FIGHTER_CAP?` sur ${eligible.length} éligibles`:''}.`);return selected;
-}
-function integrateDescendantsIntoSeason(targetSeason){
-  targetSeason=Number(targetSeason);if(targetSeason<=1)return [];
-  const d=descendants(),meta=universeMeta(),roster=loadRoster();
-  const ids=Array.isArray(meta.selectedBySeason?.[targetSeason])?meta.selectedBySeason[targetSeason]:[];
-  const integrated=[];
-  for(const sourceId of ids){
-    const child=d[sourceId];if(!child||child.selectedForSeason===false)continue;
-    if(child.fighterId&&roster[child.fighterId]){integrated.push(child.fighterId);continue}
-    let slot=null;for(let n=1;n<=CHARACTERS_PER_SEASON;n++){const id=`S${targetSeason}-${String(n).padStart(3,'0')}`;if(!roster[id]){slot=n;break}}
-    if(slot==null)break;
-    const fid=`S${targetSeason}-${String(slot).padStart(3,'0')}`;
-    const fighter=JSON.parse(JSON.stringify(child));
-    fighter.id=fid;fighter.descendantSourceId=sourceId;fighter.isDescendant=true;fighter._generationComplete=true;fighter._autoSavedAtFinish=true;fighter.fighterDataGenerated=true;fighter.selectedForSeason=targetSeason;fighter.status=`Combattant S${targetSeason} — descendant ${sourceId}`;
-    fighter.instanceId=fighter.instanceId||newCharacterInstanceId();
-    roster[fid]=fighter;child.fighterId=fid;child.fighterDataGenerated=true;child.status=`Combattant S${targetSeason} — ${fid}`;d[sourceId]=child;integrated.push(fid);
-  }
-  saveRoster(roster);saveStore(STORAGE_DESC,d);if(typeof queueCloudGameStateSave==='function')queueCloudGameStateSave();return integrated;
-}
-function selectedDescendantForCurrentSlot(){return null}
-function prepareSelectedDescendantForWheel(){return false}
-function blockGenerationIfDescendantsNotSelected(){return false}
-function priorityDescendantFighterForSeason(){return null}
-function blockSeasonAdvanceForBirths(){return false}
-
 
 function alienBiologyHtml(s){
   if(s?.race!=='Extraterrestre' || !s.alienBiology) return '';
@@ -3459,7 +3272,7 @@ function undeadOriginRaceOptions(){return raceOptions(['Squelette','Golem / Arti
 function addRaceResult(r,depth=0){state.lineage=state.lineage||{};
  if(r==='Hybride'){state.raceParts=['Hybride'];state.race='Hybride';state.lineage.hybridCompA=null;state.lineage.hybridCompB=null;insert([task('Hybride — Ascendance A',()=>raceOptions(['Hybride','Vampire','Loup-garou','Esprit','Squelette']),x=>{let c=state.lineage.hybridCompA={race:x};state.lineage.hybridA=x;scheduleComponentDetails('Ascendance A',c)}),task('Hybride — Ascendance B',()=>raceOptions(['Hybride','Vampire','Loup-garou','Esprit','Squelette']),x=>{let c=state.lineage.hybridCompB={race:x};state.lineage.hybridB=x;scheduleComponentDetails('Ascendance B',c)})]);return}
  if(['Vampire','Loup-garou'].includes(r)){state.raceParts=[r];updateRace();insert([task(`${r} — Race d’origine`,vampireWerewolfOriginOptions,x=>{let c=state.lineage.originComponent={race:x};state.lineage.originRace=x;scheduleComponentDetails(`${r} — Origine`,c)})]);return}
- if(r==='Esprit'){state.raceParts=['Esprit'];updateRace();insert([task('Esprit — Origine',[W('Naturel',50),W('Race existante',50)],x=>{state.lineage.spiritOrigin=x;if(x==='Naturel'){insert([task('Esprit — Élément naturel',spiritElementOptions,v=>{state.lineage.spiritEssence=v;let p=(state.powers||[]).find(q=>q&&q.naturalSpiritElement);if(!p){p={name:v,mastery:null,naturalSpiritElement:true,source:'Esprit naturel'};state.powers.push(p)}else p.name=v;insert([task(`Esprit — Maîtrise de ${v}`,centered,m=>{p.masteryBase=valNum(m);p.masteryMod=masteryMod('power');p.mastery=Math.max(0,p.masteryBase+p.masteryMod+(state._historyPowerMasteryMod||0))})])})])}else insert([task('Esprit — Race d’origine',spiritOriginRaceOptions,x=>{let c=state.lineage.originComponent={race:x};state.lineage.originRace=x;scheduleComponentDetails('Esprit — Origine raciale',c)})])})]);return}
+ if(r==='Esprit'){state.raceParts=['Esprit'];updateRace();insert([task('Esprit — Origine',[W('Naturel',50),W('Race existante',50)],x=>{state.lineage.spiritOrigin=x;if(x==='Naturel'){insert([task('Esprit — Élément naturel',spiritElementOptions,v=>state.lineage.spiritEssence=v)])}else insert([task('Esprit — Race d’origine',spiritOriginRaceOptions,x=>{let c=state.lineage.originComponent={race:x};state.lineage.originRace=x;scheduleComponentDetails('Esprit — Origine raciale',c)})])})]);return}
  if(r==='Squelette'){state.raceParts=['Squelette'];updateRace();insert([task('Squelette — Race d’origine',undeadOriginRaceOptions,x=>{let c=state.lineage.originComponent={race:x};state.lineage.originRace=x;scheduleComponentDetails('Squelette — Origine',c)}),task('Squelette — Réanimation',EQ(['Accident','Rituel nécromantique','Malédiction','Phénomène mort-vivant','Artefact','Magie incontrôlée','Volontaire','Inconnue']),x=>state.lineage.reanimation=x),task('Squelette — Forme',[W('Squelette',95),W('Liche',5)],x=>{state.lineage.undeadForm=x;state.raceParts=[x];updateRace()})]);return}
  let comp=state.lineage.primaryComponent={race:r};state.raceParts=[r];updateRace();scheduleComponentDetails(r,comp);
 }
@@ -3799,11 +3612,6 @@ function finishGeneration(){
         d.fighterDataGenerated=true;d.fighterId=state.id;d.selectedForSeason=seasonNumber;d.status=`Combattant S${seasonNumber} — ${state.id}`;ds[d.id]=d;saveStore(STORAGE_DESC,ds)
       }
     }
-    // Recalcule la maîtrise du pouvoir élémentaire inné une fois Archétype et Histoire connus.
-    for(const p of (state.powers||[]))if(p?.naturalSpiritElement&&Number.isFinite(p.masteryBase)){
-      p.masteryMod=masteryMod('power');
-      p.mastery=Math.max(0,p.masteryBase+p.masteryMod+(state._historyPowerMasteryMod||0));
-    }
     saveCurrentCharacter();
     setTimeout(()=>invokeCharacterImageGeneration(state.id).catch(console.error),1200);
   }
@@ -3811,9 +3619,8 @@ function finishGeneration(){
   if(characterNumber>=CHARACTERS_PER_SEASON){
     const pending=pendingBirthEventsForSeason(seasonNumber);
     if(pending.length){
-      result.innerHTML=`<span class="ok">${state.id} est terminé et sauvegardé automatiquement</span><small>🍼 Saison S${seasonNumber} terminée. Génération automatique de ${pending.length} naissance${pending.length>1?'s':''} en arrière-plan…</small>`;
-      spinBtn.textContent='⏳ Naissances automatiques';spinBtn.disabled=true;
-      setTimeout(async()=>{try{const r=await resolveBirthEvents();result.innerHTML=`<span class="ok">${state.id} est terminé et sauvegardé automatiquement</span><small>🍼 ${r.made} descendant${r.made>1?'s':''} généré${r.made>1?'s':''} et figé${r.made>1?'s':''}. Termine maintenant le tournoi de S${seasonNumber}.</small>`;spinBtn.textContent='⚔️ Terminer le tournoi';spinBtn.disabled=false}catch(e){console.error(e);result.innerHTML=`<span class="bad">Erreur pendant la génération automatique des descendants.</span><small>${e.message||e}</small>`;spinBtn.disabled=false}},50);
+      result.innerHTML=`<span class="ok">${state.id} est terminé et sauvegardé automatiquement</span><small>🍼 Saison S${seasonNumber} terminée. Résous ${pending.length} naissance${pending.length>1?'s':''}. Le tournoi devra aussi avoir un champion avant de passer à S${seasonNumber+1}.</small>`;
+      spinBtn.textContent='👶 Résoudre les naissances';
     }else if(!tournamentChampionForSeason(seasonNumber)){
       result.innerHTML=`<span class="ok">${state.id} est terminé et sauvegardé automatiquement</span><small>⚔️ Naissances résolues. Termine maintenant le tournoi de S${seasonNumber} et définis son champion avant de passer à S${seasonNumber+1}.</small>`;
       spinBtn.textContent='⚔️ Terminer le tournoi';
@@ -4704,7 +4511,7 @@ async function invokeCharacterImageGeneration(characterId,{regenerate=false,cham
     if(!session?.access_token)throw new Error('Session Supabase absente — reconnecte-toi à ton compte.');
     const portraitNumber=champion?1:await nextPortraitNumber(characterId);
     const seed=Math.floor(Math.random()*2147483646)+1;
-    const payload={characterId:imageStorageCharacterKey(characterId),displayCharacterId:characterId,characterInstanceId:ensureCharacterInstanceId(c),portraitNumber,seed,character:c,prompt:characterPortraitPrompt(c),generationMode:champion?'champion':'normal',championSeason:championSeason||null};
+    const payload={characterId:imageStorageCharacterKey(characterId),displayCharacterId:characterId,characterInstanceId:ensureCharacterInstanceId(c),portraitNumber,seed,character:c,generationMode:champion?'champion':'normal',championSeason:championSeason||null};
     // La fonction déployée dans Supabase s'appelle exactement « Generate-character-image ».
     // On passe par le client Supabase : il transmet la session active et évite le faux
     // « Failed to fetch » provoqué auparavant par l'appel du mauvais slug en premier.
