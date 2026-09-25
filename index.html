@@ -3761,7 +3761,10 @@ function finishGeneration(){
       }
     }
     saveCurrentCharacter();
-    setTimeout(()=>invokeCharacterImageGeneration(state.id).catch(console.error),1200);
+    // La génération automatique peut tomber pendant la restauration asynchrone de la
+    // session/partie cloud (notamment juste après l'écran d'accueil). On mémorise l'ID
+    // terminé et on attend réellement que le cloud soit prêt au lieu d'abandonner.
+    scheduleAutomaticCharacterImageGeneration(state.id);
   }
   taskTitle.textContent='Personnage terminé et sauvegardé ✅';
   if(characterNumber>=CHARACTERS_PER_SEASON){
@@ -4741,6 +4744,29 @@ async function ensureCloudGameForImageGeneration(){
       return true;
     }
   }catch(e){console.warn('Restauration partie pour génération image',e)}
+  return false;
+}
+async function scheduleAutomaticCharacterImageGeneration(characterId){
+  const id=String(characterId||'');
+  if(!id)return false;
+  // Laisse le temps à la sauvegarde locale/cloud et à la restauration de la partie active.
+  await portraitRetrySleep(1200);
+  for(let attempt=1;attempt<=8;attempt++){
+    try{
+      const c=loadRoster()[id];
+      if(!c||!isCharacterGenerationComplete(c))return false;
+      // Une image déjà présente signifie que le travail a été fait entre-temps.
+      let existing=null;
+      try{existing=await getIllustration(id)}catch(_){existing=null}
+      if(existing)return true;
+      if(await ensureCloudGameForImageGeneration()){
+        const ok=await invokeCharacterImageGeneration(id);
+        if(ok)return true;
+      }
+    }catch(e){console.warn(`Génération automatique ${id} — tentative ${attempt}`,e)}
+    if(attempt<8)await portraitRetrySleep(1500);
+  }
+  illustrationStatus(id,'⚠️ Portrait automatique non lancé. La régénération manuelle reste disponible.');
   return false;
 }
 async function invokeCharacterImageGeneration(characterId,{regenerate=false,champion=false,championSeason=null}={}){
