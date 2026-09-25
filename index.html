@@ -4760,8 +4760,10 @@ async function scheduleAutomaticCharacterImageGeneration(characterId){
       try{existing=await getIllustration(id)}catch(_){existing=null}
       if(existing)return true;
       if(await ensureCloudGameForImageGeneration()){
-        const ok=await invokeCharacterImageGeneration(id);
-        if(ok)return true;
+        // Une fois l'appel réellement lancé, invokeCharacterImageGeneration gère lui-même
+        // son succès, son erreur et son délai maximal. Ne pas relancer automatiquement
+        // le même portrait derrière : cela pouvait laisser plusieurs requêtes concurrentes.
+        return await invokeCharacterImageGeneration(id);
       }
     }catch(e){console.warn(`Génération automatique ${id} — tentative ${attempt}`,e)}
     if(attempt<8)await portraitRetrySleep(1500);
@@ -4789,9 +4791,10 @@ async function invokeCharacterImageGeneration(characterId,{regenerate=false,cham
     // La fonction déployée dans Supabase s'appelle exactement « Generate-character-image ».
     // On passe par le client Supabase : il transmet la session active et évite le faux
     // « Failed to fetch » provoqué auparavant par l'appel du mauvais slug en premier.
-    const {data,error}=await cloudClient.functions.invoke('Generate-character-image',{
-      body:payload
-    });
+    illustrationStatus(characterId,champion?'🏆 Envoi du portrait champion…':(regenerate?'🎨 Envoi de la régénération…':'🎨 Envoi de l’illustration automatique…'));
+    const invokePromise=cloudClient.functions.invoke('Generate-character-image',{body:payload});
+    const timeoutPromise=new Promise((_,reject)=>setTimeout(()=>reject(new Error('La génération a dépassé 4 minutes. Le verrou local a été libéré : tu peux réessayer.')),240000));
+    const {data,error}=await Promise.race([invokePromise,timeoutPromise]);
     if(error){
       let detail=error.message||String(error);
       try{
