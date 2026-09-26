@@ -117,6 +117,50 @@ function superiorCanonVisualContract(character: any): string[] {
     rules.push(`TITAN — mandatory scale and body identity: an intelligent humanoid giant 15–40 m tall with skeleton, musculature and skin visibly adapted to gigantism and small biomineralized zones on heavily stressed body areas. Its generated affinity${affinity ? ` (${affinity})` : ""} must have a visible biological/power expression.`);
   }
 
+  // Superior-cross visual contracts. These rules reinforce racialVisualTraits and
+  // prevent the image director from collapsing a cross into only one parent race.
+  if (/Deus Machina/i.test(haystack)) {
+    rules.push(`DEUS MACHINA — genuine Celestial God × Neoxus fusion: preserve intrinsic Neoxus techno-organic anatomy together with the celestial divine anatomy. The character must visibly combine the generated divine domain(s), one monumental coherent Divine Wheel, a real open supernatural thoracic cavity with depth, and the Neoxus graphite/dark-blue living tissues, luminous golden subcutaneous network, cosmic eyes, four-fingered hands and organic cranial structures.`);
+  }
+  if (/Titan céleste/i.test(haystack)) {
+    rules.push(`CELESTIAL TITAN — genuine Founder Titan × Celestial God fusion: a kilometer-scale vaguely humanoid living geological colossus whose body visibly expresses its generated Titan theme together with celestial/domain manifestations. Preserve the founder-titan environmental scale cues and the celestial divine structures required by racialVisualTraits.`);
+  }
+  if (/Colosse Nexus/i.test(haystack)) {
+    rules.push(`NEXUS COLOSSUS — genuine Neoxus × Founder Titan fusion: a kilometer-scale living geological organism traversed and transformed by intrinsic Nexus techno-organic tissues and luminous golden networks. It must not read as merely an enlarged ordinary Neoxus; geological matter and the generated Titan theme are part of the body itself.`);
+  }
+  if (/Drakéon ancestral/i.test(haystack)) {
+    rules.push(`ANCESTRAL DRAKEON — human-sized humanoid hybrid with exactly two arms, two legs, one pair of dragon wings and a draconic tail. It has NO Divine Wheel. Divine domain identity must instead appear as physical divine markings, runes or tracings directly integrated into the dragon wings. Preserve a real open supernatural thoracic cavity with depth and visible ancestral-dragon traits.`);
+  }
+  if (/Drakéon originel/i.test(haystack)) {
+    rules.push(`ORIGINAL DRAKEON — human-sized humanoid hybrid with exactly two arms and two legs, no wings, a long serpentine draconic tail and original-dragon sensory structures. Preserve one monumental coherent Divine Wheel and a real open supernatural thoracic cavity with depth.`);
+  }
+  if (/Nexaryx ancestral/i.test(haystack)) {
+    rules.push(`ANCESTRAL NEXARYX — true non-humanoid dragon with exactly four legs plus exactly two wings, fused intrinsically with Neoxus techno-organic biology, luminous golden networks and cosmic traits.`);
+  }
+  if (/Nexaryx originel/i.test(haystack)) {
+    rules.push(`ORIGINAL NEXARYX — true very long serpentine non-humanoid dragon with exactly four limbs and absolutely no wings, fused intrinsically with Neoxus techno-organic biology, luminous golden networks, cosmic eyes and original-dragon sensory structures.`);
+  }
+  if (/Tyrakhan ancestral/i.test(haystack)) {
+    rules.push(`ANCESTRAL TYRAKHAN — true non-humanoid dragon with exactly four legs plus exactly two wings at kilometer scale. Its living body is deeply geological and physically embodies the generated Founder-Titan theme; use tiny environmental features and clouds crossing the body to prove scale.`);
+  }
+  if (/Tyrakhan originel/i.test(haystack)) {
+    rules.push(`ORIGINAL TYRAKHAN — true very long serpentine non-humanoid dragon with exactly four limbs and absolutely no wings at kilometer scale. Its living body is deeply geological and physically embodies the generated Founder-Titan theme; use tiny environmental features and clouds crossing the body to prove scale.`);
+  }
+
+  // Dragon natural weapons are anatomy, never handheld equipment. The exact rolled
+  // result is retained from the JSON and given an explicit physical placement.
+  const dragonWeapon = uniqueStrings(valuesForKeys(character, /dragonWeapon|arme.*dracon|draconic.*weapon/i))[0] || "";
+  if (dragonWeapon) {
+    const w = dragonWeapon.toLowerCase();
+    let placement = `integrated naturally into the dragon's body`;
+    if (/caud|queue|dard|faux|barbel/.test(w)) placement = `a literal terminal transformation of the tail; the entire tail must be visible and traceable continuously from its attachment to the weaponized tip`;
+    else if (/corne/.test(w)) placement = `formed by the character's combat horns and physically attached to the skull`;
+    else if (/griffe/.test(w)) placement = `formed by hypertrophied natural claws physically attached to the appropriate limbs`;
+    else if (/avant.?bras/.test(w)) placement = `formed by natural blades growing directly from the forearms`;
+    else if (/croc/.test(w)) placement = `formed by enlarged natural war fangs physically rooted in the jaws`;
+    rules.push(`DRACONIC NATURAL WEAPON — the rolled weapon is “${dragonWeapon}”. Depict it as ${placement}. It is intrinsic anatomy, never a separate handheld weapon, and no invented duplicate of it may appear.`);
+  }
+
   return uniqueStrings(rules);
 }
 
