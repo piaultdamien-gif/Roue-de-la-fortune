@@ -785,6 +785,8 @@ Deno.serve(async (req) => {
     const previousValidationScore = Number(body?.previousValidationScore ?? -1);
     const previousCriticalPass = body?.previousCriticalPass === true;
     const incomingCorrectionPrompt = String(body?.correctionPrompt || "").trim();
+    const previousPortraitPath = String(body?.previousPortraitPath || "").trim();
+    const regenerationMode = body?.regenerationMode === true || !!previousPortraitPath;
     const storageCharacterId = cleanId(body?.characterId, "character");
     const displayCharacterId = cleanId(body?.displayCharacterId, storageCharacterId);
     const characterInstanceId = cleanId(body?.characterInstanceId ?? body?.character?.instanceId, "legacy");
@@ -801,14 +803,12 @@ Deno.serve(async (req) => {
 
     const warnings: string[] = [];
     let director: any = null;
-    let fluxPrompt = correctionMode && incomingCorrectionPrompt
-  ? incomingCorrectionPrompt
-  : legacyPrompt;
+    let fluxPrompt = incomingCorrectionPrompt || legacyPrompt;
 
-    if (character && !correctionMode) {
+    if (character) {
       try {
         director = await buildDirectorPrompt(GEMINI_API_KEY, character);
-        fluxPrompt = director.fluxPrompt;
+        if (!incomingCorrectionPrompt) fluxPrompt = director.fluxPrompt;
       } catch (e: any) {
         warnings.push(`Gemini director unavailable: ${String(e?.message || e).slice(0, 300)}`);
         if (!fluxPrompt) throw e;
@@ -817,11 +817,45 @@ Deno.serve(async (req) => {
 
     if (!fluxPrompt) throw new Error("No image prompt available.");
 
-    const refs = character ? await loadCharacterReferences(character, warnings) : [];
+    let refs = character ? await loadCharacterReferences(character, warnings) : [];
+    let previousPortraitLoaded = false;
+
+    // Manual regeneration is image-guided: the currently retained portrait becomes
+    // FLUX input_image_0. This makes regeneration an iterative improvement rather
+    // than a fresh random redraw. The path is restricted to the authenticated user's
+    // own character-images directory.
+    if (regenerationMode && previousPortraitPath) {
+      const allowedPrefix = `${user.id}/characters/`;
+      if (!previousPortraitPath.startsWith(allowedPrefix)) {
+        warnings.push("Previous portrait ignored: path is outside the authenticated user's character directory.");
+      } else {
+        const { data: previousBlob, error: previousBlobError } = await admin.storage
+          .from(BUCKET)
+          .download(previousPortraitPath);
+        if (previousBlobError || !previousBlob) {
+          warnings.push(`Previous portrait unavailable: ${String(previousBlobError?.message || "download failed").slice(0, 220)}`);
+        } else {
+          refs = [{ blob: previousBlob, name: "previous-portrait.png" }, ...refs].slice(0, 4);
+          previousPortraitLoaded = true;
+        }
+      }
+    }
+
     const model = generationMode === "champion" ? CF_MODEL_CHAMPION : CF_MODEL_NORMAL;
 
     if (refs.length) {
-      fluxPrompt = `${fluxPrompt}
+      fluxPrompt = previousPortraitLoaded
+        ? `${fluxPrompt}
+
+ITERATIVE PORTRAIT IMPROVEMENT — INPUT IMAGE 0 IS THE PREVIOUS PORTRAIT:
+Use input_image_0 as the visual base for this same character.
+Preserve every feature that already agrees with the character JSON: identity, face, successful racial anatomy, body proportions, colors, clothing identity, equipment identity and other correct distinctive traits.
+Correct the defects described by the prompt and bring every mandatory racialVisualTraits requirement into literal visual compliance.
+Do not restart the design from scratch and do not randomly replace already-correct features.
+A correction must not destroy a mandatory trait that was already correct.
+You may adjust pose, spacing, limb placement, framing and local composition when necessary to make missing or obscured mandatory anatomy fully visible.
+The remaining supplied images are canonical race/region visual references, not alternate portraits of the character.`
+        : `${fluxPrompt}
 
 REFERENCE USAGE — FRESH COMPOSITION:
 Treat the supplied references as canonical visual dictionaries.
@@ -966,6 +1000,8 @@ For exact limb requirements, every required limb must be complete, anatomically 
       width: WIDTH,
       height: HEIGHT,
       attempts,
+      regenerationMode,
+      previousPortraitLoaded,
       validation: chosenValidation
         ? {
             criticalPass: chosenValidation.criticalPass,
