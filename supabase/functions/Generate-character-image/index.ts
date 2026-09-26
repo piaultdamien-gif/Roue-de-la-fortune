@@ -835,7 +835,6 @@ Keep the final image recognizably consistent with the canonical identities while
     let chosen = first;
     let chosenPrompt = first.promptUsed;
     let firstValidation: any = null;
-    let secondValidation: any = null;
     let attempts = 1;
 
     if (character) {
@@ -853,73 +852,14 @@ Keep the final image recognizably consistent with the canonical identities while
 
       const firstPass = !!firstValidation?.criticalPass && Number(firstValidation?.score || 0) >= VALIDATION_SCORE_MIN;
 
-        if (firstValidation && !firstPass) {
-        const correction = String(firstValidation.correctedFluxPrompt || "").trim();
-        if (correction) {
-          attempts = 2;
-          const failedRacial = Array.isArray(firstValidation?.failedRacialTraits)
-            ? firstValidation.failedRacialTraits
-            : [];
-          const failedRacialBlock = failedRacial.length
-            ? `\n\nFAILED MANDATORY RACIAL TRAITS — FIX ALL OF THESE:\n${failedRacial.map((x: any) => `- ${x.trait} [QA: ${x.status}]`).join("\n")}\nPreserve every mandatory racial trait that already passed.`
-            : "";
-
-          const correctionPrompt = `${correction}${failedRacialBlock}
-
-CORRECTION PRIORITY:
-This is a corrective regeneration. The previous image failed visual validation.
-Treat every correction stated above as mandatory, not optional.
-Explicitly fix every trait described as wrong, missing, weak, failed, or critical.
-Do not preserve an incorrect visual interpretation from the previous image.
-For weapons, species anatomy, body type, age, scale, familiar, and distinctive physical traits, prioritize literal visual accuracy over artistic interpretation.
-If the requested weapon is a specific weapon type, its silhouette must be unmistakably that weapon type and must not resemble another weapon category.
-
-SCALE CORRECTION:
-When relative size or height failed validation, make the size relationship visually undeniable.
-Use a physically explicit scale composition.
-If the protagonist is much smaller than a normal adult, place the protagonist on a raised object such as a desk, table, crate, or pedestal while the normal adult stands on the floor beside it.
-The smaller character must still occupy clearly less vertical image space than the larger character.
-Do not place both characters on the same ground plane when this makes the size relationship ambiguous.
-Never enlarge the protagonist merely because they are the main subject.
-If an exact height is specified, preserve it visually through clear relative scale cues.
-
-Reference images 0-3 are canonical character/region references selected for this character. Race references govern racial anatomy only; the region reference supplies environmental vocabulary only. Choose a fresh camera angle, framing, perspective, pose, character placement, horizon, landmark placement, foreground/background layout and overall composition. Build a fresh scene within the same canonical region while preserving its recognizable environmental identity. Preserve the generated character data; clothing, pose, weapon and identity come from the character specification.`;
-          
-          const second = await generateFlux(
-            CF_ACCOUNT_ID,
-            CF_TOKEN,
-            model,
-            correctionPrompt,
-            seed === 2147483646 ? 1 : seed + 1,
-            refs,
-          );
-
-          try {
-            secondValidation = await validatePortrait(
-              GEMINI_API_KEY,
-              character,
-              director?.critical || [],
-              second.promptUsed,
-              second.image,
-            );
-          } catch (e: any) {
-            warnings.push(`Gemini second validation unavailable: ${String(e?.message || e).slice(0, 300)}`);
-          }
-
-          const s1 = Number(firstValidation?.score || 0);
-          const s2 = Number(secondValidation?.score || 0);
-          const secondPass = !!secondValidation?.criticalPass && s2 >= VALIDATION_SCORE_MIN;
-          const firstStrictPass = !!firstValidation?.criticalPass && s1 >= VALIDATION_SCORE_MIN;
-
-          if (secondPass || (!firstStrictPass && secondValidation && s2 > s1)) {
-            chosen = second;
-            chosenPrompt = second.promptUsed;
-          }
-        }
-      }
+      // One FLUX generation per Edge Function invocation.
+      // If QA fails, return the validation + correction prompt to the client.
+      // A later explicit regeneration request can use correctionMode/correctionPrompt.
+      // This avoids a second FLUX + Gemini validation pass in the same invocation,
+      // which can exceed Supabase execution time/resources.
     }
 
-    const chosenValidation = chosen === first ? firstValidation : secondValidation;
+    const chosenValidation = firstValidation;
 
     if (
   correctionMode &&
@@ -953,7 +893,6 @@ Reference images 0-3 are canonical character/region references selected for this
   attempts,
   chosenAttempt: chosen === first ? 1 : 2,
   firstValidation,
-  secondValidation,
   warnings,
 }));
     
@@ -993,10 +932,25 @@ Reference images 0-3 are canonical character/region references selected for this
   firstValidation.correctedFluxPrompt
 );
 
+    const failedRacialForNextRequest = Array.isArray(firstValidation?.failedRacialTraits)
+      ? firstValidation.failedRacialTraits
+      : [];
+
+    const failedRacialBlockForNextRequest = failedRacialForNextRequest.length
+      ? `\n\nFAILED MANDATORY RACIAL TRAITS — FIX ALL OF THESE:\n${failedRacialForNextRequest
+          .map((x: any) => `- ${x.trait} [QA: ${x.status}]`)
+          .join("\n")}\nPreserve every mandatory racial trait that already passed.`
+      : "";
+
     const correctionPromptForNextRequest =
-  correctionRequested
-    ? String(firstValidation.correctedFluxPrompt || "")
-    : "";
+      correctionRequested
+        ? `${String(firstValidation.correctedFluxPrompt || "")}${failedRacialBlockForNextRequest}
+
+CORRECTION PRIORITY:
+This is a corrective regeneration of a previously failed portrait.
+Fix every failed mandatory racial trait literally and preserve every mandatory racial trait that already passed.
+For exact limb requirements, every required limb must be complete, anatomically connected, individually traceable from attachment point to extremity, clearly visible, and not cropped or hidden.`
+        : "";
     
     return jsonResponse({
       success: true,
