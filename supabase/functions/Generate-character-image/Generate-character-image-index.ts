@@ -410,7 +410,10 @@ Rules:
 - Scale relationships are literal. A 0.60 m protagonist next to a normal Human must look much smaller than that Human unless the JSON explicitly changes the Human's size.
 - Text, pseudo-text, logo, watermark, UI or title typography counts as a visible defect.
 - "critical_pass" may be true only if every important critical trait is clearly satisfied.
-- score is 0-100 for overall visual conformity, not beauty.
+- HARD RACIAL GATE: if SOURCE CHARACTER JSON contains racialVisualTraits, evaluate EVERY entry separately. Every one must be clearly satisfied for critical_pass=true. A single weak, missing, wrong, partially visible, anatomically disconnected, obscured, or cropped mandatory racial trait forces critical_pass=false regardless of the overall score.
+- For exact limb requirements, count only complete anatomically connected limbs that are individually traceable from attachment point to extremity. An isolated hand/foot/wingtip or a limb hidden by torso, another limb, clothing, equipment, weapon, or framing does NOT pass.
+- The checks object MUST contain one key per racialVisualTraits entry, using stable keys "racial_1", "racial_2", etc., in the same order as the source array, with values only "pass", "weak", "missing", or "wrong".
+- score is 0-100 for overall visual conformity, not beauty. A high score can NEVER override a failed racialVisualTraits gate.
 - If the image fails, provide a COMPLETE replacement FLUX prompt that preserves successful traits and clearly fixes the failures. Do not merely list corrections.
 - Any corrected_flux_prompt must also be written as natural, coherent descriptive prose with complete sentences/connected clauses, not as a stack of keywords or tags. Weave the required corrections into the visual narrative.
 - Keep corrected prompts CHARACTER-FIRST as well: devote most fine detail to the character's anatomy, face, racial markers, clothing materials/layers, equipment and visible supernatural traits. Keep the environment identifiable but comparatively concise, and never let scenery consume detail that should belong to the character.
@@ -437,6 +440,8 @@ Return ONLY valid JSON:
   const userText = `SOURCE CHARACTER JSON:\n${JSON.stringify(character, null, 2)}\n\nMANDATORY CANONICAL RACIAL VISUAL CONTRACT:\n${canonRules.length ? canonRules.map((x, i) => `${i + 1}. ${x}`).join("\n") : "No additional superior-lineage visual rule applies."}\n\nDIRECTOR CRITICAL VISUAL CONTRACT:\n${JSON.stringify(critical, null, 2)}\n\nVALIDATION SOURCE:
 Use the SOURCE CHARACTER JSON, the MANDATORY CANONICAL RACIAL VISUAL CONTRACT, and the generated image as authoritative evidence.
 The canonical racial contract defines mandatory race anatomy/identity and MUST be validated as strictly as explicit JSON facts.
+If SOURCE CHARACTER JSON contains racialVisualTraits, they are a HARD VALIDATION GATE. Evaluate them one by one in source order as racial_1, racial_2, etc. If ANY is weak, missing, wrong, incomplete, obscured, cropped, or only symbolically substituted when a physical structure is required, critical_pass MUST be false.
+When a racial trait passes, preserve it in corrected_flux_prompt. When a racial trait fails, corrected_flux_prompt must explicitly target that failed trait while preserving every already-correct racial trait.
 Do not treat other director embellishments or generation-prompt inventions as validation requirements.`;
 
   const { text, data } = await callGemini(
@@ -463,10 +468,27 @@ if (!parsed) {
 }
   
   const score = clampInt(parsed.score, 0, 100, 0);
+  const checks = parsed.checks && typeof parsed.checks === "object" ? parsed.checks : {};
+  const racialTraits = Array.isArray(character?.racialVisualTraits) ? character.racialVisualTraits : [];
+  const racialChecks = racialTraits.map((_: any, i: number) => String(checks[`racial_${i + 1}`] || "").toLowerCase());
+  const racialGatePass = racialTraits.length === 0 || (
+    racialChecks.length === racialTraits.length &&
+    racialChecks.every((v: string) => v === "pass")
+  );
+  const failedRacialTraits = racialTraits
+    .map((trait: any, i: number) => ({
+      index: i + 1,
+      trait: String(trait),
+      status: racialChecks[i] || "missing",
+    }))
+    .filter((x: any) => x.status !== "pass");
+
   return {
-    criticalPass: parsed.critical_pass === true,
+    criticalPass: parsed.critical_pass === true && racialGatePass,
     score,
-    checks: parsed.checks && typeof parsed.checks === "object" ? parsed.checks : {},
+    checks,
+    racialGatePass,
+    failedRacialTraits,
     issues: Array.isArray(parsed.issues) ? parsed.issues.map(String).slice(0, 30) : [],
     correctedFluxPrompt: String(parsed.corrected_flux_prompt || "").trim(),
     raw: text,
@@ -831,11 +853,18 @@ Keep the final image recognizably consistent with the canonical identities while
 
       const firstPass = !!firstValidation?.criticalPass && Number(firstValidation?.score || 0) >= VALIDATION_SCORE_MIN;
 
-        if (false && firstValidation && !firstPass) {
+        if (firstValidation && !firstPass) {
         const correction = String(firstValidation.correctedFluxPrompt || "").trim();
         if (correction) {
           attempts = 2;
-          const correctionPrompt = `${correction}
+          const failedRacial = Array.isArray(firstValidation?.failedRacialTraits)
+            ? firstValidation.failedRacialTraits
+            : [];
+          const failedRacialBlock = failedRacial.length
+            ? `\n\nFAILED MANDATORY RACIAL TRAITS — FIX ALL OF THESE:\n${failedRacial.map((x: any) => `- ${x.trait} [QA: ${x.status}]`).join("\n")}\nPreserve every mandatory racial trait that already passed.`
+            : "";
+
+          const correctionPrompt = `${correction}${failedRacialBlock}
 
 CORRECTION PRIORITY:
 This is a corrective regeneration. The previous image failed visual validation.
@@ -988,6 +1017,8 @@ Reference images 0-3 are canonical character/region references selected for this
             criticalPass: chosenValidation.criticalPass,
             score: chosenValidation.score,
             checks: chosenValidation.checks,
+            racialGatePass: chosenValidation.racialGatePass,
+            failedRacialTraits: chosenValidation.failedRacialTraits,
             issues: chosenValidation.issues,
             needsReview,
             correctionRequested,
