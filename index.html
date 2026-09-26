@@ -875,118 +875,6 @@ function racialProfile7(){
  return base;
 }
 
-
-// === HGT — Traits raciaux visuels canoniques ===
-// Ces traits sont figés dans chaque JSON terminé afin que la génération d'image et le QA
-// n'aient jamais à redéduire l'anatomie raciale depuis le Codex.
-const RACIAL_VISUAL_TRAITS={
-  'Humain':['Morphologie humanoïde humaine.','Aucun caractère surnaturel racial obligatoire.'],
-  'Elfe':['Morphologie humanoïde généralement élancée.','Traits fins et longues oreilles pointues.'],
-  'Nain':['Humanoïde de petite taille au corps compact et robuste.','Ossature visuellement dense.'],
-  'Orc':['Humanoïde puissant à musculature dense et traits marqués.','Canines inférieures pouvant former de petites défenses visibles.'],
-  'Gobelin':['Petit humanoïde nerveux et agile.','Grandes oreilles pointues, traits expressifs et mains fines.','Peau souvent verte, olive ou terreuse, avec variations possibles.'],
-  'Fée':['Humanoïde léger et gracile.','Une paire d’ailes translucides biologiquement intégrées au dos, avec nervures organiques.'],
-  'Géant':['Humanoïde gigantesque, nettement plus grand que les peuples communs mais très inférieur à un Titan.','Anatomie naturellement adaptée au gigantisme.'],
-  'Vampire':['Conserver visiblement l’anatomie et les marqueurs de la race d’origine.','Canines prédatrices et manifestations vampiriques visibles dans le regard et/ou la peau.'],
-  'Loup-garou':['Conserver l’influence anatomique de la race d’origine.','Forme transformée avec fourrure, tête et dentition lupines, griffes et musculature accrue.'],
-  'Esprit':['Corps immatériel ou partiellement immatériel, translucide, lumineux, intangible ou partiellement matérialisé.','Si l’Esprit provient d’un ancien vivant, conserver les marqueurs anatomiques de sa race d’origine.'],
-  'Homme-bête':['Hybride humanoïde présentant clairement les caractéristiques de l’animal tiré.','Les principaux traits anatomiques reconnaissables de cet animal doivent être visibles.','Pour un animal fantastique, conserver également ses caractéristiques fantastiques essentielles.'],
-  'Squelette':['Corps entièrement ou presque entièrement squelettique, sans musculature fonctionnelle normale.','Conserver l’anatomie osseuse et les marqueurs de la race d’origine.','Énergie surnaturelle visible dans les orbites.'],
-  'Liche':['Conserver l’anatomie de la race d’origine sous une forme morte, squelettique ou partiellement momifiée.','Énergie nécromantique intense visible dans les orbites et/ou à travers le corps.','Noyau d’âme surnaturel obligatoire et clairement visible dans la cage thoracique.'],
-  'Golem / Artificiel':['Être construit et non organisme biologique ordinaire.','Le corps doit être constitué du matériau et de l’origine artificielle tirés pour ce personnage.','Ne pas lui imposer une apparence Neoxus sauf si le personnage possède réellement cette composante.'],
-  'Extraterrestre':['Aucune anatomie universelle : respecter strictement la morphologie extraterrestre tirée pour ce personnage.','Ne pas ajouter automatiquement de traits Neoxus.'],
-  'Ange':['Humanoïde à exactement deux bras.','Une paire d’ailes biologiques emplumées obligatoire.','Halo naturel obligatoire et yeux surnaturels ou lumineux.'],
-  'Archange':['Humanoïde à exactement deux bras.','Exactement cinq paires d’ailes biologiques emplumées, soit dix ailes au total.','Halo naturel obligatoire, imposant et complexe, avec manifestations célestes accentuées.'],
-  'Démon':['Humanoïde à exactement deux bras.','Cornes obligatoires, de forme variable.','Yeux surnaturels, canines développées et griffes ou ongles naturellement renforcés.'],
-  'Archdémon':['Conserver les traits fondamentaux du Démon.','Une grande paire d’ailes obligatoire.','Tentacules dorsaux obligatoires partant du dos et terminés chacun par un dard.','Traits démoniaques plus développés que chez un Démon.'],
-  'Dragon humanoïde':['Morphologie principalement humanoïde.','Caractères draconiques visibles et cohérents avec le personnage : écailles, cornes, queue, yeux, griffes, crocs ou autres traits hérités.','Ne pas le transformer en dragon quadrupède complet.'],
-  'Dragon ancestral':['Véritable dragon entièrement non humanoïde.','Exactement quatre pattes et deux ailes, avec longue queue, cou robuste et immense envergure.','L’affinité est incorporée au corps par l’Incarnation primordiale et doit transformer visiblement l’organisme.'],
-  'Dragon originel':['Véritable dragon entièrement non humanoïde au corps très long et serpentin.','Exactement quatre membres et aucune aile.','Cornes, crinière, longues structures sensorielles et rubans biologiques translucides semblables à du verre vivant.','La Domination primordiale permet de projeter et contrôler extérieurement l’affinité.'],
-  'Demi-dieu':['Humanoïde à exactement deux bras.','Signes corporels correspondant au(x) domaine(s) divin(s), notamment dans les yeux et/ou la peau.','Marque thoracique discrète.','Aucune véritable Roue divine complète ; seuls des fragments instables liés au domaine peuvent apparaître.'],
-  'Divinité':['Humanoïde à exactement deux bras.','Le ou les domaines divins transforment visiblement le corps et la marque thoracique.','Une seule véritable Roue divine derrière le personnage, incomplète, fragmentée ou partiellement énergétique, représentant tous ses domaines.'],
-  'Dieu céleste':['Humanoïde à exactement quatre bras.','Une seule Roue divine monumentale pleinement manifestée derrière le personnage, clairement visible et représentant tous ses domaines dans une structure cohérente.','Cavité thoracique surnaturelle obligatoire dont l’apparence exprime le ou les domaines divins.'],
-  'Cyborg':['La biologie de la race d’origine reste dominante.','Les augmentations artificielles tirées pour ce personnage doivent être visiblement intégrées au corps.','Mains normalement à cinq doigts ; ne pas transformer automatiquement le personnage en Neoxus pur.'],
-  'N.E.X.U.S.':['Fusion visible entre organisme et technologie vivante.','Tissus graphite, gris-noir ou bleu-noir avec réseau énergétique doré sous-cutané et yeux progressivement cosmiques.','Les structures Nexus tirées doivent être biologiquement intégrées et sembler pousser depuis le corps.'],
-  'Neoxus':['Peau noire, grise ou bleu sombre techno-organique.','Fines lignes dorées lumineuses sous la peau et yeux cosmiques étoilés.','Exactement quatre doigts par main et structures crâniennes organiques caractéristiques.','Les structures techno-organiques spécialisées sont naturellement développées par le corps.'],
-  'Titan':['Humanoïde de 15 à 40 mètres.','Squelette, musculature et peau adaptés au gigantisme.','Petites zones de biominéralisation visibles sur les parties fortement sollicitées.'],
-  'Titan primordial':['Humanoïde colossal de 200 à 500 mètres.','Biominéralisation avancée.','L’origine primordiale transforme réellement tissus, organes et structures minérales : le corps doit être une expression vivante de cette force naturelle.'],
-  'Titan fondateur':['Organisme vaguement humanoïde de 1 à 5 kilomètres.','Biominéralisation extrême fusionnant chair vivante et matière géologique.','Le corps doit évoquer une formation géologique vivante ; Force tellurique et Ancrage tellurique sont intrinsèques à son anatomie.'],
-  'Deus Machina':['Forme humanoïde divine profondément transformée à quatre bras.','Corps mêlant biologie divine et structures artificielles ou techno-organiques intégrées, jamais une simple armure posée.','Une seule Roue divine monumentale derrière le dos représentant tous les domaines.','Cavité thoracique surnaturelle intégrée à la technologie du corps.'],
-  'Titan céleste':['Titan colossal vaguement humanoïde, fortement biominéralisé et imprégné de son origine naturelle.','Une seule Roue divine monumentale à l’échelle du Titan représentant tous ses domaines.','Cavité thoracique surnaturelle immense et manifestations divines intégrées à l’anatomie titanesque.'],
-  'Colosse Nexus':['Titan colossal vaguement humanoïde fusionné à de la technologie vivante Neoxus.','Chair, matière géologique ou biominérale et tissus techno-organiques forment un seul organisme.','Peau sombre, réseau énergétique doré, manifestations cosmiques et structures Nexus naturellement développées.'],
-  'Drakéon ancestral':['Morphologie humanoïde draconique bipède à exactement deux bras et deux jambes.','Écailles, cornes, longue queue et une paire d’ailes draconiques.','Une seule Roue divine monumentale représentant tous les domaines et manifestations divines intégrées au corps.','L’affinité draconique est incarnée dans l’organisme ; ne jamais le transformer en dragon quadrupède.'],
-  'Drakéon originel':['Morphologie humanoïde draconique bipède à exactement deux bras et deux jambes.','Aucune aile ; corps élancé, écailles, cornes ou crinière, longue queue, structures sensorielles et rubans biologiques translucides.','Une seule Roue divine monumentale représentant tous les domaines et manifestations divines intégrées au corps.','Ne jamais le transformer en véritable dragon serpentin non humanoïde.'],
-  'Nexaryx ancestral':['Véritable dragon non humanoïde à exactement quatre pattes et deux ailes.','Biologie draconique fusionnée naturellement à la biologie Neoxus : tissus sombres techno-organiques, lignes énergétiques dorées, éléments cosmiques et structures vivantes.','La technologie doit pousser depuis l’organisme et l’affinité doit être incarnée dans le corps.'],
-  'Nexaryx originel':['Véritable dragon non humanoïde très long et serpentin, à exactement quatre membres et aucune aile.','Structures sensorielles et rubans biologiques translucides fusionnés à la biologie Neoxus.','Tissus sombres techno-organiques, réseau doré lumineux et manifestations cosmiques ; Domination primordiale de l’affinité.'],
-  'Tyrakhan ancestral':['Véritable dragon non humanoïde titanesque à exactement quatre pattes et deux ailes.','Corps combinant écailles draconiques, chair vivante et biominéralisation géologique extrême.','L’affinité est incarnée dans l’organisme ; le dragon doit évoquer un paysage vivant.'],
-  'Tyrakhan originel':['Véritable dragon non humanoïde titanesque, très long et serpentin, à exactement quatre membres et aucune aile.','Corps mêlant matière draconique et formations géologiques vivantes, avec structures sensorielles et rubans translucides conservés.','Domination primordiale de l’affinité ; impression de serpent-dragon continental vivant.']
-};
-
-function racialVisualDomainNames(s){
-  const out=[];
-  const add=v=>{for(const x of (Array.isArray(v)?v:[v]))if(x&&!out.includes(x))out.push(x)};
-  const scan=o=>{
-    if(!o||typeof o!=='object')return;
-    for(const [k,v] of Object.entries(o)){
-      if(/divineDomains?|domaines?Divins?/i.test(k))add(v);
-      else if(v&&typeof v==='object')scan(v);
-    }
-  };
-  scan(s);
-  // Les pouvoirs raciaux divins sont un filet de sécurité pour les anciennes structures JSON.
-  const known=['Guerre','Protection','Nature','Vie','Mort','Savoir','Magie','Justice','Liberté','Destin','Rêves','Océans','Terre','Ciel','Tempêtes','Feu','Lumière','Ténèbres','Temps','Espace'];
-  for(const p of s.powers||[])if(p?.racial&&known.includes(p.name))add(p.name);
-  return out;
-}
-function racialVisualAffinity(s){
-  let found='';
-  const scan=o=>{
-    if(found||!o||typeof o!=='object')return;
-    for(const [k,v] of Object.entries(o)){
-      if(!found&&/^(dragonAffinity|titanAffinity|affinity|affinité|originePrimordiale)$/i.test(k)&&typeof v==='string')found=v;
-      else if(v&&typeof v==='object')scan(v);
-    }
-  };
-  scan(s.lineage||{}); return found;
-}
-function resolvedRacialVisualTraits(s=state){
-  const L=s.lineage||{}, parts=s.raceParts||[], traits=[];
-  const add=(x)=>{for(const t of (RACIAL_VISUAL_TRAITS[x]||[]))if(!traits.includes(t))traits.push(t)};
-  const primary=L.primaryComponent;
-  let special=s.race&&RACIAL_VISUAL_TRAITS[s.race]?s.race:null;
-  if(!special&&L.hybridCompA&&L.hybridCompB)special=specialSuperiorCross(L.hybridCompA,L.hybridCompB);
-  if(special)add(special);
-  else if(primary&&['Demi-dieu','Cyborg','Titan','Dragon humanoïde'].includes(primary.race)){
-    const st=superiorStage(primary);
-    if(primary.race==='Demi-dieu')add(st===1?'Demi-dieu':st===2?'Divinité':'Dieu céleste');
-    else if(primary.race==='Cyborg')add(st===1?'Cyborg':st===2?'N.E.X.U.S.':'Neoxus');
-    else if(primary.race==='Titan')add(st===1?'Titan':st===2?'Titan primordial':'Titan fondateur');
-    else if(primary.race==='Dragon humanoïde')add(st<3?'Dragon humanoïde':(primary.dragonBlood==='Originel'?'Dragon originel':'Dragon ancestral'));
-  }else{
-    for(let part of parts){
-      let key=String(part||'').startsWith('Homme-bête')?'Homme-bête':part;
-      if(key==='Ange'&&primary?.evolved)key='Archange';
-      if(key==='Démon'&&primary?.evolved)key='Archdémon';
-      add(key);
-    }
-  }
-  // Formes évoluées Ange/Démon quand elles sont portées par une composante hybride/origine.
-  const comps=[primary,L.originComponent,L.hybridCompA,L.hybridCompB].filter(Boolean);
-  for(const c of comps){if(c.race==='Ange'&&c.evolved)add('Archange');if(c.race==='Démon'&&c.evolved)add('Archdémon')}
-  if((parts.includes('Liche')||L.undeadForm==='Liche')&&!traits.some(t=>/Noyau d’âme/.test(t)))add('Liche');
-
-  const domains=racialVisualDomainNames(s);
-  if(domains.length)traits.push(`Domaines divins de ce personnage : ${domains.join(' + ')}. Toute Roue divine et toute manifestation divine doivent représenter précisément l’ensemble de ces domaines.`);
-  const affinity=racialVisualAffinity(s);
-  if(affinity)traits.push(`Affinité raciale de ce personnage : ${affinity}. Les manifestations anatomiques ou primordiales liées à l’affinité doivent exprimer précisément cette affinité.`);
-  const beast=primary?.species || (parts.find(x=>String(x).startsWith('Homme-bête '))||'').replace(/^Homme-bête\s+/,'');
-  if(beast)traits.push(`Animal de l’Homme-bête : ${beast}.`);
-  if(L.originRace&&['Vampire','Loup-garou','Esprit','Squelette','Liche'].some(x=>parts.includes(x)||L.undeadForm===x))traits.push(`Race d’origine à conserver visuellement : ${L.originRace}.`);
-  return [...new Set(traits)];
-}
-function freezeRacialVisualTraits(s=state){s.racialVisualTraits=resolvedRacialVisualTraits(s);return s.racialVisualTraits}
-
-
 function weaponContextMultiplier(name){
  let m=1, arch=(state.archParts||[]).join(' / '), culture=state.culture||'', region=state.birthRegion||'';
  const melee=['Épée','Épée à deux mains','Katana','Dagues doubles','Hache','Hache à deux mains','Marteau de guerre','Rope Dart / Corde-dard','Lance','Hallebarde','Faux','Bâton','Nunchaku','Chaîne / Kusarigama','Fouet','Gantelets de combat','Bouclier offensif'];
@@ -1326,7 +1214,7 @@ function saveCurrentCharacter(){
 reconcileSeasonCursor();
 
 function blankCharacterState(id){
-  return {alienBiology:null,id:id||currentCharacterId(),instanceId:newCharacterInstanceId(),name:'',title:'',raceParts:[],race:'',racialVisualTraits:[],lineage:{},birthStratum:'',birthRegion:'',culture:'',gender:'',size:'',arch:'',archParts:[],slayerTarget:null,job:'',history:[],extra:'',extraDetail:[],extraStatMods:[],relationships:[],genealogy:{parents:[],children:[],generation:1,lineage:[],partnerLinks:[]},personality:'',stats:{},powers:[],weapons:[],weakness:'',blessings:[],curses:[],clothingStyle:'',appearance:{},transformation:null,awakening:null,chi:null,prodigeMods:[],logs:[]};
+  return {alienBiology:null,id:id||currentCharacterId(),instanceId:newCharacterInstanceId(),name:'',title:'',raceParts:[],race:'',lineage:{},birthStratum:'',birthRegion:'',culture:'',gender:'',size:'',arch:'',archParts:[],slayerTarget:null,job:'',history:[],extra:'',extraDetail:[],extraStatMods:[],relationships:[],genealogy:{parents:[],children:[],generation:1,lineage:[],partnerLinks:[]},personality:'',stats:{},powers:[],weapons:[],weakness:'',blessings:[],curses:[],clothingStyle:'',appearance:{},transformation:null,awakening:null,chi:null,prodigeMods:[],logs:[]};
 }
 function rebuildGenerationFromLogs(saved){
   const logs=Array.isArray(saved?.logs)?JSON.parse(JSON.stringify(saved.logs)):[];
@@ -2242,7 +2130,6 @@ function generateCompleteDescendantData(child){
       index++;spinNumber++;
     }
     if(guard>=1000)throw new Error('Boucle de génération descendant trop longue');
-    freezeRacialVisualTraits(state);
     state._generationComplete=true;
     state._autoSavedAtFinish=true;
     state.isDescendant=true;
@@ -3148,7 +3035,7 @@ function applyAlienStateIfNeeded(){
   state.racialTraits=state.racialTraits||[];
 }
 
-function reset(){state={alienBiology:null,id:currentCharacterId(),instanceId:newCharacterInstanceId(),name:'',title:'',raceParts:[],race:'',racialVisualTraits:[],lineage:{},birthStratum:'',birthRegion:'',culture:'',gender:'',size:'',arch:'',archParts:[],slayerTarget:null,job:'',history:[],extra:'',extraDetail:[],extraStatMods:[],relationships:[],genealogy:{parents:[],children:[],generation:1,lineage:[],partnerLinks:[]},personality:'',stats:{},powers:[],weapons:[],weakness:'',blessings:[],curses:[],clothingStyle:'',appearance:{},transformation:null,awakening:null,chi:null,prodigeMods:[],logs:[]};queue=[];index=0;rotation=0;spinNumber=0;buildInitial();render();drawWheel([W('?')])}
+function reset(){state={alienBiology:null,id:currentCharacterId(),instanceId:newCharacterInstanceId(),name:'',title:'',raceParts:[],race:'',lineage:{},birthStratum:'',birthRegion:'',culture:'',gender:'',size:'',arch:'',archParts:[],slayerTarget:null,job:'',history:[],extra:'',extraDetail:[],extraStatMods:[],relationships:[],genealogy:{parents:[],children:[],generation:1,lineage:[],partnerLinks:[]},personality:'',stats:{},powers:[],weapons:[],weakness:'',blessings:[],curses:[],clothingStyle:'',appearance:{},transformation:null,awakening:null,chi:null,prodigeMods:[],logs:[]};queue=[];index=0;rotation=0;spinNumber=0;buildInitial();render();drawWheel([W('?')])}
 
 const VAELORIA_BIRTH_WEIGHTS={
 'Humain':[70,18,12],'Elfe':[70,20,10],'Nain':[65,5,30],'Orc':[70,10,20],
@@ -3889,7 +3776,6 @@ function finishGeneration(){
   auto=false;
   autoBtn.textContent='Auto : OFF';
   if(!state._autoSavedAtFinish){
-    freezeRacialVisualTraits(state);
     state._generationComplete=true;
     state._autoSavedAtFinish=true;
     if(state.descendantSourceId){
@@ -4932,7 +4818,32 @@ async function invokeCharacterImageGeneration(characterId,{regenerate=false,cham
     if(!session?.access_token)throw new Error('Session Supabase absente — reconnecte-toi à ton compte.');
     const portraitNumber=champion?1:await nextPortraitNumber(characterId);
     const seed=Math.floor(Math.random()*2147483646)+1;
-    const payload={characterId:imageStorageCharacterKey(characterId),displayCharacterId:characterId,characterInstanceId:ensureCharacterInstanceId(c),portraitNumber,seed,character:c,generationMode:champion?'champion':'normal',championSeason:championSeason||null};
+
+    // Continuous regeneration: when a portrait already exists, use the latest retained
+    // portrait as the visual base. If there is no previous portrait, generation stays normal.
+    let previousPortraitPath='';
+    if(regenerate&&!champion){
+      const variants=await cloudListGeneratedPortraits(characterId);
+      if(c?.imageGeneration?.selectedPortrait)previousPortraitPath=c.imageGeneration.selectedPortrait;
+      else if(c?.imageGeneration?.lastPortraitPath)previousPortraitPath=c.imageGeneration.lastPortraitPath;
+      else if(variants.length)previousPortraitPath=variants[variants.length-1].path;
+    }
+    const previousCorrectionPrompt=regenerate&&!champion
+      ? String(c?.imageGeneration?.lastCorrectionPrompt||'')
+      : '';
+    const payload={
+      characterId:imageStorageCharacterKey(characterId),
+      displayCharacterId:characterId,
+      characterInstanceId:ensureCharacterInstanceId(c),
+      portraitNumber,
+      seed,
+      character:c,
+      generationMode:champion?'champion':'normal',
+      championSeason:championSeason||null,
+      regenerationMode:!!(regenerate&&!champion),
+      previousPortraitPath:previousPortraitPath||null,
+      correctionPrompt:previousCorrectionPrompt||null
+    };
     // La fonction déployée dans Supabase s'appelle exactement « Generate-character-image ».
     // On passe par le client Supabase : il transmet la session active et évite le faux
     // « Failed to fetch » provoqué auparavant par l'appel du mauvais slug en premier.
@@ -4951,23 +4862,9 @@ async function invokeCharacterImageGeneration(characterId,{regenerate=false,cham
       throw new Error(`Edge Function — ${String(detail).slice(0,500)}`);
     }
     if(!data?.success)throw new Error(data?.error||'Génération impossible');
-    let finalData=data;
-         if(data?.validation?.correctionRequested && data?.validation?.correctionPromptForNextRequest){
-    const {data:correctionData,error:correctionError}=await cloudClient.functions.invoke('Generate-character-image',{
-    body:{
-      ...payload,
-      correctionMode:true,
-      correctionPrompt:data.validation.correctionPromptForNextRequest,
-      previousValidationScore:data.validation.score,
-      previousCriticalPass:data.validation.criticalPass
-      }
-    });
-          if(!correctionError && correctionData?.success){
-  finalData=correctionData;
-}else{
-  console.warn('Correction portrait non appliquée',correctionError||correctionData);
-}
-    }
+    // Exactly one Edge Function / FLUX generation per click.
+    // QA feedback is stored and used by the NEXT manual regeneration.
+    const finalData=data;
     const generatedPath=finalData?.path||(champion?`${cloudGeneratedImageDir(characterId)}/${characterImageIdentity(characterId)}-Champion.png`:cloudGeneratedImagePath(characterId,portraitNumber));
     const remote=await cloudDownloadPortraitPath(generatedPath);if(!remote)throw new Error('Image générée introuvable dans le Storage');
     if(champion){
@@ -4982,7 +4879,18 @@ async function invokeCharacterImageGeneration(characterId,{regenerate=false,cham
       return true;
     }
     const db=await openIllustrationDB();await new Promise((resolve,reject)=>{const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');tx.objectStore(ILLUSTRATION_STORE).put(remote,characterImageIdentity(characterId));tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)});
-    if(regenerate)recordRegeneration(c);else{c.imageGeneration={...(c.imageGeneration||{}),initialGeneratedAt:new Date().toISOString(),lastGeneratedAt:new Date().toISOString()};const rr=loadRoster();rr[c.id]=JSON.parse(JSON.stringify(c));saveRoster(rr);queueCloudCharacterSave(c)}
+    c.imageGeneration={
+      ...(c.imageGeneration||{}),
+      lastPortraitPath:generatedPath,
+      lastGeneratedAt:new Date().toISOString(),
+      lastValidation:finalData?.validation||null,
+      lastCorrectionPrompt:String(finalData?.validation?.correctionPromptForNextRequest||''),
+      lastValidationScore:Number(finalData?.validation?.score||0),
+      lastCriticalPass:finalData?.validation?.criticalPass===true
+    };
+    if(regenerate)recordRegeneration(c);
+    else c.imageGeneration.initialGeneratedAt=c.imageGeneration.initialGeneratedAt||new Date().toISOString();
+    const rr=loadRoster();rr[c.id]=JSON.parse(JSON.stringify(c));saveRoster(rr);queueCloudCharacterSave(c);
     await refreshIllustrationFor(characterId);setTimeout(()=>refreshIllustrationThumbsFor(characterId),0);illustrationStatus(characterId,regenerate?`✅ Image régénérée • ${regenCounterFor(c)}/5 aujourd’hui`:'✅ Illustration générée automatiquement');return true;
   }catch(e){console.error('Génération illustration',e);const msg=e?.message||String(e);illustrationStatus(characterId,`⚠️ Génération impossible : ${msg.slice(0,220)}`);return false}
   finally{__imageGenerationBusy.delete(busyKey)}
