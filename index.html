@@ -1216,7 +1216,7 @@ function buildRacialVisualTraits(s=state){
     if(r==='Nain')add('Humanoïde petit, trapu et robuste avec proportions naines.');
     if(r==='Orc')add('Humanoïde puissant et massif avec traits orcs et défenses inférieures visibles.');
     if(r==='Gobelin')add('Petit humanoïde gobelin, grandes oreilles et traits anguleux.');
-    if(r==='Fée')add('Humanoïde féerique avec ailes translucides clairement visibles.');
+    if(r==='Fée')add('Humanoïde féerique de petite stature avec ailes translucides clairement visibles ; l’environnement doit fournir une référence d’échelle lisible montrant sans ambiguïté sa petite taille.');
     if(r==='Géant')add('Humanoïde gigantesque ; l’environnement doit fournir des références d’échelle explicites.');
     if(r==='Vampire')add('Conserver les traits de la race d’origine avec altération vampirique, pâleur/yeux vampiriques et deux canines supérieures visibles lorsque la bouche le permet.');
     if(r==='Loup-garou')add('Véritable morphologie hybride lupine-humanoïde : fourrure, tête/museau lupin, griffes et traits de la race d’origine encore perceptibles.');
@@ -4715,17 +4715,19 @@ async function nextPortraitNumber(characterId){const list=await cloudListGenerat
 async function selectGeneratedPortrait(characterId,path){
   const roster=loadRoster(),c=roster[characterId];if(!c||!cloudReady())return;
   const list=await cloudListGeneratedPortraits(characterId),chosen=list.find(x=>x.path===path);if(!chosen)return;
-  if(!confirm(`Sélectionner définitivement ${chosen.name} ?\n\nLes ${Math.max(0,list.length-1)} autre(s) portrait(s) seront supprimés.`))return;
-  const remove=list.filter(x=>x.path!==path).map(x=>x.path);if(remove.length){const {error}=await cloudClient.storage.from('character-images').remove(remove);if(error){alert('Suppression impossible : '+error.message);return}}
+  if(!confirm(`Utiliser ${chosen.name} comme portrait principal ?\n\nLes autres variantes seront supprimées. Une future régénération rouvrira automatiquement une nouvelle sélection.`))return;
+  const blob=await cloudDownloadPortraitPath(path);if(!blob)return illustrationStatus(characterId,'⚠️ Portrait sélectionné introuvable.');
+  const others=list.filter(x=>x.path!==path).map(x=>x.path);
+  if(others.length){const {error}=await cloudClient.storage.from('character-images').remove(others);if(error){cloudSyncError(error);return illustrationStatus(characterId,'⚠️ Impossible de supprimer les autres variantes.')}}
   c.imageGeneration={...(c.imageGeneration||{}),selectedPortrait:path,selectedAt:new Date().toISOString()};roster[characterId]=JSON.parse(JSON.stringify(c));saveRoster(roster);queueCloudCharacterSave(c);
-  const blob=await cloudDownloadPortraitPath(path);if(blob){const db=await openIllustrationDB();await new Promise((resolve,reject)=>{const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');tx.objectStore(ILLUSTRATION_STORE).put(blob,characterImageIdentity(characterId));tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)})}
-  await refreshIllustrationFor(characterId);await renderPortraitGallery(characterId);setTimeout(()=>refreshIllustrationThumbsFor(characterId),0);illustrationStatus(characterId,'✅ Portrait sélectionné définitivement.');
+  const db=await openIllustrationDB();await new Promise((resolve,reject)=>{const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');tx.objectStore(ILLUSTRATION_STORE).put(blob,characterImageIdentity(characterId));tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)});
+  await refreshIllustrationFor(characterId);await renderPortraitGallery(characterId);setTimeout(()=>refreshIllustrationThumbsFor(characterId),0);illustrationStatus(characterId,'✅ Portrait sélectionné • autres variantes supprimées.');
 }
 async function renderPortraitGallery(characterId){
   const host=document.querySelector(`[data-portrait-gallery-for="${characterId}"]`);if(!host||!cloudReady())return;
   const list=await cloudListGeneratedPortraits(characterId),c=loadRoster()[characterId],selected=c?.imageGeneration?.selectedPortrait||null;
   if(!list.length){host.innerHTML='';return}
-  host.innerHTML=`<div style="margin-top:14px"><div style="font-family:Cinzel,serif;color:#d6b36a;margin-bottom:8px">Variantes (${list.length})</div><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${list.map(x=>`<div style="border:1px solid ${selected===x.path?'#d6b36a':'#49343f'};border-radius:12px;padding:7px;background:#100d12"><img data-portrait-variant="${x.path}" style="width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:8px;display:block;background:#09080a"><div style="font-size:.78rem;margin:6px 0;color:#c9b9ad">${x.name}${selected===x.path?' • ✓ sélectionné':''}</div>${selected?'' : `<button class="smallbtn" style="width:100%" onclick="selectGeneratedPortrait('${characterId}','${x.path}')">✓ Sélectionner</button>`}</div>`).join('')}</div></div>`;
+  host.innerHTML=`<div style="margin-top:14px"><div style="font-family:Cinzel,serif;color:#d6b36a;margin-bottom:8px">Variantes (${list.length})</div><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${list.map(x=>`<div style="border:1px solid ${selected===x.path?'#d6b36a':'#49343f'};border-radius:12px;padding:7px;background:#100d12"><img data-portrait-variant="${x.path}" style="width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:8px;display:block;background:#09080a"><div style="font-size:.78rem;margin:6px 0;color:#c9b9ad">${x.name}${selected===x.path?' • ✓ sélectionné':''}</div>${selected===x.path?`<button class="smallbtn secondary" style="width:100%" disabled>✓ Portrait principal</button>`:`<button class="smallbtn" style="width:100%" onclick="selectGeneratedPortrait('${characterId}','${x.path}')">✓ Sélectionner ce portrait</button>`}</div>`).join('')}</div></div>`;
   for(const img of host.querySelectorAll('[data-portrait-variant]')){const blob=await cloudDownloadPortraitPath(img.dataset.portraitVariant);if(blob){const u=URL.createObjectURL(blob);img.src=u;img.onload=()=>URL.revokeObjectURL(u)}}
 }
 
@@ -4976,6 +4978,9 @@ async function invokeCharacterImageGeneration(characterId,{regenerate=false,cham
     const db=await openIllustrationDB();await new Promise((resolve,reject)=>{const tx=db.transaction(ILLUSTRATION_STORE,'readwrite');tx.objectStore(ILLUSTRATION_STORE).put(remote,characterImageIdentity(characterId));tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)});
     c.imageGeneration={
       ...(c.imageGeneration||{}),
+      // Une régénération rouvre le choix : l'ancien portrait sélectionné est conservé
+      // comme variante, mais aucune variante n'est considérée comme définitivement choisie.
+      ...(regenerate?{selectedPortrait:null,selectedAt:null}:{}),
       lastPortraitPath:generatedPath,
       lastGeneratedAt:new Date().toISOString(),
       lastValidation:finalData?.validation||null,
